@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../locales/en/publicSite.json";
 import th from "../locales/th/publicSite.json";
@@ -99,9 +99,16 @@ describe("public homepage", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: en["homePublic.flagshipTitle"] })
     ).toBeTruthy();
-    expect(screen.getByAltText(en["homePublic.heroImageAlt"])).toBeTruthy();
-    expect(screen.getByAltText(en["homePublic.flagshipImageAlt"])).toBeTruthy();
-    expect(screen.getAllByText(en["homePublic.illustrationCaption"])).toHaveLength(2);
+    expect(screen.getByText(en["homePublic.flowTitle"])).toBeTruthy();
+    expect(screen.getByText(en["homePublic.seriesFlowTitle"])).toBeTruthy();
+    expect(
+      screen.getAllByText(en["homePublic.illustrationDisclosure"])
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByRole("generic").filter(element =>
+        element.getAttribute("style")?.includes("margin-inline: auto")
+      ).length
+    ).toBeGreaterThanOrEqual(3);
     expect(
       screen.getByRole("link", { name: en["homePublic.flagshipCta"] })
     ).toHaveAttribute("href", "/login?returnUrl=%2Fdrama-series");
@@ -127,18 +134,12 @@ describe("public homepage", () => {
     expect(document.documentElement.lang).toBe("en");
   });
 
-  it("keeps the hero hierarchy and a localized fallback when an illustration fails", () => {
+  it("uses bilingual source-backed flow copy and discloses conceptual illustrations", () => {
     render(<Home />);
 
-    fireEvent.error(screen.getByAltText(en["homePublic.heroImageAlt"]));
-
-    expect(screen.getByText(en["homePublic.imageUnavailable"])).toHaveAttribute(
-      "role",
-      "status"
-    );
-    expect(
-      screen.getByRole("heading", { level: 2, name: en["homePublic.flagshipTitle"] })
-    ).toBeTruthy();
+    expect(screen.getByText(en["homePublic.flowValueOne"])).toBeTruthy();
+    expect(screen.getByText(en["homePublic.flowValueTwo"])).toBeTruthy();
+    expect(document.querySelectorAll("main img")).toHaveLength(0);
   });
 
   it("keeps the Thai hero and metadata localized together", () => {
@@ -162,6 +163,7 @@ describe("public homepage", () => {
     testState.tenant = {
       id: "tenant-example",
       slug: "example-tenant",
+      primaryDomain: "example-tenant.test",
       name: "Example Tenant",
       seo: { defaultDescription: "Example tenant description" },
     };
@@ -239,6 +241,7 @@ describe("public homepage", () => {
     testState.tenant = {
       id: "tenant-legacy",
       slug: "legacy-tenant",
+      primaryDomain: "legacy-tenant.test",
       name: "Legacy Tenant",
       seo: { defaultDescription: "Legacy tenant description" },
     };
@@ -264,6 +267,7 @@ describe("public homepage", () => {
     testState.tenant = {
       id: "tenant-customer",
       slug: "customer-site",
+      primaryDomain: "customer-site.test",
       name: "Customer Site",
       seo: { defaultDescription: "A site managed by this customer" },
     };

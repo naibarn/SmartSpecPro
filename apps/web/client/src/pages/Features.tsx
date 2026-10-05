@@ -24,43 +24,36 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 type Icon = typeof Bot;
 const spotlights: Array<{
   key: "vertical" | "product" | "chat" | "skills" | "capture" | "worker";
-  image: string;
   icon: Icon;
   points: number;
 }> = [
   {
     key: "vertical",
-    image: "/images/smartaihub-features-creation-suite.webp",
     icon: Clapperboard,
     points: 4,
   },
   {
     key: "product",
-    image: "/images/smartaihub-features-product-review.webp",
     icon: Video,
     points: 4,
   },
   {
     key: "chat",
-    image: "/images/smartaihub-features-chat-orchestration.webp",
     icon: MessageSquareText,
     points: 4,
   },
   {
     key: "skills",
-    image: "/images/smartaihub-features-media-pipeline.webp",
     icon: Layers3,
     points: 4,
   },
   {
     key: "capture",
-    image: "/images/smartaihub-features-marketplace-capture.webp",
     icon: Store,
     points: 4,
   },
   {
     key: "worker",
-    image: "/images/smartaihub-features-worker-mcp.webp",
     icon: MonitorCog,
     points: 4,
   },
@@ -91,33 +84,20 @@ const featureGroups = [
   },
 ] as const;
 
-function SafeImage({
-  src,
-  alt,
+function CapabilityPanel({
+  icon: Icon,
   className,
 }: {
-  src: string;
-  alt: string;
+  icon: Icon;
   className?: string;
 }) {
   return (
-    <div
-      className={`relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 ${className ?? ""}`}
+    <figure
+      aria-hidden="true"
+      className={`relative m-0 grid place-items-center overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 ${className ?? ""}`}
     >
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        className="h-full w-full object-cover"
-        onError={event => {
-          event.currentTarget.style.display = "none";
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-white/5"
-      />
-    </div>
+      <Icon className="h-16 w-16 text-cyan-200" />
+    </figure>
   );
 }
 
@@ -170,9 +150,8 @@ export default function Features() {
               </Button>
             </div>
           </motion.div>
-          <SafeImage
-            src="/images/smartaihub-features-creation-suite.webp"
-            alt={t("features.a11y.heroImage")}
+          <CapabilityPanel
+            icon={Sparkles}
             className="min-h-[20rem] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/10 sm:min-h-[30rem]"
           />
         </div>
@@ -221,9 +200,8 @@ export default function Features() {
               {t("harness.cta")} <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </div>
-          <SafeImage
-            src="/images/smartaihub-domain-specific-harness.webp"
-            alt={t("harness.imageAlt")}
+          <CapabilityPanel
+            icon={Bot}
             className="min-h-[20rem] rounded-[2rem] border border-white/15 shadow-2xl shadow-cyan-950/40 sm:min-h-[28rem]"
           />
         </div>
@@ -252,9 +230,8 @@ export default function Features() {
               viewport={{ once: true, amount: 0.15 }}
               className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16"
             >
-              <SafeImage
-                src={spotlight.image}
-                alt={t(`features.spotlight.${spotlight.key}.imageAlt`)}
+              <CapabilityPanel
+                icon={spotlight.icon}
                 className={`min-h-[18rem] rounded-[1.75rem] border border-border/60 shadow-2xl sm:min-h-[25rem] ${index % 2 ? "lg:order-2" : ""}`}
               />
               <div className={index % 2 ? "lg:order-1" : ""}>
@@ -322,9 +299,8 @@ export default function Features() {
       </section>
       <section className="border-y border-border/60 bg-muted/35 py-20 sm:py-28">
         <div className="container mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8">
-          <SafeImage
-            src="/images/smartaihub-features-organization-security.webp"
-            alt={t("features.a11y.organizationImage")}
+          <CapabilityPanel
+            icon={ShieldCheck}
             className="min-h-[20rem] rounded-[2rem] border border-border/60 shadow-2xl sm:min-h-[28rem]"
           />
           <div>

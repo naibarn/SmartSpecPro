@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Link as RouterLink } from "wouter";
 import {
   ArrowRight,
@@ -8,35 +8,48 @@ import {
   LifeBuoy,
   Sparkles,
 } from "lucide-react";
-import { AspectRatio } from "@astryxdesign/core/AspectRatio";
-import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
-import { Grid } from "@astryxdesign/core/Grid";
-import { Heading } from "@astryxdesign/core/Heading";
-import { HStack, VStack } from "@astryxdesign/core/Layout";
-import { Link as PublicLink } from "@astryxdesign/core/Link";
-import { Section } from "@astryxdesign/core/Section";
-import { Text } from "@astryxdesign/core/Text";
-import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
-import { publicHomeTheme } from "./publicHomeTheme";
+import {
+  Button,
+  Card,
+  Grid,
+  Heading,
+  HStack,
+  Link as PublicLink,
+  Section,
+  Text,
+  Theme as AstryxTheme,
+  VStack,
+  publicHomeTheme,
+} from "./publicPrimitives";
 
 export type PublicHomeExperienceCopy = {
   eyebrow: string;
   title: string;
   description: string;
   primaryNavigation: string;
+  flowLabel: string;
+  flowTitle: string;
+  flowStepOne: string;
+  flowValueOne: string;
+  flowStepTwo: string;
+  flowValueTwo: string;
+  flowFootnote: string;
+  seriesFlowLabel: string;
+  seriesFlowTitle: string;
+  seriesStepOne: string;
+  seriesValueOne: string;
+  seriesStepTwo: string;
+  seriesValueTwo: string;
+  seriesFlowFootnote: string;
+  illustrationDisclosure: string;
   primaryCta: string;
   secondaryCta: string;
   trust: string;
-  heroImageAlt: string;
-  illustrationCaption: string;
-  imageUnavailable: string;
   flagshipEyebrow: string;
   flagshipTitle: string;
   flagshipBody: string;
   flagshipCta: string;
   flagshipDetailsCta: string;
-  flagshipImageAlt: string;
   productTitle: string;
   productBody: string;
   resourcesTitle: string;
@@ -54,70 +67,80 @@ export type PublicHomeExperienceCopy = {
   closingCta: string;
 };
 
-function PublicIllustration({
-  src,
-  alt,
-  caption,
-  unavailable,
-  eager = false,
+function ProductFlowPanel({
+  copy,
+  variant = "idea",
 }: {
-  src: string;
-  alt: string;
-  caption: string;
-  unavailable: string;
-  eager?: boolean;
+  copy: PublicHomeExperienceCopy;
+  variant?: "idea" | "series";
 }) {
-  const [hasError, setHasError] = useState(false);
-
   return (
-    <figure style={{ margin: 0 }}>
-      {hasError ? (
-        <Section variant="muted" padding={6}>
-          <VStack gap={3} hAlign="center">
-            <Sparkles aria-hidden="true" />
-            <Text role="status" color="secondary" justify="center">
-              {unavailable}
+    <Card>
+      <VStack gap={5}>
+        <HStack gap={3} align="center">
+          <Sparkles aria-hidden="true" />
+          <VStack gap={1}>
+            <Text type="label" color="accent">
+              {variant === "idea" ? copy.flowLabel : copy.seriesFlowLabel}
             </Text>
+            <Heading level={3} weight="semibold">
+              {variant === "idea" ? copy.flowTitle : copy.seriesFlowTitle}
+            </Heading>
           </VStack>
-        </Section>
-      ) : (
-        <AspectRatio
-          ratio={16 / 9}
-          fit="cover"
-          style={{ borderRadius: "var(--radius-xl)" }}
-        >
-          <img
-            src={src}
-            alt={alt}
-            loading={eager ? "eager" : "lazy"}
-            fetchPriority={eager ? "high" : "auto"}
-            onError={() => setHasError(true)}
-          />
-        </AspectRatio>
-      )}
-      <figcaption>
+        </HStack>
+        <Grid columns={{ minWidth: 150, max: 2 }} gap={3}>
+          <Section variant="muted" padding={4}>
+            <VStack gap={2}>
+              <Text type="label" color="secondary">
+                {variant === "idea" ? copy.flowStepOne : copy.seriesStepOne}
+              </Text>
+              <Text weight="semibold">
+                {variant === "idea" ? copy.flowValueOne : copy.seriesValueOne}
+              </Text>
+            </VStack>
+          </Section>
+          <Section variant="muted" padding={4}>
+            <VStack gap={2}>
+              <Text type="label" color="secondary">
+                {variant === "idea" ? copy.flowStepTwo : copy.seriesStepTwo}
+              </Text>
+              <Text weight="semibold">
+                {variant === "idea" ? copy.flowValueTwo : copy.seriesValueTwo}
+              </Text>
+            </VStack>
+          </Section>
+        </Grid>
+        <HStack gap={2} align="center">
+          <ArrowRight aria-hidden="true" />
+          <Text type="supporting" color="secondary">
+            {variant === "idea" ? copy.flowFootnote : copy.seriesFlowFootnote}
+          </Text>
+        </HStack>
         <Text type="supporting" color="secondary">
-          {caption}
+          {copy.illustrationDisclosure}
         </Text>
-      </figcaption>
-    </figure>
+      </VStack>
+    </Card>
   );
 }
 
 /** SmartAIHub-owned public page pattern; Astryx remains an internal implementation detail. */
 export function PublicHomeExperience({
   copy,
-  assets,
   afterHero,
 }: {
   copy: PublicHomeExperienceCopy;
-  assets: { hero: string; verticalSeries: string };
   afterHero?: ReactNode;
 }) {
   return (
     <AstryxTheme theme={publicHomeTheme} mode="light">
       <>
-        <Section variant="transparent" maxWidth="1280px" padding={8}>
+        <Section
+          variant="transparent"
+          maxWidth="var(--public-layout-wide)"
+          padding={8}
+          style={{ marginInline: "auto" }}
+        >
           <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="center">
             <VStack gap={4} as="header">
               <Text type="label" color="accent">
@@ -171,24 +194,18 @@ export function PublicHomeExperience({
               </Text>
             </VStack>
 
-            <PublicIllustration
-              src={assets.hero}
-              alt={copy.heroImageAlt}
-              caption={copy.illustrationCaption}
-              unavailable={copy.imageUnavailable}
-              eager
-            />
+            <ProductFlowPanel copy={copy} />
           </Grid>
         </Section>
 
-        <Section variant="section" maxWidth="1280px" padding={8}>
+        <Section
+          variant="section"
+          maxWidth="var(--public-layout-wide)"
+          padding={8}
+          style={{ marginInline: "auto" }}
+        >
           <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="center">
-            <PublicIllustration
-              src={assets.verticalSeries}
-              alt={copy.flagshipImageAlt}
-              caption={copy.illustrationCaption}
-              unavailable={copy.imageUnavailable}
-            />
+            <ProductFlowPanel copy={copy} variant="series" />
             <VStack gap={4} as="section" aria-labelledby="home-flagship-title">
               <Text type="label" color="accent">
                 {copy.flagshipEyebrow}
@@ -306,7 +323,12 @@ export function PublicHomeExperience({
           </VStack>
         </Section>
 
-        <Section variant="transparent" maxWidth="1280px" padding={8}>
+        <Section
+          variant="transparent"
+          maxWidth="var(--public-layout-wide)"
+          padding={8}
+          style={{ marginInline: "auto" }}
+        >
           <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="center">
             <VStack gap={4} as="section" aria-labelledby="home-trust-title">
               <Text type="label" color="accent">

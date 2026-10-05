@@ -1,0 +1,20 @@
+{
+  "package": "smartaihub-public-web",
+  "version": "1.0.0",
+  "authority": "Spec 270 R1.4",
+  "target": "Spec 263 revision 263.8",
+  "owner": "SmartAIHub Public Experience",
+  "viewportContracts": [
+    { "name": "mobile", "width": 390, "height": 844, "layout": "single-column, full-width actions" },
+    { "name": "tablet", "width": 768, "height": 1024, "layout": "stacked hero, two-column capability discovery" },
+    { "name": "desktop", "width": 1440, "height": 900, "layout": "centered 1320px frame, balanced two-column hero" }
+  ],
+  "sectionOrder": ["public-navigation", "outcome-hero", "vertical-series-flagship", "emergency-entry", "capability-discovery", "trust-help", "conversion", "footer"],
+  "layout": { "maxWidth": "var(--public-layout-wide)", "tokenDefinition": "82.5rem (1320px at default root size)", "grid": "Astryx Grid, minWidth-driven responsive reflow", "alignment": "shared centered page frame via margin-inline:auto" },
+  "typography": { "hero": "display-1", "section": ["display-2", "display-3"], "body": "large", "supporting": "supporting", "eyebrow": "label", "thai": "natural wrapping; no English line-length assumptions" },
+  "spacing": "Astryx spacing tokens and component gap/padding props only",
+  "brand": "scoped SmartAIHub public theme mapped to existing primary token",
+  "interaction": { "signup": "/signup", "features": "/features", "series": "/login?returnUrl=%2Fdrama-series", "details": "/features#vertical-series", "illustration": "non-interactive" },
+  "accessibility": ["one H1", "ordered headings", "semantic landmarks", "visible keyboard focus", "minimum 44px targets", "contrast review", "reduced motion", "text fallback for media"],
+  "prohibited": ["unsupported Film route or claims", "unverified customer proof", "unregistered image rights", "unexplained dead space", "global token overrides", "autoplay media"]
+}

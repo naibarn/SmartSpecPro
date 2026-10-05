@@ -1,0 +1,18 @@
+{
+  "environment": "local Vite source; API responses mocked; not production acceptance",
+  "openButtonFound": true,
+  "opened": {
+    "menuOpen": true,
+    "regionLabel": "เมนูสำหรับมือถือ",
+    "expanded": "true"
+  },
+  "result": {
+    "lang": "th",
+    "reduce": true,
+    "menuOpen": false,
+    "focusRestored": true,
+    "expanded": "false",
+    "menuCloseSettledAfterMs": 300
+  },
+  "errors": []
+}

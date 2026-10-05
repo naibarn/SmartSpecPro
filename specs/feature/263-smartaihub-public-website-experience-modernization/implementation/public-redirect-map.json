@@ -1,0 +1,64 @@
+{
+  "artifact": "Spec 263 public redirect and retired-path map",
+  "source_revision": "origin/main@3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "redirects": [
+    {
+      "from": "/dashboard/vertical-drama",
+      "to": "/drama-series",
+      "authority": "App.tsx legacy path registration",
+      "access_note": "Target remains RequireAuth plus verticalDramaSeries flag; this redirect is not public Film access.",
+      "indexation": "NOT_VERIFIED"
+    },
+    {
+      "from": "/dashboard/vertical-drama/:seriesId",
+      "to": "/drama-series/:seriesId",
+      "authority": "App.tsx",
+      "access_note": "Target is authenticated and feature-flagged.",
+      "indexation": "NOT_VERIFIED"
+    },
+    {
+      "from": "/dashboard/vertical-drama/:seriesId/episodes/:episodeId",
+      "to": "/drama-series/:seriesId/episodes/:episodeId",
+      "authority": "App.tsx",
+      "access_note": "Target is authenticated and feature-flagged.",
+      "indexation": "NOT_VERIFIED"
+    },
+    {
+      "from": "/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId",
+      "to": "/drama-series/:seriesId/episodes/:episodeId/runs/:runId",
+      "authority": "App.tsx",
+      "access_note": "Target is authenticated and feature-flagged.",
+      "indexation": "NOT_VERIFIED"
+    },
+    {
+      "from": "/render-jobs",
+      "to": "/worker-jobs plus validated allowed query parameters",
+      "authority": "LegacyWorkerJobsRedirect and getCanonicalWorkerJobsPath",
+      "access_note": "RequireAuth wraps both source alias and canonical target.",
+      "indexation": "NOT_VERIFIED"
+    },
+    {
+      "from": "/admin/storage-settings",
+      "to": "/admin/settings",
+      "authority": "App.tsx",
+      "access_note": "RequireAdmin protects source/target route context.",
+      "indexation": "NOT_VERIFIED"
+    }
+  ],
+  "retired_to_not_found": {
+    "authority": "retiredRouteGuard.ts executes before App.tsx Switch and redirects to /404.",
+    "prefixes": ["/admin/agencies", "/admin/sandbox", "/admin/work-os", "/agencies", "/work/request", "/work/requests", "/workflows", "/workpacks", "/docker", "/docker-redirect"],
+    "public_contract": "These are retired. They are neither supported public routes nor compatibility redirects and must not reappear in nav, footer, sitemap, prerender, public claims, tests, or redirects.",
+    "indexation": "NOT_VERIFIED; static sitemap and public prerender sources omit these paths."
+  },
+  "explicit_absence": {
+    "/film": "No router registration, sitemap entry, or accepted public handoff found. Do not introduce an inferred redirect.",
+    "/workflows": "Intentionally retired to /404, not redirected to a replacement.",
+    "/drama-series": "Exists only behind RequireAuth and RequireVerticalDramaSeries; it is not a public replacement for /film."
+  },
+  "gaps": [
+    "HTTP status, cache headers, crawler behavior, and deployed redirect behavior were not executed or captured.",
+    "No source evidence establishes canonical tags/noindex for any redirect source route.",
+    "Server/proxy redirects outside App.tsx were intentionally not inspected in this scoped artifact."
+  ]
+}

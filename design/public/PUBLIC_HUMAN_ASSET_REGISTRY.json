@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "package_version": "1.0.0",
+  "assets": [],
+  "status": "No human imagery approved or used by the canonical homepage package.",
+  "required_fields_for_future_assets": ["asset_id", "source_or_generator", "created_at", "synthetic_person_status", "rights_or_license_evidence", "permitted_public_use", "approvers", "withdrawal_owner", "withdrawal_path", "content_hash"]
+}

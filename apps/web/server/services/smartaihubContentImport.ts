@@ -8,8 +8,6 @@ import type {
 } from "../../shared/smartaihubContentManifest";
 import { buildSmartAiHubRelatedLinks } from "../../shared/smartaihubDiscovery";
 
-const DEFAULT_OG_IMAGE = "/images/dashboard-preview.jpg";
-
 type ImportCounters = {
   pagesCreated: number;
   pagesUpdated: number;
@@ -105,7 +103,7 @@ function pageSeoPayload(blueprint: SmartAiHubPageBlueprint, pathName: string) {
     ogMetadata: {
       title: blueprint.title,
       description,
-      image: blueprint.metadata?.ogImage || DEFAULT_OG_IMAGE,
+      ...(blueprint.metadata?.ogImage ? { image: blueprint.metadata.ogImage } : {}),
       type: "article",
       url: pathName,
     },
@@ -113,7 +111,7 @@ function pageSeoPayload(blueprint: SmartAiHubPageBlueprint, pathName: string) {
       card: "summary_large_image" as const,
       title: blueprint.title,
       description,
-      image: blueprint.metadata?.ogImage || DEFAULT_OG_IMAGE,
+      ...(blueprint.metadata?.ogImage ? { image: blueprint.metadata.ogImage } : {}),
     },
     aiContent: {
       context: generationPlan ? `${blueprint.aiContext}\n\nGeneration plan: ${generationPlan}` : blueprint.aiContext,
@@ -175,7 +173,6 @@ function docSeoPayload(blueprint: SmartAiHubDocBlueprint, pathName: string) {
     ogMetadata: {
       title: `${blueprint.title} | SmartAIHub Docs`,
       description: blueprint.description,
-      image: DEFAULT_OG_IMAGE,
       type: "article",
       url: pathName,
     },
@@ -183,7 +180,6 @@ function docSeoPayload(blueprint: SmartAiHubDocBlueprint, pathName: string) {
       card: "summary_large_image" as const,
       title: `${blueprint.title} | SmartAIHub Docs`,
       description: blueprint.description,
-      image: DEFAULT_OG_IMAGE,
     },
     aiContent: {
       context: generationPlan ? `${blueprint.aiContext}\n\nGeneration plan: ${generationPlan}` : blueprint.aiContext,
@@ -248,7 +244,7 @@ function blogSeoPayload(blueprint: SmartAiHubBlogBlueprint, pathName: string) {
     ogMetadata: {
       title: `${blueprint.title} | SmartAIHub Blog`,
       description: blueprint.metaDescription,
-      image: blueprint.coverImage || DEFAULT_OG_IMAGE,
+      ...(blueprint.coverImage ? { image: blueprint.coverImage } : {}),
       type: "article",
       url: pathName,
     },
@@ -256,7 +252,7 @@ function blogSeoPayload(blueprint: SmartAiHubBlogBlueprint, pathName: string) {
       card: "summary_large_image" as const,
       title: `${blueprint.title} | SmartAIHub Blog`,
       description: blueprint.metaDescription,
-      image: blueprint.coverImage || DEFAULT_OG_IMAGE,
+      ...(blueprint.coverImage ? { image: blueprint.coverImage } : {}),
     },
     aiContent: {
       context: generationPlan ? `${blueprint.excerpt}\n\nGeneration plan: ${generationPlan}` : blueprint.excerpt,

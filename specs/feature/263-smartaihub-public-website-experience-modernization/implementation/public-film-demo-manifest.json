@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "status": "NO_APPROVED_PUBLIC_FILM_DEMO",
+  "product_authority": "Spec 258",
+  "public_route": null,
+  "assets": [],
+  "claims": [],
+  "rights_owner": null,
+  "safety_review_owner": null,
+  "withdrawal_path": null,
+  "disposition": "Do not describe Home's code-rendered Vertical Series concept diagram as a Film output, product screenshot, customer work, or public Film proof. Preserve the currently supported /drama-series signed-out handoff only. A public Film route or demo requires approved Spec 258 behavior, claim, rights, safety and withdrawal evidence."
+}

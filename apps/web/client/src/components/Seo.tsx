@@ -154,9 +154,11 @@ export function Seo({
       ...(metadata.keywords || apiSeo.defaultKeywords || tenantSeo.defaultKeywords || []),
       ...keywords,
     ]);
+    // Do not invent a social-preview asset. Public media must be explicitly
+    // selected by the route or tenant SEO record so provenance stays auditable.
     const finalImage = image === null
       ? null
-      : metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || image || "/images/dashboard-preview.jpg";
+      : metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || image || null;
     const finalCanonical = canonicalUrl || metadata.canonicalUrl || buildAbsoluteUrl(resolvedPath);
     const inferredJsonLd = [
       metadata.structuredData,

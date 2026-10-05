@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "scope": "Repository-evidenced media rendered or declared by current SmartAIHub public-route source as inspected on 2026-10-05. This is an inventory, not a rights approval.",
+  "generated_from": [
+    "apps/web/client/src/pages/Features.tsx",
+    "apps/web/client/src/pages/Docs.tsx",
+    "apps/web/client/src/pages/Home.tsx",
+    "apps/web/client/src/pages/homeContent.ts",
+    "apps/web/client/src/pages/TenantHomePage.tsx",
+    "apps/web/client/src/pages/ContentPage.tsx",
+    "apps/web/client/src/pages/DocPage.tsx",
+    "apps/web/client/src/pages/Blog.tsx",
+    "apps/web/client/src/components/Navbar.tsx",
+    "apps/web/client/src/components/Footer.tsx",
+    "apps/web/client/src/components/Seo.tsx"
+  ],
+  "repository_revision": "3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "policy": {
+    "platform_marketing_use_requires": [
+      "recorded source or generator",
+      "rights or license evidence",
+      "named public-use owner",
+      "withdrawal owner and path",
+      "meaningful alternative or localized fallback when media carries information"
+    ],
+    "unverified_rights_disposition": "Do not treat as customer proof, Film proof, product capture, or approved marketing evidence. Remove from production marketing use or replace only after the required record exists.",
+    "tenant_boundary": "Tenant-configured media and logos are tenant-owned data. They must not be promoted into SmartAIHub platform marketing or this platform asset registry without an independent public-use and rights record.",
+    "ugc_boundary": "Gallery, blog, document-share and other tenant/content records can render tenant or user-supplied media. Their presence is not permission to use them as platform proof."
+  },
+  "assets": [
+    {
+      "asset_id": "features-creation-suite",
+      "public_path": "/images/smartaihub-features-creation-suite.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-features-creation-suite.webp",
+      "sha256": "93a8ffff1d694b85c40361d834065879cc15523ad50f54a13b1b859a671c4b31",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: repository commit establishes file custody only; no generator, author, license, consent, or public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "features-product-review",
+      "public_path": "/images/smartaihub-features-product-review.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-features-product-review.webp",
+      "sha256": "ffde1ca035b5ff4d3fcaff7201ab78a3c614c71c684c67b782f2a4ddf8283668",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "features-chat-orchestration",
+      "public_path": "/images/smartaihub-features-chat-orchestration.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-features-chat-orchestration.webp",
+      "sha256": "c33bccd9e4fc26f2139270a7b0249f8b392411868135ab974749d4e5a2509201",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "features-media-pipeline",
+      "public_path": "/images/smartaihub-features-media-pipeline.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-features-media-pipeline.webp",
+      "sha256": "3db832235d12d7f71356cd580a17b73dd73b6fe88d917799539db5aad506ee56",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "features-marketplace-capture",
+      "public_path": "/images/smartaihub-features-marketplace-capture.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-features-marketplace-capture.webp",
+      "sha256": "61706af932a8ebe33475fd5f6efdd2a848db7f692d071fb32d52d7767f838473",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "features-worker-mcp",
+      "public_path": "/images/smartaihub-features-worker-mcp.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-features-worker-mcp.webp",
+      "sha256": "d36eef0740cc67553d47c2644400ba625459dfcc0467173593465997f47d179c",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "features-organization-security",
+      "public_path": "/images/smartaihub-features-organization-security.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-features-organization-security.webp",
+      "sha256": "f0c7d6eba0c7ae31f6f8949dd8435843238bface327778da9f8448744cd3fb80",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "domain-specific-harness",
+      "public_path": "/images/smartaihub-domain-specific-harness.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-domain-specific-harness.webp",
+      "sha256": "fc34dd352a05e410951a52bc29d88354e2aa7a5ace3e572fad7df00622dd8d58",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "docs-blueprint",
+      "public_path": "/images/smartaihub-docs-blueprint.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-docs-blueprint.webp",
+      "sha256": "9077cc156992cb0c3c4b3a48990d3f3fe790f954954e202bc5ad8bf4611dce8e",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "docs-story-path",
+      "public_path": "/images/smartaihub-docs-story-path.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-docs-story-path.webp",
+      "sha256": "19c2924950f27c98cda6530e1f6e565c99d53d9c8d0eef00724f16ab2dc1223f",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "docs-idea-to-output",
+      "public_path": "/images/smartaihub-docs-idea-to-output.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-docs-idea-to-output.webp",
+      "sha256": "dd2fcb3cd033a8d7eb81a62f814ff81a31e36a664bcf82e335d00312d9d531e0",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "docs-asset-organization",
+      "public_path": "/images/smartaihub-docs-asset-organization.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-docs-asset-organization.webp",
+      "sha256": "159c4999ed8b9b0d3198c461845f6f5e9de3dbc005aaafebc67ea0b21aabd8dd",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "docs-capture-flow",
+      "public_path": "/images/smartaihub-docs-capture-flow.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-docs-capture-flow.webp",
+      "sha256": "4f2597380fcfa53a1060ed474fdd61f0d1580495c10f8f5c6dcedf5f753fec6a",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "docs-connected-runtime",
+      "public_path": "/images/smartaihub-docs-connected-runtime.webp",
+      "local_path": "apps/web/client/public/images/smartaihub-docs-connected-runtime.webp",
+      "sha256": "ce4b738ba13d35fa23072bb5f82fe08786d70b217b04d18e1769bf164fec5ee6",
+      "media_type": "image/webp",
+      "classification": "platform_marketing_illustration",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "dashboard-preview-default-og",
+      "public_path": "/images/dashboard-preview.jpg",
+      "local_path": "apps/web/client/public/images/dashboard-preview.jpg",
+      "sha256": "26a8c3dde67f93b014a07c944840995fca805b0ebf991669e82c4706b1e7ae6f",
+      "media_type": "image/jpeg",
+      "classification": "platform_default_open_graph",
+      "active_usage": [],
+      "provenance": "UNVERIFIED: repository file only; no source/license/public-use record found.",
+      "owner": "UNRECORDED",
+      "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
+      "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
+      "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    }
+  ],
+  "declared_but_not_rendered_disposition": "All are exported by apps/web/client/src/pages/homeContent.ts:36-46 but are not consumed by current Home.tsx/PublicHomeExperience.tsx. Provenance, rights, owner, caption and withdrawal path are unrecorded; do not reactivate them in platform marketing without a complete record.",
+  "tenant_and_ugc_media": [
+    {
+      "surface": "custom tenant public pages and logos",
+      "source_refs": [
+        "apps/web/client/src/pages/TenantHomePage.tsx:32-48,187-215",
+        "apps/web/client/src/components/Navbar.tsx:51-55,166-176",
+        "apps/web/client/src/components/Footer.tsx:53-57"
+      ],
+      "data_source": "tenant page sections, hero/background media, websiteLogoUrl or logoUrl",
+      "classification": "tenant_owned_dynamic_media",
+      "platform_marketing_permission": "NOT_PROVEN; exclude from platform registry and promotional proof"
+    },
+    {
+      "surface": "tenant public content/doc/blog/gallery/share pages",
+      "source_refs": [
+        "apps/web/client/src/pages/ContentPage.tsx:74-135",
+        "apps/web/client/src/pages/DocPage.tsx:483-605",
+        "apps/web/client/src/pages/Blog.tsx:220-305",
+        "apps/web/client/src/pages/Gallery.tsx:185-364",
+        "apps/web/client/src/pages/PublicDocumentShare.tsx:167-189"
+      ],
+      "data_source": "tenant content metadata, blog coverImage, gallery records and bearer-token share records",
+      "classification": "tenant_or_user_generated_dynamic_media",
+      "platform_marketing_permission": "NOT_PROVEN; must not be reused as customer proof or platform asset"
+    }
+  ],
+  "third_party_embeds": {
+    "platform_marketing_routes_checked": [
+      "/",
+      "/features",
+      "/docs"
+    ],
+    "result": "NO_STATIC_THIRD_PARTY_MEDIA_EMBED_FOUND",
+    "evidence": "No iframe, YouTube, Vimeo or external image/video URL literal was found in Home.tsx, Features.tsx, Docs.tsx, PublicHomeExperience.tsx, Navbar.tsx or Footer.tsx during this inventory.",
+    "out_of_scope_dynamic_embed": "PublicDocumentShare.tsx can render a tenant/content-provided iframe at line 189; it is not platform marketing and requires its own share/content access and media policy."
+  },
+  "gaps": [
+    "Dynamic tenant and UGC media routes remain intentionally outside platform asset approval; route wrappers do not establish marketing reuse rights.",
+    "No public platform Film proof asset with verified provenance was found. Do not label any listed illustration as Film proof.",
+    "Rights/provenance and withdrawal authority for the unreferenced static files remain undocumented; files are preserved for stored-content compatibility and excluded from SmartAIHub marketing UI."
+  ],
+  "validation": {
+    "command": "node -e \"JSON.parse(require('node:fs').readFileSync('specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json','utf8')); console.log('valid JSON')\"",
+    "result": "PASS (2026-10-05)"
+  },
+  "candidate_revision": "UNCOMMITTED candidate based on 3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "candidate_code_disposition": {
+    "marketing_surfaces": [
+      "/",
+      "/features",
+      "/docs"
+    ],
+    "result": "No local smartaihub marketing WebP or <img> elements remain in Home, Features, or Docs source. SEO and blog-import paths no longer supply /images/dashboard-preview.jpg as an automatic Open Graph/Twitter fallback.",
+    "explicit_og_media": "Only explicit route/tenant metadata may emit an OG image; tenant/content media remains tenant-owned and not platform marketing approval.",
+    "static_file_note": "Unreferenced image files remain in apps/web/client/public/images for compatibility with stored tenant/content URLs. Their direct-addressability is not evidence of platform marketing approval."
+  },
+  "legacy_unreferenced_assets": [
+    {
+      "asset_id": "home-hero",
+      "path": "/images/smartaihub-home-hero.webp",
+      "sha256": "d5111823cb4230cf6e2c0333487af65d45fb0292b6e1669ab58e751d74b07c97"
+    },
+    {
+      "asset_id": "vertical-series",
+      "path": "/images/smartaihub-vertical-series.webp",
+      "sha256": "c5f48f5c1050beb602e53b7a7df45699e8bdd4f6ad8b31f5c1238e42f8bd1285"
+    },
+    {
+      "asset_id": "product-review-video",
+      "path": "/images/smartaihub-product-review-video.webp",
+      "sha256": "5dbd602d7301bdda5d4cb2d82c6adf06493646f8b4f37946dc31b214c65d791d"
+    },
+    {
+      "asset_id": "chat-skills",
+      "path": "/images/smartaihub-chat-skills.webp",
+      "sha256": "4d93a35c92b04f0a4abcb9ae39042d8ec777af7cdf9d43296b4abcccb1dd6b"
+    },
+    {
+      "asset_id": "skills-library",
+      "path": "/images/smartaihub-skills-library.webp",
+      "sha256": "878ced9a9b1e57283347c3c6abc992ed2805a3b6a7727ff0e0608fe1e9dc3a22"
+    },
+    {
+      "asset_id": "home-ai-work-hub",
+      "path": "/images/smartaihub-home-ai-work-hub.webp",
+      "sha256": "1ae0dc8df8336aebe8faa1ac79f49799115f46650977eb31477380de1ec74572"
+    },
+    {
+      "asset_id": "home-marketplace-to-content",
+      "path": "/images/smartaihub-home-marketplace-to-content.webp",
+      "sha256": "6ee9a03bb8da881ed6c97121066aeb5f3f48b812cb66974246f418e7981acd27"
+    },
+    {
+      "asset_id": "home-connected-ecosystem",
+      "path": "/images/smartaihub-home-connected-ecosystem.webp",
+      "sha256": "33eaf20bbe5ece70255f352844ab75ef8d5e548f879e278b728156fedf0ef150"
+    }
+  ],
+  "legacy_unreferenced_assets_disposition": "These paths are not referenced by Home, Features, or Docs candidate UI. Their source entries were removed where obsolete; files remain for backward compatibility and are not approved for new platform marketing use."
+}

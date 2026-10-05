@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "status": "NO_APPROVED_PUBLIC_SOCIAL_OR_BENCHMARK_PROOF",
+  "scope": ["/", "/features", "/pricing", "/gallery", "/blog"],
+  "items": [],
+  "admission_requirements": [
+    "named evidence owner and source of truth",
+    "dated method, sample and limitations for benchmark claims",
+    "written publication permission and withdrawal route for customer/creator material",
+    "truthful route, locale and claim mapping",
+    "legal/editorial approval evidence"
+  ],
+  "policy": "An empty registry means no social proof, testimonial, customer result, benchmark or adoption metric is approved for SmartAIHub platform marketing. It does not prohibit tenant-authored content from appearing on tenant-owned surfaces under that tenant's policy."
+}

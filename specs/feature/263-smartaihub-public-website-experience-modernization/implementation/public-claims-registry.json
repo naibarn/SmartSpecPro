@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "registry_scope": "Current SmartAIHub platform homepage only. Exact tenant-published pages remain tenant-owned and are not represented by this shared registry.",
+  "generated_from": [
+    "apps/web/client/src/pages/Home.tsx",
+    "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+    "apps/web/client/src/pages/homeContent.ts",
+    "apps/web/client/src/locales/en/publicSite.json",
+    "apps/web/client/src/locales/th/publicSite.json",
+    "apps/web/client/src/App.tsx",
+    "apps/web/client/src/lib/authRedirects.ts"
+  ],
+  "generated_at": "2026-10-05",
+  "claims": [
+    {
+      "claim_id": "home.brand.identity",
+      "copy_ref": "publicSite.homePublic.eyebrow (en/th)",
+      "authority": "Repository localization source only",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:91; apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:11; apps/web/client/src/locales/th/publicSite.json:11",
+      "owner": "Public content/editorial owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": null,
+      "signed_in_behavior": "same public copy",
+      "signed_out_behavior": "same public copy",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; no external approval timestamp recorded",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain_brand_identifier_only"
+    },
+    {
+      "claim_id": "home.outcome.ongoing-creation",
+      "copy_ref": "publicSite.homePublic.title (en/th)",
+      "authority": "Repository localization source only; outcome-led editorial copy",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:92; apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:12; apps/web/client/src/locales/th/publicSite.json:12",
+      "owner": "Public content/editorial owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": null,
+      "signed_in_behavior": "same public copy",
+      "signed_out_behavior": "same public copy",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; no external approval timestamp recorded",
+      "acceptance_status": "ILLUSTRATIVE_NON_NORMATIVE",
+      "disposition": "retain_as_outcome_language; do_not_treat_as_customer_or_performance_proof"
+    },
+    {
+      "claim_id": "home.discovery.chat-media-vertical-series",
+      "copy_ref": "publicSite.homePublic.description (en/th)",
+      "authority": "Repository localization and current public route/component sources",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:93; apps/web/client/src/App.tsx",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:13; apps/web/client/src/locales/th/publicSite.json:13",
+      "owner": "Product and public content owners (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": null,
+      "signed_in_behavior": "product access remains route/auth controlled",
+      "signed_out_behavior": "public discovery only",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; product acceptance evidence not recorded",
+      "acceptance_status": "SOURCE_VERIFIED_LIMITED",
+      "disposition": "retain_as_discovery_copy; do_not_expand_into_breadth_or_availability_promise"
+    },
+    {
+      "claim_id": "home.locale.thai-english",
+      "copy_ref": "publicSite.hero.trust (en/th)",
+      "authority": "Repository locale files",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:97; i18n locale selection",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:10; apps/web/client/src/locales/th/publicSite.json:10",
+      "owner": "Localization/editorial owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": null,
+      "signed_in_behavior": "same locale selector behavior",
+      "signed_out_behavior": "same locale selector behavior",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; browser locale QA is separate",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain_as_locale-availability_copy; do_not_imply_full-product-localization"
+    },
+    {
+      "claim_id": "home.vertical-series.discovery",
+      "copy_ref": "publicSite.homePublic.flagshipEyebrow|flagshipTitle|flagshipBody (en/th)",
+      "authority": "Repository localization and authenticated drama-series route source",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:101-103; apps/web/client/src/App.tsx:1166-1187",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:26-29; apps/web/client/src/locales/th/publicSite.json:26-29",
+      "owner": "Vertical Series product owner and public content owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/login?returnUrl=%2Fdrama-series",
+      "signed_in_behavior": "authenticated drama-series route owns access",
+      "signed_out_behavior": "validated return URL hands off to login",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; no Film/customer proof is attached",
+      "acceptance_status": "SOURCE_VERIFIED_LIMITED",
+      "disposition": "retain_as_product-entry copy; no_public_film_claim_or_customer_proof"
+    },
+    {
+      "claim_id": "home.starting-point.discovery",
+      "copy_ref": "publicSite.homePublic.productTitle|productBody (en/th)",
+      "authority": "Repository localization source only",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:107-108; apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:18-19; apps/web/client/src/locales/th/publicSite.json:18-19",
+      "owner": "Public content/editorial owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": null,
+      "signed_in_behavior": "same public discovery",
+      "signed_out_behavior": "same public discovery",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision",
+      "acceptance_status": "ILLUSTRATIVE_NON_NORMATIVE",
+      "disposition": "retain_as_navigation_context"
+    },
+    {
+      "claim_id": "home.features.discovery",
+      "copy_ref": "publicSite.homePublic.featuresLink|featuresDescription (en/th)",
+      "authority": "Repository localization and public route source",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:110-111; apps/web/client/src/App.tsx:651",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:21-22; apps/web/client/src/locales/th/publicSite.json:21-22",
+      "owner": "Public content/product owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/features",
+      "signed_in_behavior": "same public destination",
+      "signed_out_behavior": "same public destination",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; capability-by-capability approval is outside this record",
+      "acceptance_status": "SOURCE_VERIFIED_LIMITED",
+      "disposition": "retain_as_overview_link; do_not_infer_all_feature_copy_is_approved"
+    },
+    {
+      "claim_id": "home.gallery.discovery",
+      "copy_ref": "publicSite.homePublic.galleryLink|galleryDescription (en/th)",
+      "authority": "Repository localization and public route source",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:115-116; apps/web/client/src/App.tsx:802",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:32-33; apps/web/client/src/locales/th/publicSite.json:32-33",
+      "owner": "Gallery product/content owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/gallery",
+      "signed_in_behavior": "same public destination",
+      "signed_out_behavior": "same public destination",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; gallery-item rights are not certified here",
+      "acceptance_status": "SOURCE_VERIFIED_LIMITED",
+      "disposition": "retain_as_gallery-navigation; do_not_present_gallery_items_as_customer_proof"
+    },
+    {
+      "claim_id": "home.documentation.discovery",
+      "copy_ref": "publicSite.homePublic.docsLink|docsDescription (en/th)",
+      "authority": "Repository localization and public route source",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:112-113; apps/web/client/src/App.tsx:654",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:23-24; apps/web/client/src/locales/th/publicSite.json:23-24",
+      "owner": "Documentation owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/docs",
+      "signed_in_behavior": "same public destination",
+      "signed_out_behavior": "same public destination",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; guide accuracy is separately owned",
+      "acceptance_status": "SOURCE_VERIFIED_LIMITED",
+      "disposition": "retain_as_documentation-navigation"
+    },
+    {
+      "claim_id": "home.account-requirement",
+      "copy_ref": "publicSite.homePublic.trustTitle|trustBody (en/th)",
+      "authority": "Repository localization and auth-gated product route source",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:117-118; apps/web/client/src/App.tsx:325-366",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:34-35; apps/web/client/src/locales/th/publicSite.json:34-35",
+      "owner": "Auth and public content owners (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/signup",
+      "signed_in_behavior": "authenticated product routes own access",
+      "signed_out_behavior": "public info remains readable; account-gated actions redirect to login",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain_as_access-boundary copy; avoid guarantee of every public detail"
+    },
+    {
+      "claim_id": "home.closing.outcome",
+      "copy_ref": "publicSite.homePublic.closingTitle|closingBody (en/th)",
+      "authority": "Repository localization source only; editorial CTA copy",
+      "implementation_ref": "apps/web/client/src/pages/Home.tsx:119-121; apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:36-38; apps/web/client/src/locales/th/publicSite.json:36-38",
+      "owner": "Public content/editorial owner (not recorded in repository)",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/signup",
+      "signed_in_behavior": "account creation route remains public",
+      "signed_out_behavior": "account creation route remains public",
+      "media_ids": [],
+      "indexability": "platform public home only",
+      "freshness": "repository revision; no performance claim",
+      "acceptance_status": "ILLUSTRATIVE_NON_NORMATIVE",
+      "disposition": "retain_as_editorial_invitation"
+    }
+  ],
+  "ctas": [
+    {
+      "claim_id": "home.cta.create-account",
+      "copy_ref": "publicSite.hero.primaryCta (en/th)",
+      "authority": "Repository route source",
+      "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/App.tsx:1089; apps/web/client/src/locales/en/publicSite.json:8; apps/web/client/src/locales/th/publicSite.json:8",
+      "owner": "Auth owner",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/signup",
+      "signed_in_behavior": "route-level auth logic owns any redirect",
+      "signed_out_behavior": "opens public signup route",
+      "media_ids": [],
+      "indexability": "not a crawl claim",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain"
+    },
+    {
+      "claim_id": "home.cta.explore-creation-tools",
+      "copy_ref": "publicSite.hero.secondaryCta (en/th)",
+      "authority": "Repository route source",
+      "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/App.tsx:651; apps/web/client/src/locales/en/publicSite.json:9; apps/web/client/src/locales/th/publicSite.json:9",
+      "owner": "Public product/content owner",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/features",
+      "signed_in_behavior": "opens public features overview",
+      "signed_out_behavior": "opens public features overview",
+      "media_ids": [],
+      "indexability": "not a crawl claim",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain"
+    },
+    {
+      "claim_id": "home.cta.jump-to-vertical-series",
+      "copy_ref": "publicSite.homePublic.flagshipTitle (en/th)",
+      "authority": "Repository component source",
+      "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "fragment #home-flagship-title is rendered by the same component",
+      "owner": "Frontend public-home owner",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "#home-flagship-title",
+      "signed_in_behavior": "same-page anchor",
+      "signed_out_behavior": "same-page anchor",
+      "media_ids": [],
+      "indexability": "not a crawl claim",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain"
+    },
+    {
+      "claim_id": "home.cta.vertical-series-entry",
+      "copy_ref": "publicSite.homePublic.flagshipCta (en/th)",
+      "authority": "Repository auth redirect and route source",
+      "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx; apps/web/client/src/lib/authRedirects.ts",
+      "evidence_ref": "apps/web/client/src/App.tsx:1187; apps/web/client/src/lib/authRedirects.ts:17",
+      "owner": "Vertical Series and auth owners",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/login?returnUrl=%2Fdrama-series",
+      "signed_in_behavior": "authenticated destination /drama-series",
+      "signed_out_behavior": "login with allow-listed return URL",
+      "media_ids": [
+        "asset.home.vertical-series-illustration"
+      ],
+      "indexability": "not a crawl claim",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain; do_not_rename_as_film_or_link_to_/film"
+    },
+    {
+      "claim_id": "home.cta.vertical-series-features",
+      "copy_ref": "publicSite.homePublic.flagshipDetailsCta (en/th)",
+      "authority": "Repository route and component source",
+      "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/App.tsx:651",
+      "owner": "Public product/content owner",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/features#vertical-series",
+      "signed_in_behavior": "opens public feature anchor",
+      "signed_out_behavior": "opens public feature anchor",
+      "media_ids": [],
+      "indexability": "not a crawl claim",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED_LIMITED",
+      "disposition": "retain_as_navigation; feature-level copy remains separately governed"
+    },
+    {
+      "claim_id": "home.cta.resource-links",
+      "copy_ref": "publicSite.homePublic.featuresLink|galleryLink|docsLink|contactLink (en/th)",
+      "authority": "Repository route source",
+      "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/App.tsx:651,654,685,802",
+      "owner": "Respective public route owners",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/features | /gallery | /docs | /contact",
+      "signed_in_behavior": "opens public destination",
+      "signed_out_behavior": "opens public destination",
+      "media_ids": [],
+      "indexability": "not a crawl claim",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain; route existence is navigation proof only"
+    },
+    {
+      "claim_id": "home.cta.get-started",
+      "copy_ref": "publicSite.homePublic.closingCta (en/th)",
+      "authority": "Repository route source",
+      "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "evidence_ref": "apps/web/client/src/App.tsx:1089; apps/web/client/src/locales/en/publicSite.json:38; apps/web/client/src/locales/th/publicSite.json:38",
+      "owner": "Auth owner",
+      "allowed_routes": [
+        "/"
+      ],
+      "cta_destination": "/signup",
+      "signed_in_behavior": "route-level auth logic owns any redirect",
+      "signed_out_behavior": "opens public signup route",
+      "media_ids": [],
+      "indexability": "not a crawl claim",
+      "freshness": "repository revision",
+      "acceptance_status": "SOURCE_VERIFIED",
+      "disposition": "retain"
+    }
+  ],
+  "assets": [],
+  "explicit_exclusions": [
+    {
+      "item": "Public Film route, proof, or customer result",
+      "disposition": "not represented; no /film route is created or claimed"
+    },
+    {
+      "item": "Tenant-specific published home content",
+      "disposition": "not represented; exact tenant route/page remains the source of truth"
+    },
+    {
+      "item": "Pricing, security, compliance, uptime, benchmark, adoption, or customer-result claims",
+      "disposition": "not represented; no authoritative public evidence is recorded"
+    }
+  ],
+  "removed_unverified_assets": [
+    {
+      "source_ref": "apps/web/client/public/images/smartaihub-home-hero.webp",
+      "disposition": "Removed from platform homepage; source/license/provenance were unverified; do not use as product or customer proof."
+    },
+    {
+      "source_ref": "apps/web/client/public/images/smartaihub-vertical-series.webp",
+      "disposition": "Removed from platform homepage; source/license/provenance were unverified; do not use as product or customer proof."
+    }
+  ],
+  "homepage_visuals": {
+    "type": "code-rendered explanatory flow",
+    "implementation_ref": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+    "media_assets": [],
+    "disclosure_copy": "publicSite.homePublic.illustrationDisclosure"
+  }
+}

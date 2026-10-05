@@ -1,0 +1,454 @@
+{
+  "environment": "Local Vite candidate with tenant/auth/emergency/SEO API responses mocked; Chromium 1243 from existing shared browser cache; not production acceptance",
+  "baseSha": "3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "sourceDelta": "includes final navbar repair",
+  "results": [
+    {
+      "viewport": 360,
+      "lang": "th",
+      "h1": 1,
+      "overflow": false,
+      "navbarHeight": 64,
+      "desktopNav": {
+        "display": "none",
+        "x": 0,
+        "width": 0
+      },
+      "mobileMenuButton": {
+        "display": "flex",
+        "x": 300,
+        "width": 44
+      },
+      "navLabels": [
+        {
+          "label": "หน้าหลัก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ภัยฉุกเฉิน",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ฟีเจอร์",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ราคา",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "แกลเลอรี",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "มาร์เก็ตเพลส",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "เอกสาร",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "บล็อก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ติดต่อ",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": 390,
+      "lang": "th",
+      "h1": 1,
+      "overflow": false,
+      "navbarHeight": 64,
+      "desktopNav": {
+        "display": "none",
+        "x": 0,
+        "width": 0
+      },
+      "mobileMenuButton": {
+        "display": "flex",
+        "x": 330,
+        "width": 44
+      },
+      "navLabels": [
+        {
+          "label": "หน้าหลัก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ภัยฉุกเฉิน",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ฟีเจอร์",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ราคา",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "แกลเลอรี",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "มาร์เก็ตเพลส",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "เอกสาร",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "บล็อก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ติดต่อ",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        }
+      ],
+      "errors": [],
+      "mobileMenuOpenWorks": false,
+      "escapeCloses": true,
+      "focusRestored": true
+    },
+    {
+      "viewport": 768,
+      "lang": "th",
+      "h1": 1,
+      "overflow": false,
+      "navbarHeight": 64,
+      "desktopNav": {
+        "display": "none",
+        "x": 0,
+        "width": 0
+      },
+      "mobileMenuButton": {
+        "display": "flex",
+        "x": 700,
+        "width": 44
+      },
+      "navLabels": [
+        {
+          "label": "หน้าหลัก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ภัยฉุกเฉิน",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ฟีเจอร์",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ราคา",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "แกลเลอรี",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "มาร์เก็ตเพลส",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "เอกสาร",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "บล็อก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ติดต่อ",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": 1024,
+      "lang": "th",
+      "h1": 1,
+      "overflow": false,
+      "navbarHeight": 80,
+      "desktopNav": {
+        "display": "none",
+        "x": 0,
+        "width": 0
+      },
+      "mobileMenuButton": {
+        "display": "flex",
+        "x": 948,
+        "width": 44
+      },
+      "navLabels": [
+        {
+          "label": "หน้าหลัก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ภัยฉุกเฉิน",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ฟีเจอร์",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ราคา",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "แกลเลอรี",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "มาร์เก็ตเพลส",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "เอกสาร",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "บล็อก",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        },
+        {
+          "label": "ติดต่อ",
+          "height": 0,
+          "width": 0,
+          "clientWidth": 0
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": 1440,
+      "lang": "th",
+      "h1": 1,
+      "overflow": false,
+      "navbarHeight": 80,
+      "desktopNav": {
+        "display": "flex",
+        "x": 386,
+        "width": 607
+      },
+      "mobileMenuButton": {
+        "display": "none",
+        "x": 0,
+        "width": 0
+      },
+      "navLabels": [
+        {
+          "label": "หน้าหลัก",
+          "height": 33,
+          "width": 65,
+          "clientWidth": 65
+        },
+        {
+          "label": "ภัยฉุกเฉิน",
+          "height": 33,
+          "width": 93,
+          "clientWidth": 93
+        },
+        {
+          "label": "ฟีเจอร์",
+          "height": 33,
+          "width": 53,
+          "clientWidth": 53
+        },
+        {
+          "label": "ราคา",
+          "height": 33,
+          "width": 48,
+          "clientWidth": 48
+        },
+        {
+          "label": "แกลเลอรี",
+          "height": 33,
+          "width": 67,
+          "clientWidth": 67
+        },
+        {
+          "label": "มาร์เก็ตเพลส",
+          "height": 33,
+          "width": 105,
+          "clientWidth": 105
+        },
+        {
+          "label": "เอกสาร",
+          "height": 33,
+          "width": 59,
+          "clientWidth": 59
+        },
+        {
+          "label": "บล็อก",
+          "height": 33,
+          "width": 49,
+          "clientWidth": 49
+        },
+        {
+          "label": "ติดต่อ",
+          "height": 33,
+          "width": 51,
+          "clientWidth": 51
+        }
+      ],
+      "errors": []
+    },
+    {
+      "viewport": 1920,
+      "lang": "th",
+      "h1": 1,
+      "overflow": false,
+      "navbarHeight": 80,
+      "desktopNav": {
+        "display": "flex",
+        "x": 626,
+        "width": 607
+      },
+      "mobileMenuButton": {
+        "display": "none",
+        "x": 0,
+        "width": 0
+      },
+      "navLabels": [
+        {
+          "label": "หน้าหลัก",
+          "height": 33,
+          "width": 65,
+          "clientWidth": 65
+        },
+        {
+          "label": "ภัยฉุกเฉิน",
+          "height": 33,
+          "width": 93,
+          "clientWidth": 93
+        },
+        {
+          "label": "ฟีเจอร์",
+          "height": 33,
+          "width": 53,
+          "clientWidth": 53
+        },
+        {
+          "label": "ราคา",
+          "height": 33,
+          "width": 48,
+          "clientWidth": 48
+        },
+        {
+          "label": "แกลเลอรี",
+          "height": 33,
+          "width": 67,
+          "clientWidth": 67
+        },
+        {
+          "label": "มาร์เก็ตเพลส",
+          "height": 33,
+          "width": 105,
+          "clientWidth": 105
+        },
+        {
+          "label": "เอกสาร",
+          "height": 33,
+          "width": 59,
+          "clientWidth": 59
+        },
+        {
+          "label": "บล็อก",
+          "height": 33,
+          "width": 49,
+          "clientWidth": 49
+        },
+        {
+          "label": "ติดต่อ",
+          "height": 33,
+          "width": 51,
+          "clientWidth": 51
+        }
+      ],
+      "errors": []
+    }
+  ]
+}

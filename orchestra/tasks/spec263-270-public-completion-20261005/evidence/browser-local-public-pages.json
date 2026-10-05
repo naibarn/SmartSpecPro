@@ -1,0 +1,39 @@
+{
+  "environment": "Local Vite candidate with tenant/auth/SEO API responses mocked; Chromium 1243; not production acceptance",
+  "baseSha": "3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "sourceDelta": "includes final feature capability panel change",
+  "results": [
+    {
+      "path": "/features",
+      "viewport": 390,
+      "title": "SmartAIHub",
+      "h1": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "path": "/features",
+      "viewport": 1440,
+      "title": "SmartAIHub",
+      "h1": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "path": "/docs",
+      "viewport": 390,
+      "title": "SmartAIHub",
+      "h1": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "path": "/docs",
+      "viewport": 1440,
+      "title": "SmartAIHub",
+      "h1": 1,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}

@@ -42,6 +42,18 @@ Router evidence: `apps/web/client/src/App.tsx:625-649`; retirement guard: `apps/
 
 `apps/web/client/src/pages/homeContent.ts:36-46` maps nine local WebP assets. Repository presence and local paths are verified; asset rights owner, model releases, caption/source records, and withdrawal owner are **unknown**. Do not elevate these assets as customer evidence or claim rights clearance until their owner supplies that evidence. Existing source test: `apps/web/client/src/i18n/__tests__/publicSite.test.ts:33-38`.
 
+## Homepage claim and asset registry — 2026-10-05
+
+`implementation/public-claims-registry.json` is the source-grounded closeout registry for the current **SmartAIHub platform** homepage. It uses the shared record contract for claims, CTAs and media: origin, owner, allowed platform route, signed-in/out handoff, indexability, freshness, acceptance state and disposition.
+
+- The registry covers exactly the copy and two images passed from `Home.tsx` to `PublicHomeExperience`. It does not silently treat unused locale keys or another public route's copy as homepage content.
+- The only homepage media are `smartaihub-home-hero.webp` and `smartaihub-vertical-series.webp`. Both remain explicitly illustrative with the existing bilingual caption and error fallback. Their repository path and SHA-256 are recorded, but license, prompt/provenance, synthetic status, rights owner and withdrawal owner are unverified. They therefore cannot serve as product screenshots, Film proof, customer results or rights-cleared campaign media.
+- Current homepage discovery copy is retained only as neutral, source-limited editorial/navigation text. No registry entry marks pricing, security/compliance, uptime, customer/adoption, benchmark or public Film claims approved.
+- The sole product-entry handoff is the existing `/login?returnUrl=%2Fdrama-series`, whose return path is allow-listed by `authRedirects.ts`; no `/film` path is invented. Resource links are recorded as navigation evidence only: a route's existence never proves the capability copy behind it.
+- This shared registry applies only when `isSmartAIHubPublicSite(tenant)` selects the platform homepage. Exact tenant-published pages are tenant-owned and remain outside this registry; they must not inherit platform imagery, claims or CTA authority.
+
+**Closeout disposition:** unknown legal/vendor/product proof is not represented as approved. The retained non-normative copy and disclosed illustrations are not a substitute for external acceptance. Before any normative capability, customer, Film, pricing, legal/trust or campaign claim is added, its owner must replace the relevant registry entry with an authoritative source and evidence reference.
+
 The homepage currently uses the existing local hero and vertical-series illustrations with localized alt text, a caption stating that the image is illustrative (not a live product screen or customer result), and an unavailable-image status fallback. This establishes safe presentation behavior only; it does not establish rights clearance or satisfy approved-proof-media requirements. The canonical SmartAIHub domain always renders this app-owned Spec 263 experience, even when legacy platform-scoped or SmartAIHub-owned CMS home content is published; exact-tenant CMS home pages remain available on custom tenant domains.
 
 ## CTA, privacy and analytics

@@ -1,0 +1,125 @@
+{
+  "package": "smartaihub-public-web",
+  "version": "1.0.0",
+  "aligned_with": "Spec 270 R1.4",
+  "experience_authority": "Spec 263 revision 263.8",
+  "artifact_status": "repository-owned public UI candidate; not a Spec 270 native canonical design artifact",
+  "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
+  "package_digest": "e67b419e797e00cddaa3017945921df5aaeab8ff84d9528f3b2410afcae8f0e1",
+  "files": [
+    {
+      "path": "PUBLIC_ANTI_PATTERNS.md",
+      "sha256": "df85b0ded79e9abd71bebfa04062254107a7eab3c8c319eaeff2396e7672dc4d"
+    },
+    {
+      "path": "PUBLIC_BRAND_RULES.md",
+      "sha256": "e2882a060cf0d663351991cf421320c27c7ca83e3d734c1163475c8808cbcac9"
+    },
+    {
+      "path": "PUBLIC_COMPONENT_REGISTRY.json",
+      "sha256": "fad9dbe2f18f6c01ca3ea4719c495c6af7d91dbd527e23bc1d9953e482b14170"
+    },
+    {
+      "path": "PUBLIC_CONTENT_RULES.md",
+      "sha256": "7eccf16887300ba3c9f410bea4bbe900ed5dc13547f1781454f7eaf1b14b843f"
+    },
+    {
+      "path": "PUBLIC_DESIGN_DECISION_LOG.md",
+      "sha256": "bfe17adbe1a5a56de45ffd004cd2a8a1f6f198649def0e7ac7bce37944a50aca"
+    },
+    {
+      "path": "PUBLIC_HUMAN_ART_DIRECTION.md",
+      "sha256": "c8c9f04710b2a609959ed711cb9faddbf1a2cbf920874642bc9001a80009a56a"
+    },
+    {
+      "path": "PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json",
+      "sha256": "30bfd02c920fde91c66d85be4a66b8247ab6ea864e1b20e2d6b2c0f412c6cfab"
+    },
+    {
+      "path": "PUBLIC_HUMAN_ASSET_REGISTRY.json",
+      "sha256": "3c01e0ebf10629cf8b9f96af58db17aea10cb4a6b03bdeb6bcb950d567e03a31"
+    },
+    {
+      "path": "PUBLIC_HUMAN_EXPERIMENT_GUARDRAILS.md",
+      "sha256": "9aaa467981e8ba87126a84ee6936be8125cebb9aca504a316d943928273a70bd"
+    },
+    {
+      "path": "PUBLIC_HUMAN_IMAGERY_RULES.md",
+      "sha256": "cfb545c3f16a91325c7d32875826061152278d8fa1a221fcb91707fd8acac98a"
+    },
+    {
+      "path": "PUBLIC_HUMAN_PLACEMENT_MAP.json",
+      "sha256": "3138c881de6e83a3abc4f23aac0467bf1af5745a5e7f10eb13d375381a3dd15f"
+    },
+    {
+      "path": "PUBLIC_HUMAN_WITHDRAWAL_RUNBOOK.md",
+      "sha256": "e0c807450743cd609937192e673783a1242140859ce817c5ff90ad4d2fc458d6"
+    },
+    {
+      "path": "PUBLIC_PATTERN_REGISTRY.json",
+      "sha256": "f41b95f0849db98a1a2806753d6d76319037ce10966e1a025e35d182dac7118e"
+    },
+    {
+      "path": "PUBLIC_SEMANTIC_DESIGN_DIFF.md",
+      "sha256": "9eb6249cceb7700c8bdff5cd8150acad23a93490f179ba9cffc81a1786375161"
+    },
+    {
+      "path": "PUBLIC_SPEC270_INTEGRATION_RECONCILIATION.md",
+      "sha256": "edd5f4268035ce1de10ded66c2dc0ac6597190fe0368f0f5c8d7a91e143291eb"
+    },
+    {
+      "path": "PUBLIC_TEMPLATE_REGISTRY.json",
+      "sha256": "af60a1fe1976b480a77b10bd34b44940bb3a1692e8f8fb5f3425fd2ed67dc36f"
+    },
+    {
+      "path": "PUBLIC_TOKEN_CHANGELOG.md",
+      "sha256": "6301d9cb012d925656bdcad64e1da6be3172264470fb4b31ac99ad7711303f36"
+    },
+    {
+      "path": "PUBLIC_UI_DEPENDENCY_GOVERNANCE.md",
+      "sha256": "8f0c9dc01f68a23b93cacf09e952ab50d4b406a26289e9f15f7944b0431fd67e"
+    },
+    {
+      "path": "PUBLIC_UI_RULES.json",
+      "sha256": "ac397f33fd785887f908fb29517c3bd5effe4c214560e2623ee3d641b1d5df86"
+    },
+    {
+      "path": "SMARTAIHUB_PUBLIC_DESIGN.md",
+      "sha256": "6309ab1ba461685b2efef62085e69940e3f2f815438b3196b983da8d4540ba86"
+    },
+    {
+      "path": "references/home-desktop.svg",
+      "sha256": "3c361ccbc87b274195ab4c601188e9de5456e375c13f8cbeab37658fa677d9e1"
+    },
+    {
+      "path": "references/home-mobile.svg",
+      "sha256": "a3220f36f24f221b233f95365c4354f826692ab264a3033d6e12e86bdb4e4482"
+    },
+    {
+      "path": "references/home-tablet.svg",
+      "sha256": "1c2cb3827bba6bccb8d10fd2656c179deb1e303170b550c3f5739241323ac78e"
+    },
+    {
+      "path": "scripts/build_manifest.py",
+      "sha256": "06b0dc222809a2d6eb891e9237f8c6a2516a1cc746ab35536263489c2bc986ce"
+    }
+  ],
+  "source_authorities": [
+    {
+      "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
+      "sha256": "c81761787154cc012d6627632fd02044189e4608ece337ae98920f83eddce65f"
+    },
+    {
+      "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json",
+      "sha256": "7ddb41e422f39618f2644fa61159484397ed4d85d77cbb20e1219fd7c9265c14"
+    },
+    {
+      "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-claims-registry.json",
+      "sha256": "4ef50434ee71696259e856006a8bffe4b4aae3b6052f720a5eaa063f3e52e4c5"
+    },
+    {
+      "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json",
+      "sha256": "365a7775686c6be8cdec323fc46b134c1aedfc44c0f5c3e7ba97a6fb077e1586"
+    }
+  ]
+}

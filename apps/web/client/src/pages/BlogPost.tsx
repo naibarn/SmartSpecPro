@@ -45,7 +45,7 @@ export default function BlogPost() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { relatedLinks } = useTenantSeoSnapshot(`/blog/${slug}`);
-  const seoImage = post && !isVideoMediaUrl(post.coverImage) ? post.coverImage : "/images/dashboard-preview.jpg";
+  const seoImage = post && !isVideoMediaUrl(post.coverImage) ? post.coverImage : null;
 
   useEffect(() => {
     if (!slug) return;
@@ -111,7 +111,7 @@ export default function BlogPost() {
           "@type": "Article",
           headline: post.title,
           description: post.metaDescription || post.excerpt,
-          image: seoImage,
+          ...(seoImage ? { image: seoImage } : {}),
           author: {
             "@type": "Person",
             name: post.author,

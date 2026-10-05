@@ -190,7 +190,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1" ref={dropdownRef}>
+          <div className="hidden xl:flex shrink-0 items-center gap-0.5" ref={dropdownRef}>
             {navItems.map(item => {
               if (isDropdown(item)) {
                 const isActive = item.items.some(sub => location === sub.href);
@@ -199,7 +199,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                 return (
                   <div key={item.label} className="relative">
                     <motion.button
-                      className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                      className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer ${
                         isActive
                           ? "text-primary bg-primary/10"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -270,12 +270,12 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                   aria-current={location === item.href ? "page" : undefined}
                 >
                   <motion.span
-                    className={`inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                    className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                       item.href === emergencyHref
-                        ? "bg-red-600 px-3 py-2 text-white shadow-md shadow-red-600/25 hover:bg-red-700"
+                        ? "bg-red-600 px-2.5 py-2 text-white shadow-md shadow-red-600/25 hover:bg-red-700"
                         : location === item.href
-                          ? "px-4 py-2 text-primary bg-primary/10"
-                          : "px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          ? "px-2.5 py-2 text-primary bg-primary/10"
+                          : "px-2.5 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                     whileHover={reduceMotion ? undefined : { scale: 1.02 }}
                     whileTap={reduceMotion ? undefined : { scale: 0.98 }}
@@ -289,7 +289,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
           </div>
 
           {/* CTA Buttons */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden xl:flex shrink-0 items-center gap-2">
             <LocaleToggle />
             <Link href="/login">
               <Button
@@ -313,7 +313,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
           {/* Mobile Menu Button */}
           <button
             ref={mobileMenuButtonRef}
-            className="lg:hidden flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted/50 transition-colors"
+            className="xl:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-muted/50 transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label={isMobileMenuOpen ? t("navbar.closeMenu") : t("navbar.openMenu")}
             aria-expanded={isMobileMenuOpen}
@@ -339,7 +339,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
             transition={reduceMotion ? { duration: 0 } : { duration: 0.2 }}
             role="region"
             aria-label={t("navbar.mobileNavigation")}
-            className="lg:hidden bg-background/96 backdrop-blur-xl border-b border-border/50 shadow-xl"
+            className="xl:hidden bg-background/96 backdrop-blur-xl border-b border-border/50 shadow-xl"
           >
             <div className="container mx-auto max-h-[calc(100dvh-4rem)] space-y-2 overflow-y-auto px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               {mobileLinks.map(link => (

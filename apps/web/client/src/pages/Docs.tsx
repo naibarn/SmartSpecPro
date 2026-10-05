@@ -37,32 +37,27 @@ const guides = [
   { key: "mcp", icon: PlugZap, href: "/docs#mcp-integrations" },
 ] as const;
 
-function SafeImage({
-  src,
-  alt,
+function DocumentationPanel({
+  icon: Icon,
   className,
 }: {
-  src: string;
-  alt: string;
+  icon: typeof BookOpen;
   className?: string;
 }) {
   return (
     <div
-      className={`relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-cyan-950 ${className ?? ""}`}
+      aria-hidden="true"
+      className={`relative grid place-items-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-cyan-950 ${className ?? ""}`}
     >
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        className="h-full w-full object-cover"
-        onError={event => {
-          event.currentTarget.style.display = "none";
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-white/10"
-      />
+      <div className="grid w-4/5 max-w-sm gap-4 rounded-3xl border border-white/15 bg-white/[.06] p-6 shadow-2xl shadow-cyan-950/40">
+        <Icon className="h-10 w-10 text-cyan-200" />
+        <div className="h-3 rounded-full bg-cyan-100/75" />
+        <div className="h-3 w-4/5 rounded-full bg-white/25" />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="h-20 rounded-2xl border border-cyan-100/20 bg-cyan-300/10" />
+          <div className="h-20 rounded-2xl border border-white/10 bg-white/[.06]" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -133,9 +128,8 @@ export default function Docs() {
               />
             </div>
           </motion.div>
-          <SafeImage
-            src="/images/smartaihub-docs-blueprint.webp"
-            alt={t("docs.a11y.heroImage")}
+          <DocumentationPanel
+            icon={BookOpen}
             className="min-h-[20rem] rounded-[2rem] border border-white/15 shadow-2xl sm:min-h-[28rem]"
           />
         </div>
@@ -190,9 +184,8 @@ export default function Docs() {
       </section>
       <section className="border-y border-slate-200 bg-white py-20 sm:py-28">
         <div className="container mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:px-8">
-          <SafeImage
-            src="/images/smartaihub-docs-story-path.webp"
-            alt={t("docs.a11y.storyImage")}
+          <DocumentationPanel
+            icon={Clapperboard}
             className="min-h-[20rem] rounded-[2rem] shadow-xl sm:min-h-[27rem]"
           />
           <div>
@@ -238,9 +231,8 @@ export default function Docs() {
         className="border-y border-slate-200 bg-white py-20 sm:py-28"
       >
         <div className="container mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[.95fr_1.05fr] lg:items-center lg:px-8">
-          <SafeImage
-            src="/images/smartaihub-docs-idea-to-output.webp"
-            alt={t("docs.a11y.flowImage")}
+          <DocumentationPanel
+            icon={Sparkles}
             className="min-h-[20rem] rounded-[2rem] shadow-xl sm:min-h-[27rem]"
           />
           <div>
@@ -279,9 +271,8 @@ export default function Docs() {
         className="border-y border-slate-200 bg-slate-950 py-20 text-white sm:py-28"
       >
         <div className="container mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8">
-          <SafeImage
-            src="/images/smartaihub-domain-specific-harness.webp"
-            alt={t("harness.imageAlt")}
+          <DocumentationPanel
+            icon={PlugZap}
             className="min-h-[20rem] rounded-[2rem] border border-white/15 shadow-2xl shadow-cyan-950/40 sm:min-h-[27rem]"
           />
           <div>
@@ -333,9 +324,8 @@ export default function Docs() {
             ))}
           </div>
         </div>
-        <SafeImage
-          src="/images/smartaihub-docs-asset-organization.webp"
-          alt={t("docs.a11y.assetsImage")}
+        <DocumentationPanel
+          icon={FileText}
           className="min-h-[20rem] rounded-[2rem] shadow-xl sm:min-h-[27rem]"
         />
       </section>
@@ -357,9 +347,8 @@ export default function Docs() {
               id="marketplace-capture"
               className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[.06]"
             >
-              <SafeImage
-                src="/images/smartaihub-docs-capture-flow.webp"
-                alt={t("docs.a11y.captureImage")}
+              <DocumentationPanel
+                icon={Store}
                 className="min-h-[16rem] border-b border-white/10 sm:min-h-[22rem]"
               />
               <div className="p-7 sm:p-8">
@@ -376,9 +365,8 @@ export default function Docs() {
               id="worker-render"
               className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[.06]"
             >
-              <SafeImage
-                src="/images/smartaihub-docs-connected-runtime.webp"
-                alt={t("docs.a11y.runtimeImage")}
+              <DocumentationPanel
+                icon={MonitorCog}
                 className="min-h-[16rem] border-b border-white/10 sm:min-h-[22rem]"
               />
               <div className="p-7 sm:p-8">

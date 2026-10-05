@@ -5,7 +5,6 @@ import { Navbar } from "@/components/Navbar";
 import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import { PublicHomeExperience } from "@/components/publicUi";
 import { Seo } from "@/components/Seo";
-import { HOME_PUBLIC_ASSETS } from "./homeContent";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantPage, type TenantPageData } from "@/hooks/useTenantPage";
 import TenantHomePage from "./TenantHomePage";
@@ -92,18 +91,29 @@ export default function Home() {
             title: t("homePublic.title"),
             description: t("homePublic.description"),
             primaryNavigation: t("homePublic.primaryNavigation"),
+            flowLabel: t("homePublic.flowLabel"),
+            flowTitle: t("homePublic.flowTitle"),
+            flowStepOne: t("homePublic.flowStepOne"),
+            flowValueOne: t("homePublic.flowValueOne"),
+            flowStepTwo: t("homePublic.flowStepTwo"),
+            flowValueTwo: t("homePublic.flowValueTwo"),
+            flowFootnote: t("homePublic.flowFootnote"),
+            seriesFlowLabel: t("homePublic.seriesFlowLabel"),
+            seriesFlowTitle: t("homePublic.seriesFlowTitle"),
+            seriesStepOne: t("homePublic.seriesStepOne"),
+            seriesValueOne: t("homePublic.seriesValueOne"),
+            seriesStepTwo: t("homePublic.seriesStepTwo"),
+            seriesValueTwo: t("homePublic.seriesValueTwo"),
+            seriesFlowFootnote: t("homePublic.seriesFlowFootnote"),
+            illustrationDisclosure: t("homePublic.illustrationDisclosure"),
             primaryCta: t("hero.primaryCta"),
             secondaryCta: t("hero.secondaryCta"),
             trust: t("hero.trust"),
-            heroImageAlt: t("homePublic.heroImageAlt"),
-            illustrationCaption: t("homePublic.illustrationCaption"),
-            imageUnavailable: t("homePublic.imageUnavailable"),
             flagshipEyebrow: t("homePublic.flagshipEyebrow"),
             flagshipTitle: t("homePublic.flagshipTitle"),
             flagshipBody: t("homePublic.flagshipBody"),
             flagshipCta: t("homePublic.flagshipCta"),
             flagshipDetailsCta: t("homePublic.flagshipDetailsCta"),
-            flagshipImageAlt: t("homePublic.flagshipImageAlt"),
             productTitle: t("homePublic.productTitle"),
             productBody: t("homePublic.productBody"),
             resourcesTitle: t("homePublic.resourcesTitle"),
@@ -119,10 +129,6 @@ export default function Home() {
             closingTitle: t("homePublic.closingTitle"),
             closingBody: t("homePublic.closingBody"),
             closingCta: t("homePublic.closingCta"),
-          }}
-          assets={{
-            hero: HOME_PUBLIC_ASSETS.hero,
-            verticalSeries: HOME_PUBLIC_ASSETS.verticalSeries,
           }}
           afterHero={<EmergencyPublicEntry variant="home" />}
         />

@@ -33,18 +33,6 @@ export const HOME_FEATURES: HomeFeature[] = [
   { id: "credits", group: "operate", icon: "credit" },
 ];
 
-export const HOME_PUBLIC_ASSETS = {
-  hero: "/images/smartaihub-home-hero.webp",
-  verticalSeries: "/images/smartaihub-vertical-series.webp",
-  productReview: "/images/smartaihub-product-review-video.webp",
-  chatSkills: "/images/smartaihub-chat-skills.webp",
-  skillsLibrary: "/images/smartaihub-skills-library.webp",
-  aiWorkHub: "/images/smartaihub-home-ai-work-hub.webp",
-  marketplaceToContent: "/images/smartaihub-home-marketplace-to-content.webp",
-  connectedEcosystem: "/images/smartaihub-home-connected-ecosystem.webp",
-  harnessPlatform: "/images/smartaihub-domain-specific-harness.webp",
-} as const;
-
 export function getHomeFeatureTranslationKey(
   feature: HomeFeature,
   field: "title" | "description"

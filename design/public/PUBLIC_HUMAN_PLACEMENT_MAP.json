@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "package_version": "1.0.0",
+  "placements": [],
+  "decision": "No human imagery appears in the homepage package. Product-flow cards are code-rendered explanatory UI and carry an explicit concept-illustration disclosure."
+}

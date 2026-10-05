@@ -1,0 +1,289 @@
+{
+  "environment": "local Vite source before final navbar repair; API responses mocked for signed-out platform tenant and empty public alert feed; not production acceptance",
+  "captureStatus": "PRE_FINAL_NAVBAR_REPAIR; do not treat as final responsive-navigation acceptance",
+  "baseSha": "3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "viewports": [
+    {
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "scrollWidth": 360,
+      "viewport": 360,
+      "frames": [
+        {
+          "left": 0,
+          "width": 360,
+          "right": 360
+        },
+        {
+          "left": 0,
+          "width": 360,
+          "right": 360
+        },
+        {
+          "left": 0,
+          "width": 360,
+          "right": 360
+        }
+      ],
+      "scrollY": 0,
+      "navbar": {
+        "height": 64,
+        "transform": "none"
+      },
+      "toast": false,
+      "images": 0,
+      "seriesLink": "/login?returnUrl=%2Fdrama-series",
+      "errors": [],
+      "mockedApi": [
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home",
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home"
+      ]
+    },
+    {
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "frames": [
+        {
+          "left": 0,
+          "width": 390,
+          "right": 390
+        },
+        {
+          "left": 0,
+          "width": 390,
+          "right": 390
+        },
+        {
+          "left": 0,
+          "width": 390,
+          "right": 390
+        }
+      ],
+      "scrollY": 0,
+      "navbar": {
+        "height": 64,
+        "transform": "none"
+      },
+      "toast": false,
+      "images": 0,
+      "seriesLink": "/login?returnUrl=%2Fdrama-series",
+      "errors": [],
+      "mockedApi": [
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home",
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home"
+      ]
+    },
+    {
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "scrollWidth": 768,
+      "viewport": 768,
+      "frames": [
+        {
+          "left": 0,
+          "width": 768,
+          "right": 768
+        },
+        {
+          "left": 0,
+          "width": 768,
+          "right": 768
+        },
+        {
+          "left": 0,
+          "width": 768,
+          "right": 768
+        }
+      ],
+      "scrollY": 0,
+      "navbar": {
+        "height": 64,
+        "transform": "none"
+      },
+      "toast": false,
+      "images": 0,
+      "seriesLink": "/login?returnUrl=%2Fdrama-series",
+      "errors": [],
+      "mockedApi": [
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home",
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home"
+      ]
+    },
+    {
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "frames": [
+        {
+          "left": 0,
+          "width": 1024,
+          "right": 1024
+        },
+        {
+          "left": 0,
+          "width": 1024,
+          "right": 1024
+        },
+        {
+          "left": 0,
+          "width": 1024,
+          "right": 1024
+        }
+      ],
+      "scrollY": 0,
+      "navbar": {
+        "height": 80,
+        "transform": "none"
+      },
+      "toast": false,
+      "images": 0,
+      "seriesLink": "/login?returnUrl=%2Fdrama-series",
+      "errors": [],
+      "mockedApi": [
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home",
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home"
+      ]
+    },
+    {
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "frames": [
+        {
+          "left": 60,
+          "width": 1320,
+          "right": 1380
+        },
+        {
+          "left": 60,
+          "width": 1320,
+          "right": 1380
+        },
+        {
+          "left": 60,
+          "width": 1320,
+          "right": 1380
+        }
+      ],
+      "scrollY": 0,
+      "navbar": {
+        "height": 80,
+        "transform": "none"
+      },
+      "toast": false,
+      "images": 0,
+      "seriesLink": "/login?returnUrl=%2Fdrama-series",
+      "errors": [],
+      "mockedApi": [
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home",
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home"
+      ]
+    },
+    {
+      "title": "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
+      "h1": [
+        "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้"
+      ],
+      "overflow": false,
+      "scrollWidth": 1920,
+      "viewport": 1920,
+      "frames": [
+        {
+          "left": 300,
+          "width": 1320,
+          "right": 1620
+        },
+        {
+          "left": 300,
+          "width": 1320,
+          "right": 1620
+        },
+        {
+          "left": 300,
+          "width": 1320,
+          "right": 1620
+        }
+      ],
+      "scrollY": 0,
+      "navbar": {
+        "height": 80,
+        "transform": "none"
+      },
+      "toast": false,
+      "images": 0,
+      "seriesLink": "/login?returnUrl=%2Fdrama-series",
+      "errors": [],
+      "mockedApi": [
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home",
+        "/api/tenant/current",
+        "/trpc/auth.me",
+        "/trpc/auth.me",
+        "/api/public/emergency/alerts",
+        "/api/tenant/public-pages/home"
+      ]
+    }
+  ]
+}

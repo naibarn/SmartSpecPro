@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">SmartAIHub public home desktop reference</title>
+  <desc id="desc">Centered navigation and page frame, outcome-led hero with a concept product flow, Vertical Series example, discovery, trust, and final action.</desc>
+  <rect width="1440" height="900" fill="#f7fbff"/>
+  <rect x="60" y="24" width="1320" height="72" rx="24" fill="#ffffff" stroke="#d7e5f1"/>
+  <circle cx="102" cy="60" r="22" fill="#05b6dc"/><text x="140" y="68" font-family="sans-serif" font-size="25" font-weight="700" fill="#007eaa">SmartAIHub</text>
+  <text x="650" y="65" font-family="sans-serif" font-size="16" fill="#496274">Features　 Pricing　 Gallery　 Marketplace　 Docs</text>
+  <rect x="1195" y="42" width="150" height="38" rx="19" fill="#00a8e0"/><text x="1230" y="67" font-family="sans-serif" font-size="15" fill="white">Get started</text>
+  <rect x="60" y="124" width="1320" height="352" rx="32" fill="#eaf7ff"/>
+  <text x="105" y="178" font-family="sans-serif" font-size="14" letter-spacing="3" fill="#0089c7">SMARTAIHUB　·　A CONNECTED WORKSPACE</text>
+  <text x="105" y="245" font-family="sans-serif" font-size="45" font-weight="700" fill="#153b4b">Turn one idea into work</text>
+  <text x="105" y="298" font-family="sans-serif" font-size="45" font-weight="700" fill="#153b4b">you can keep building</text>
+  <text x="105" y="344" font-family="sans-serif" font-size="18" fill="#496274">Start with the work you want to do. Explore chat, media,</text>
+  <text x="105" y="370" font-family="sans-serif" font-size="18" fill="#496274">and Vertical Series workspaces, then choose a next step.</text>
+  <rect x="105" y="405" width="150" height="46" rx="23" fill="#00a8e0"/><text x="133" y="434" font-family="sans-serif" font-size="16" fill="white">Create account</text>
+  <rect x="270" y="405" width="176" height="46" rx="23" fill="white" stroke="#b9d3e4"/><text x="297" y="434" font-family="sans-serif" font-size="16" fill="#315264">Explore features</text>
+  <rect x="742" y="151" width="592" height="298" rx="24" fill="white" stroke="#c9deed"/>
+  <text x="780" y="195" font-family="sans-serif" font-size="13" letter-spacing="2" fill="#0089c7">ONE IDEA, A CONNECTED PATH</text>
+  <text x="780" y="229" font-family="sans-serif" font-size="22" font-weight="700" fill="#153b4b">Choose how to move it forward</text>
+  <rect x="780" y="254" width="244" height="104" rx="16" fill="#f1f7fb"/><text x="802" y="283" font-family="sans-serif" font-size="12" fill="#547080">START WITH</text><text x="802" y="320" font-family="sans-serif" font-size="18" fill="#153b4b">The work you have in mind</text>
+  <rect x="1040" y="254" width="256" height="104" rx="16" fill="#f1f7fb"/><text x="1062" y="283" font-family="sans-serif" font-size="12" fill="#547080">CONTINUE IN</text><text x="1062" y="320" font-family="sans-serif" font-size="18" fill="#153b4b">Chat, media, or a series</text>
+  <text x="780" y="393" font-family="sans-serif" font-size="14" fill="#496274">Concept illustration, not a product screenshot or customer work.</text>
+  <rect x="60" y="508" width="1320" height="170" rx="28" fill="#ffffff" stroke="#d7e5f1"/>
+  <text x="105" y="552" font-family="sans-serif" font-size="13" letter-spacing="2" fill="#0089c7">FLAGSHIP WORKSPACE</text>
+  <text x="105" y="595" font-family="sans-serif" font-size="30" font-weight="700" fill="#153b4b">Vertical Series: build a story in stages</text>
+  <text x="105" y="629" font-family="sans-serif" font-size="16" fill="#496274">A supported signed-in workspace that shows how complex creative work can continue.</text>
+  <rect x="970" y="554" width="180" height="48" rx="24" fill="#00a8e0"/><text x="995" y="584" font-family="sans-serif" font-size="15" fill="white">Explore series</text>
+  <rect x="1165" y="554" width="170" height="48" rx="24" fill="white" stroke="#b9d3e4"/><text x="1188" y="584" font-family="sans-serif" font-size="15" fill="#315264">See features</text>
+  <text x="60" y="724" font-family="sans-serif" font-size="25" font-weight="700" fill="#153b4b">Choose a place to begin</text>
+  <rect x="60" y="748" width="416" height="88" rx="20" fill="white" stroke="#d7e5f1"/><rect x="512" y="748" width="416" height="88" rx="20" fill="white" stroke="#d7e5f1"/><rect x="964" y="748" width="416" height="88" rx="20" fill="white" stroke="#d7e5f1"/>
+  <text x="88" y="790" font-family="sans-serif" font-size="18" font-weight="700" fill="#153b4b">Features　→</text><text x="540" y="790" font-family="sans-serif" font-size="18" font-weight="700" fill="#153b4b">Gallery　→</text><text x="992" y="790" font-family="sans-serif" font-size="18" font-weight="700" fill="#153b4b">Documentation　→</text>
+  <text x="88" y="818" font-family="sans-serif" font-size="14" fill="#496274">Public capability overview</text><text x="540" y="818" font-family="sans-serif" font-size="14" fill="#496274">Community examples</text><text x="992" y="818" font-family="sans-serif" font-size="14" fill="#496274">Guides and current usage</text>
+</svg>

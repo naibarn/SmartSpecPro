@@ -38,3 +38,9 @@ Until these close, native contract work may proceed, but no DDL, credential onbo
 - Provider adapter correction: candidate results now satisfy `schemaVersion: 1`, and absence of `componentCatalogSnapshotId` fails before policy/provider calls. Production provider certification, secret binding, durable operation-store ownership and external egress remain absent; all provider flags stay default-off.
 - No new migration or durable design repository was introduced. Durable owner, retention/delete, backup/recovery, and reference-aware asset closure still prohibit DDL and user-facing native authoring.
 - No callable Spec 224/256 design authority or approved artifact/digest/evidence handoff exists. Sections 04 and 06 remain gated. No application build, full typecheck, browser run, production DB change, provider call, or deployment was performed.
+
+## Public website design candidate — 2026-10-06
+
+- Spec 263 closeout created a source-controlled package under `design/public/`, including a UI pattern map and a deterministic file-content digest. This is a **SmartAIHub public UI candidate reference only**. It is not a native Spec 270 artifact ID/version, approved catalog snapshot, resolver record, durable artifact-store record, or externally published digest.
+- Public UI uses the installed Astryx 0.6.3 components and keeps external providers/native authoring disabled. The candidate theme uses runtime style injection. `astryx theme build` failed to load `defineTheme` with both `@astryxdesign/core/theme` and `@astryxdesign/core` import forms on this host; the generated built theme was not produced.
+- Spec 270's G0 blockers are unchanged: durable artifact owner/retention/recovery/reference closure, callable Spec 224/256 authority, SmartAIHub catalog publication/digest authority and external-provider certification remain unapproved. No DDL, credentials, provider request or flag enablement occurred.

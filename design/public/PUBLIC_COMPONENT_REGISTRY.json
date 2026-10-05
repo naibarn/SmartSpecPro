@@ -1,0 +1,16 @@
+{
+  "package": "smartaihub-public-web",
+  "version": "1.0.0",
+  "owner": "SmartAIHub Public Experience",
+  "components": [
+    { "role": "public-shell", "implementation": "apps/web/client/src/components/Navbar.tsx + Footer.tsx", "owner": "SmartAIHub", "dependency": "repo-owned React shell", "status": "in-use" },
+    { "role": "page-region", "implementation": "@astryxdesign/core/Section", "owner": "SmartAIHub public pattern", "dependency": "Astryx", "status": "in-use" },
+    { "role": "responsive-layout", "implementation": "@astryxdesign/core/Grid + Layout", "owner": "SmartAIHub public pattern", "dependency": "Astryx", "status": "in-use" },
+    { "role": "type", "implementation": "@astryxdesign/core/Heading + Text", "owner": "SmartAIHub public pattern", "dependency": "Astryx", "status": "in-use" },
+    { "role": "actions", "implementation": "@astryxdesign/core/Button + Link", "owner": "SmartAIHub public pattern", "dependency": "Astryx", "status": "in-use" },
+    { "role": "standalone-content-surface", "implementation": "@astryxdesign/core/Card", "owner": "SmartAIHub public pattern", "dependency": "Astryx", "status": "in-use" },
+    { "role": "home-composition", "implementation": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx", "owner": "SmartAIHub", "dependency": "React + publicPrimitives dependency boundary", "status": "canonical" },
+    { "role": "approved-primitives-boundary", "implementation": "apps/web/client/src/components/publicUi/publicPrimitives.tsx", "owner": "SmartAIHub Public Experience", "dependency": "Astryx pinned by workspace lockfile", "status": "canonical" }
+  ],
+  "policy": "SmartAIHub owns public patterns and tokens; third-party primitives are implementation dependencies, not public design authority."
+}

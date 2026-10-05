@@ -1,0 +1,8 @@
+{
+  "package": "smartaihub-public-web",
+  "version": "1.0.0",
+  "templates": [
+    { "id": "public-product-home", "implementation": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx", "status": "canonical", "source": "SmartAIHub-owned composition using approved Astryx primitives" },
+    { "id": "public-navigation", "implementation": "apps/web/client/src/components/Navbar.tsx", "status": "existing-canonical", "source": "tenant-aware public shell" }
+  ]
+}

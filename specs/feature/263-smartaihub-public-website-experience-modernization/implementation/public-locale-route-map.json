@@ -1,0 +1,48 @@
+{
+  "artifact": "Spec 263 locale and route map",
+  "source_revision": "origin/main@3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "supported_content_locales": ["th", "en"],
+  "url_locale_strategy": {
+    "locale_prefixed_routes": "NONE_DISCOVERED",
+    "canonical_path_behavior": "Seo uses the requested current path; no language segment or hreflang output was found in the inspected Seo/prerender sources.",
+    "locale_resolution": "Client i18n and locale toggle are used by public shell. Exact persistence, fallback precedence, and server language detection are NOT_VERIFIED in this artifact."
+  },
+  "locale_route_matrix": [
+    {
+      "route_pattern": "/",
+      "th": { "source": "PUBLIC_HOME_SEO.th in shared/publicHomeContent", "prerender": "EXPLICIT_TH_SNAPSHOT", "acceptance": "SOURCE_MAPPED_NOT_BROWSER_VERIFIED" },
+      "en": { "source": "PUBLIC_HOME_SEO.en in shared/publicHomeContent", "prerender": "EXPLICIT_EN_SNAPSHOT", "acceptance": "SOURCE_MAPPED_NOT_BROWSER_VERIFIED" },
+      "canonical": "same path / for both content locales; hreflang NOT_VERIFIED"
+    },
+    {
+      "route_pattern": "/features | /pricing | /gallery | /marketplace | /docs | /blog | /resources | /contact | /about | /changelog | /careers | /community | /support | /status | /security | /terms | /privacy",
+      "th": { "source": "page component plus publicSite namespace/tenant content where applicable", "prerender": "TH_SNAPSHOT_NOT_PROVEN_EXCEPT_HOME", "acceptance": "NOT_VERIFIED" },
+      "en": { "source": "page component plus publicSite namespace/tenant content where applicable", "prerender": "EN_SNAPSHOT_AVAILABLE_ONLY_FOR_STATIC_ALLOW_LIST", "acceptance": "NOT_VERIFIED" },
+      "canonical": "same requested path by Seo unless tenant remote metadata overrides it; cross-locale canonical authority NOT_VERIFIED"
+    },
+    {
+      "route_pattern": "/docs/:slug+ | /help/:slug+ | /blog/:slug | /marketplace/:slug",
+      "th": { "source": "dynamic page/tenant published content", "prerender": "NOT_VERIFIED", "acceptance": "NOT_VERIFIED" },
+      "en": { "source": "dynamic page/tenant published content", "prerender": "blog and marketplace single-slug paths are eligible in publicSeoPrerender allow-list; actual content/locale availability is NOT_VERIFIED", "acceptance": "NOT_VERIFIED" },
+      "canonical": "TenantPublicRoute uses requested path for tenant page canonical; dynamic platform canonical/indexation needs page/data proof"
+    },
+    {
+      "route_pattern": "/share/:token | /share/vd/:token | /evidence-review/:publicCaseId | /presentation/:itemId/play | /auth/callback/:provider",
+      "th": { "source": "token/callback owner", "prerender": "NONE_DISCOVERED", "acceptance": "NOT_VERIFIED" },
+      "en": { "source": "token/callback owner", "prerender": "NONE_DISCOVERED", "acceptance": "NOT_VERIFIED" },
+      "canonical": "No locale/canonical policy found in inspected public SEO sources; must not inherit platform marketing indexation by assumption"
+    }
+  ],
+  "shell_labels": {
+    "source": "Navbar uses useTranslation('publicSite') for navigation and auth labels.",
+    "smartaihub_nav_paths": ["/", "/features", "/pricing", "/gallery", "/marketplace", "/docs", "/blog", "/contact"],
+    "custom_tenant_behavior": "Only tenant home link is shown; SmartAIHub platform navigation is deliberately withheld.",
+    "acceptance": "SOURCE_MAPPED; keyboard, reduced-motion, locale-fallback and browser locale proof are NOT_VERIFIED here."
+  },
+  "gaps": [
+    "No hreflang generation was found in inspected source.",
+    "No language-prefixed URL or locale-specific canonical contract was found.",
+    "No complete public-page per-locale copy/translation acceptance evidence was found.",
+    "Tenant CMS locale model and locale fallback behavior require separate owner verification."
+  ]
+}
