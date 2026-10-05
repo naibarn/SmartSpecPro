@@ -2584,6 +2584,34 @@
       "when": 1790530000018,
       "tag": "0382_spec224_verification_resource_leases",
       "breakpoints": true
+    },
+    {
+      "idx": 369,
+      "version": "7",
+      "when": 1790530000019,
+      "tag": "0383_spec224_workspace_spec_sets",
+      "breakpoints": true
+    },
+    {
+      "idx": 370,
+      "version": "7",
+      "when": 1790530000020,
+      "tag": "0384_spec224_runner_job_inputs",
+      "breakpoints": true
+    },
+    {
+      "idx": 371,
+      "version": "7",
+      "when": 1790530000021,
+      "tag": "0385_spec224_runner_input_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 372,
+      "version": "7",
+      "when": 1790530000022,
+      "tag": "0386_spec224_runner_input_lifecycle",
+      "breakpoints": true
     }
   ]
 }

@@ -624,6 +624,10 @@ fn run_live_control_loop(
     channel.bind_external_agent_authorization_refs(external_agent_authorization_refs);
     let mut receipt_sequences = std::collections::HashMap::<String, u64>::new();
     let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
+    // Raw input grants arrive over the authenticated socket and remain only in
+    // this process memory. They are deliberately excluded from the command and
+    // receipt journals.
+    let mut input_fetch_grants = std::collections::HashMap::<String, String>::new();
     let mut receipt_journal =
         RunnerReceiptJournal::open(PathBuf::from(&config.data_root).as_path())?;
     receipt_journal
@@ -686,6 +690,39 @@ fn run_live_control_loop(
         else {
             continue;
         };
+        if payload == "runner.spec224.input-grant" {
+            if channel.accept_remote(&envelope) != AckState::Applied {
+                continue;
+            }
+            let input_ref = envelope
+                .payload
+                .get("inputRef")
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| !value.is_empty() && value.len() <= 160)
+                .ok_or_else(|| "RUNNER_INPUT_GRANT_INVALID".to_string())?;
+            let input_fetch_grant = envelope
+                .payload
+                .get("inputFetchGrant")
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| {
+                    value.len() >= 40
+                        && value.len() <= 96
+                        && value.bytes().all(|byte| {
+                            byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_'
+                        })
+                })
+                .ok_or_else(|| "RUNNER_INPUT_GRANT_INVALID".to_string())?;
+            let grant_session = envelope
+                .payload
+                .get("runnerSessionId")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| "RUNNER_INPUT_GRANT_INVALID".to_string())?;
+            if grant_session != runner_session_id {
+                return Err("RUNNER_INPUT_GRANT_SESSION_STALE".into());
+            }
+            input_fetch_grants.insert(input_ref.to_string(), input_fetch_grant.to_string());
+            continue;
+        }
         if payload != "runner.job.command" {
             continue;
         }
@@ -792,6 +829,7 @@ fn run_live_control_loop(
         )?;
         if command.command_type == "cancel" {
             let mut interrupted_target = None;
+            let mut interrupted_recovery_ref = None;
             let disposition = if command.execution_kind != "external_agent_task" {
                 (
                     RunnerJobReceiptEventType::CommandRejected,
@@ -810,6 +848,7 @@ fn run_live_control_loop(
                     )
                 } else if let Some(mut active) = external_processes.remove(target_command_id) {
                     interrupted_target = Some(active.command.clone());
+                    interrupted_recovery_ref = active.process.recovery_ref();
                     match active.process.cancel() {
                         Ok(()) => (
                             RunnerJobReceiptEventType::CancelAcknowledged,
@@ -849,6 +888,7 @@ fn run_live_control_loop(
                 disposition.2,
                 None,
                 interrupted_target.as_ref(),
+                interrupted_recovery_ref.as_deref(),
             )?;
             continue;
         }
@@ -866,6 +906,74 @@ fn run_live_control_loop(
             None,
         )?;
         if command.execution_kind == "external_agent_task" {
+            let mut spec224_candidate = None;
+            if command.input_ref.starts_with("spec224-input:") {
+                let prepared_candidate =
+                    crate::spec224_candidate::create_for_command(config, &command);
+                let prepared_candidate = match prepared_candidate {
+                    Ok(candidate) => candidate,
+                    Err(error) => {
+                        send_external_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            &command,
+                            &mut receipt_sequences,
+                            &mut receipt_journal,
+                            RunnerJobReceiptEventType::ExecutionFailed,
+                            "failed",
+                            None,
+                            Some(&error),
+                        )?;
+                        continue;
+                    }
+                };
+                let materialized = input_fetch_grants
+                    .get(&command.input_ref)
+                    .ok_or_else(|| "RUNNER_INPUT_FETCH_GRANT_UNAVAILABLE".to_string())
+                    .and_then(|grant| {
+                        crate::run_input::materialize_command_input_into(
+                            config,
+                            &command,
+                            grant,
+                            Some(&prepared_candidate.root),
+                        )
+                    });
+                match materialized {
+                    Ok(input) => {
+                        spec224_candidate = Some(prepared_candidate);
+                        input_fetch_grants.remove(&command.input_ref);
+                        send_input_materialized_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            &command,
+                            &mut receipt_sequences,
+                            &mut receipt_journal,
+                            &input,
+                        )?;
+                    }
+                    Err(error) => {
+                        input_fetch_grants.remove(&command.input_ref);
+                        send_external_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            &command,
+                            &mut receipt_sequences,
+                            &mut receipt_journal,
+                            RunnerJobReceiptEventType::ExecutionFailed,
+                            "failed",
+                            None,
+                            Some(&error),
+                        )?;
+                        continue;
+                    }
+                }
+            }
             let candidate = scan_environment(config.profile)
                 .into_iter()
                 .find(|tool| tool.adapter_id.as_deref() == Some(command.adapter_id.as_str()));
@@ -874,7 +982,13 @@ fn run_live_control_loop(
                 .and_then(|mut candidate| {
                     let probe = probe_candidate(&candidate, std::time::Duration::from_secs(1))?;
                     apply_probe(&mut candidate, probe)?;
-                    start_external_agent(config, &command, &candidate, std::time::Instant::now())
+                    start_external_agent(
+                        config,
+                        &command,
+                        &candidate,
+                        spec224_candidate,
+                        std::time::Instant::now(),
+                    )
                 });
             match result {
                 Ok(process) => {
@@ -1260,6 +1374,41 @@ fn send_runner_receipt(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn send_input_materialized_receipt(
+    endpoint: &ControlEndpoint,
+    transport: &mut NativeControlTransport,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    command: &RunnerJobCommand,
+    receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    receipt_journal: &mut RunnerReceiptJournal,
+    input: &crate::run_input::MaterializedRunnerInput,
+) -> Result<(), String> {
+    let mut envelope = build_runner_receipt_envelope(
+        channel,
+        node_kind,
+        command,
+        receipt_sequences,
+        receipt_journal,
+        RunnerJobReceiptEventType::InputMaterialized,
+        "materialized",
+        None,
+        None,
+    )?;
+    let payload = envelope
+        .payload
+        .get_mut("receipt")
+        .and_then(|receipt| receipt.get_mut("payload"))
+        .and_then(serde_json::Value::as_object_mut)
+        .ok_or_else(|| "RUNNER_INPUT_RECEIPT_INVALID".to_string())?;
+    payload.insert("inputRef".into(), json!(input.input_ref));
+    payload.insert("inputDigest".into(), json!(input.input_digest));
+    payload.insert("totalBytes".into(), json!(input.total_bytes));
+    payload.insert("fileCount".into(), json!(input.file_count));
+    persist_and_send_runner_receipt(endpoint, transport, receipt_journal, envelope)
+}
+
+#[allow(clippy::too_many_arguments)]
 fn send_cancel_receipt(
     endpoint: &ControlEndpoint,
     transport: &mut NativeControlTransport,
@@ -1273,8 +1422,9 @@ fn send_cancel_receipt(
     error_summary: Option<&str>,
     evidence: Option<&crate::adapters::BrowserExecutionEvidence>,
     interrupted_target: Option<&RunnerJobCommand>,
+    recovery_ref: Option<&str>,
 ) -> Result<(), String> {
-    let envelope = build_runner_receipt_envelope(
+    let mut envelope = build_runner_receipt_envelope(
         channel,
         node_kind,
         command,
@@ -1285,6 +1435,15 @@ fn send_cancel_receipt(
         error_summary,
         evidence,
     )?;
+    if let Some(recovery_ref) = recovery_ref {
+        let payload = envelope
+            .payload
+            .get_mut("receipt")
+            .and_then(|value| value.get_mut("payload"))
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or("RUNNER_CANCEL_RECEIPT_INVALID")?;
+        payload.insert("recoveryRef".into(), json!(recovery_ref));
+    }
     if let Some(target) = interrupted_target {
         receipt_journal.complete_external_agent_command_with_receipt(
             &target.command_id,
@@ -1495,6 +1654,7 @@ where
     if config.profile != crate::config::RunnerProfile::LocalDevice {
         return Err("RUNNER_ENTRYPOINT_REQUIRES_LOCAL_DEVICE".into());
     }
+    crate::spec224_candidate::recover_pending(config)?;
     if let Ok(current) = std::env::current_exe() {
         cleanup_update_helpers(&current);
     }
@@ -2041,14 +2201,11 @@ fn capability_snapshot(
     tenant_id: Option<&str>,
     control_plane_origin: &str,
 ) -> serde_json::Value {
-    let workspace_ids = crate::workspace_registry::list(config)
-        .map(|workspaces| {
-            workspaces
-                .into_iter()
-                .map(|workspace| workspace.workspace_id)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
+    let workspace_facts = crate::workspace_registry::snapshot_facts(config).unwrap_or_default();
+    let workspace_ids = workspace_facts
+        .iter()
+        .map(|workspace| workspace.workspace_id.clone())
+        .collect::<Vec<_>>();
     let observed_at = current_time_iso();
     let expires_at = current_time_iso_after(std::time::Duration::from_secs(300));
     let snapshot_revision = format!("snapshot:{}:{}", config.runner_id, observed_at);
@@ -2156,6 +2313,7 @@ fn capability_snapshot(
         "expiresAt": expires_at,
         "capabilities": tools.iter().map(|tool| format!("tool.execute.{}", tool.tool_id)).collect::<Vec<_>>(),
         "workspaceIds": workspace_ids,
+        "workspaces": workspace_facts,
         "resourceClass": "medium",
         "platform": {
             "os": std::env::consts::OS,
@@ -2510,6 +2668,23 @@ mod lifecycle_tests {
             snapshot["workspaceIds"],
             serde_json::json!([registered.workspace_id])
         );
+        assert_eq!(
+            snapshot["workspaces"][0]["workspaceId"],
+            registered.workspace_id
+        );
+        assert_eq!(
+            snapshot["workspaces"][0]["displayName"],
+            "private-project-folder"
+        );
+        assert_eq!(
+            snapshot["workspaces"][0]["gitHead"],
+            serde_json::Value::Null
+        );
+        assert_eq!(
+            snapshot["workspaces"][0]["gitBranch"],
+            serde_json::Value::Null
+        );
+        assert_eq!(snapshot["workspaces"][0]["dirty"], false);
         assert!(!serialized.contains(&project.to_string_lossy().to_string()));
     }
 

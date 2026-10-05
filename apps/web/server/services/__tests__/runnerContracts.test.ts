@@ -152,6 +152,33 @@ describe("Feature 197 Runner contracts", () => {
     ).toBe(false);
   });
 
+  it("preserves only strict sanitized additive workspace facts", () => {
+    const normalized = validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      workspaceIds: ["workspace-1", "workspace-2"],
+      workspaces: [
+        { workspaceId: "workspace-1", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64) },
+        { workspaceId: "workspace-2" },
+      ],
+    });
+    expect(normalized.workspaces).toEqual([
+      { workspaceId: "workspace-1", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64) },
+      { workspaceId: "workspace-2", displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null },
+    ]);
+    expect(() => validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      workspaces: [{ workspaceId: "workspace-1", repositoryRef: "repo:must-not-pass" }],
+    } as unknown as RunnerCapabilitySnapshot)).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+    expect(() => validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      workspaces: [{ workspaceId: "workspace-1", gitHead: "not-a-commit", gitBranch: "../unsafe", dirty: "yes" }],
+    } as unknown as RunnerCapabilitySnapshot)).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+  });
+
   it("normalizes a redacted tool and derived capability inventory in one snapshot", () => {
     const normalized = validateRunnerCapabilitySnapshot({
       ...snapshot,

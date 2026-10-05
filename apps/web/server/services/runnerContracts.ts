@@ -281,6 +281,8 @@ export type RunnerCapabilitySnapshot = {
   expiresAt: string;
   capabilities: string[];
   workspaceIds: string[];
+  /** Sanitized display facts only; workspace IDs remain the execution identity. */
+  workspaces?: Array<{ workspaceId: string; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }>;
   resourceClass: "small" | "medium" | "large";
   /** Redacted platform identity safe for Task Control and scheduling projection. */
   platform?: {
@@ -361,6 +363,7 @@ export type RunnerJobCommand = {
 export type RunnerJobReceiptEventType =
   | "COMMAND_RECEIVED"
   | "COMMAND_ACCEPTED"
+  | "INPUT_MATERIALIZED"
   | "EXECUTION_STARTED"
   | "PROGRESS"
   | "EVIDENCE_CREATED"
@@ -373,6 +376,7 @@ export type RunnerJobReceiptEventType =
 export type RunnerJobReceiptStatus =
   | "received"
   | "accepted"
+  | "materialized"
   | "running"
   | "progress"
   | "evidence"
@@ -453,6 +457,30 @@ function stringList(
   );
   if (new Set(values).size !== values.length) invalid(`${field} is invalid`);
   return values;
+}
+
+function workspaceFacts(value: unknown, workspaceIds: string[]): Array<{ workspaceId: string; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }> {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 64) invalid("snapshot.workspaces is invalid");
+  const ids = new Set(workspaceIds);
+  const seen = new Set<string>();
+  return value.map((candidate, index) => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) invalid("snapshot.workspaces is invalid");
+    const record = candidate as Record<string, unknown>;
+    if (Object.keys(record).some(key => !["workspaceId", "displayName", "gitHead", "gitBranch", "dirty", "contentFingerprint"].includes(key))) invalid("snapshot.workspaces is invalid");
+    const workspaceId = requiredText(record.workspaceId, `snapshot.workspaces[${index}].workspaceId`, 160);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/.test(workspaceId) || !ids.has(workspaceId) || seen.has(workspaceId)) invalid("snapshot.workspaces is invalid");
+    seen.add(workspaceId);
+    const displayName = record.displayName === undefined || record.displayName === null ? null : requiredText(record.displayName, `snapshot.workspaces[${index}].displayName`, 160);
+    const gitHead = record.gitHead === undefined || record.gitHead === null ? null : requiredText(record.gitHead, `snapshot.workspaces[${index}].gitHead`, 64);
+    if (gitHead !== null && !/^[a-f0-9]{40,64}$/.test(gitHead)) invalid("snapshot.workspaces is invalid");
+    const gitBranch = record.gitBranch === undefined || record.gitBranch === null ? null : requiredText(record.gitBranch, `snapshot.workspaces[${index}].gitBranch`, 160);
+    if (gitBranch !== null && (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/.test(gitBranch) || gitBranch.includes("..") || gitBranch.includes("//"))) invalid("snapshot.workspaces is invalid");
+    if (record.dirty !== undefined && record.dirty !== null && typeof record.dirty !== "boolean") invalid("snapshot.workspaces is invalid");
+    const contentFingerprint = record.contentFingerprint === undefined || record.contentFingerprint === null ? null : requiredText(record.contentFingerprint, `snapshot.workspaces[${index}].contentFingerprint`, 64);
+    if (contentFingerprint !== null && !/^[a-f0-9]{64}$/.test(contentFingerprint)) invalid("snapshot.workspaces is invalid");
+    return { workspaceId, displayName, gitHead, gitBranch, dirty: record.dirty ?? null, contentFingerprint };
+  });
 }
 
 const RUNNER_ENVELOPE_SECRET_KEYS = new Set([
@@ -1008,6 +1036,8 @@ export function validateRunnerCapabilitySnapshot(
       target: requiredText(rawPlatform.target, "snapshot.platform.target", 80),
     };
   }
+  const workspaceIds = stringList(raw.workspaceIds, "snapshot.workspaceIds");
+  const workspaces = workspaceFacts(raw.workspaces, workspaceIds);
   return {
     runnerId,
     ...(tenantId ? { tenantId } : {}),
@@ -1023,7 +1053,8 @@ export function validateRunnerCapabilitySnapshot(
     observedAt: new Date(observedAt).toISOString(),
     expiresAt: new Date(expiresAt).toISOString(),
     capabilities: stringList(raw.capabilities, "snapshot.capabilities"),
-    workspaceIds: stringList(raw.workspaceIds, "snapshot.workspaceIds"),
+    workspaceIds,
+    ...(raw.workspaces === undefined ? {} : { workspaces }),
     resourceClass:
       raw.resourceClass as RunnerCapabilitySnapshot["resourceClass"],
     ...(platform ? { platform } : {}),

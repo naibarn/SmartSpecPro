@@ -291,6 +291,7 @@ export function validateRunnerJobReceipt(
   const events: RunnerJobReceiptEventType[] = [
     "COMMAND_RECEIVED",
     "COMMAND_ACCEPTED",
+    "INPUT_MATERIALIZED",
     "EXECUTION_STARTED",
     "PROGRESS",
     "EVIDENCE_CREATED",

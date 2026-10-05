@@ -20,6 +20,7 @@ const manifest: AgentTaskManifest = {
   provider: "codex",
   runtime: "local_runner",
   workspaceId: "workspace-1",
+  workPackageId: "wp:package-a",
   contextPackageIds: ["context-1"],
   skillIds: ["skill-1"],
   mcpGrantIds: [],
@@ -31,6 +32,7 @@ describe("Feature 200 Agent control-plane contracts", () => {
     expect(validateAgentTaskManifest(manifest)).toMatchObject({
       provider: "codex",
       planRevision: 2,
+      workPackageId: "wp:package-a",
     });
     expect(() =>
       validateAgentTaskManifest({
@@ -71,6 +73,25 @@ describe("Feature 200 Agent control-plane contracts", () => {
         policyBinding: { ...bound.policyBinding, spendCeilingMicros: 0 },
       })
     ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+  });
+
+  it("keeps Spec 224 staged input references in the manifest without input bytes or fetch credentials", () => {
+    const input = {
+      ...manifest,
+      spec224Input: { inputSourceRef: "spec224-source:run-1", inputDigest: "a".repeat(64), totalBytes: 128 },
+    };
+    expect(validateAgentTaskManifest(input)).toMatchObject({ spec224Input: input.spec224Input });
+    expect(buildAgentJobDefinition(input).input).not.toHaveProperty("inputFetchGrant");
+    expect(() => validateAgentTaskManifest({
+      ...input,
+      spec224Input: { ...input.spec224Input, inputFetchGrant: "must-not-be-here" },
+    })).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+  });
+
+  it("pins a bounded Spec 224 source fingerprint and explicit write set", () => {
+    const execution = { sourceFingerprint: "b".repeat(64), mode: "work_package", allowedWriteSet: ["apps/web/server/auth.ts"] };
+    expect(validateAgentTaskManifest({ ...manifest, spec224Execution: execution })).toMatchObject({ spec224Execution: execution });
+    expect(() => validateAgentTaskManifest({ ...manifest, spec224Execution: { ...execution, allowedWriteSet: ["../outside.ts"] } })).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });
 
   it("deduplicates normalized events and creates one canonical Job handoff", () => {

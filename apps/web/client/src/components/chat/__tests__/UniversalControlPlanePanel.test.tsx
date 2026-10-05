@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -17,6 +17,16 @@ const mocks = vi.hoisted(() => ({
   createRunMutateAsync: vi.fn(),
   fetchDevelopmentRun: vi.fn(),
   refetch: vi.fn(),
+  availableWorkspacesQuery: vi.fn(),
+  conversationWorkspaceQuery: vi.fn(),
+  bindWorkspaceMutation: vi.fn(),
+  ingestSpecSetMutation: vi.fn(),
+  prepareWorkspaceMutation: vi.fn(),
+  startWorkspaceMutation: vi.fn(),
+  bindWorkspaceMutateAsync: vi.fn(),
+  ingestSpecSetMutateAsync: vi.fn(),
+  prepareWorkspaceMutateAsync: vi.fn(),
+  startWorkspaceMutateAsync: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -40,6 +50,24 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     spec226DevelopmentControl: {
+      availableWorkspaces: {
+        useQuery: (...args: unknown[]) => mocks.availableWorkspacesQuery(...args),
+      },
+      getConversationWorkspace: {
+        useQuery: (...args: unknown[]) => mocks.conversationWorkspaceQuery(...args),
+      },
+      bindConversationWorkspace: {
+        useMutation: (...args: unknown[]) => mocks.bindWorkspaceMutation(...args),
+      },
+      ingestSpecSet: {
+        useMutation: (...args: unknown[]) => mocks.ingestSpecSetMutation(...args),
+      },
+      prepareWorkspaceRun: {
+        useMutation: (...args: unknown[]) => mocks.prepareWorkspaceMutation(...args),
+      },
+      startWorkspaceRun: {
+        useMutation: (...args: unknown[]) => mocks.startWorkspaceMutation(...args),
+      },
       list: {
         useQuery: (...args: unknown[]) => mocks.developmentRunsQuery(...args),
       },
@@ -144,9 +172,114 @@ beforeEach(() => {
     decisionEpoch: 4,
     actions: { pause: true, cancel: true },
   });
+  mocks.availableWorkspacesQuery.mockReturnValue({ ...emptyQuery, data: { workspaces: [] } });
+  mocks.conversationWorkspaceQuery.mockReturnValue({ ...emptyQuery, data: null });
+  mocks.bindWorkspaceMutateAsync.mockResolvedValue({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", revision: 1 });
+  mocks.bindWorkspaceMutation.mockReturnValue({ mutateAsync: mocks.bindWorkspaceMutateAsync, isPending: false });
+  mocks.ingestSpecSetMutateAsync.mockResolvedValue({ revision: 1, digest: "a".repeat(64), files: [], requirementCount: 1, runnableWorkPackageCount: 0, blockedWorkPackageCount: 1 });
+  mocks.ingestSpecSetMutation.mockReturnValue({ mutateAsync: mocks.ingestSpecSetMutateAsync, isPending: false });
+  mocks.prepareWorkspaceMutateAsync.mockResolvedValue({ planId: "plan-1", planRevision: 1, requirementCount: 1, runnableWorkPackageIds: [], blockers: ["needs_plan"] });
+  mocks.prepareWorkspaceMutation.mockReturnValue({ mutateAsync: mocks.prepareWorkspaceMutateAsync, isPending: false });
+  mocks.startWorkspaceMutateAsync.mockResolvedValue({ runId: "run-started", jobId: "job-started", dispatchStatus: "PENDING_AUTHORIZATION" });
+  mocks.startWorkspaceMutation.mockReturnValue({ mutateAsync: mocks.startWorkspaceMutateAsync, isPending: false });
 });
 
 describe("UniversalControlPlanePanel", () => {
+  it("binds the active Chat section to a selected Runner workspace without starting a run", async () => {
+    mocks.availableWorkspacesQuery.mockReturnValue({
+      ...emptyQuery,
+      data: { workspaces: [{ runnerId: "runner-1", workspaceId: "workspace-1", displayName: "Dev machine", status: "online", snapshotRevision: "r1" }] },
+    });
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Workspace" }), { target: { value: '["runner-1","workspace-1"]' } });
+    await waitFor(() => expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1" }));
+    expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByText(/ยังไม่เริ่มแก้โค้ดหรือ build\/run/)).toBeTruthy();
+  });
+
+  it("prepares first, then starts prompt development only through the explicit user action", async () => {
+    mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
+      planId: "plan-1", planRevision: 1, requirementCount: 0,
+      runnableWorkPackageIds: ["prompt"], blockers: [],
+      workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [] }],
+    });
+    mocks.conversationWorkspaceQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        workspace: { conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", snapshotRevision: "r1", revision: 1 },
+        specSet: null,
+        availability: { status: "available", available: true },
+      },
+    });
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Spec 224 prompt" }), { target: { value: "Add a settings page" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await waitFor(() => expect(mocks.prepareWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, mode: "prompt", prompt: "Add a settings page" }));
+    expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+    await waitFor(() => expect(mocks.startWorkspaceMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 42,
+      mode: "prompt",
+      prompt: "Add a settings page",
+      idempotencyKey: expect.any(String),
+    })));
+    expect(mocks.startWorkspaceMutateAsync.mock.calls[0][0].idempotencyKey.length).toBeGreaterThanOrEqual(16);
+  });
+
+  it("starts one ready Spec package while leaving a blocked package unstartable", async () => {
+    mocks.conversationWorkspaceQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        workspace: { conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", snapshotRevision: "r1", revision: 1 },
+        // A later revision may arrive from another Chat section after prepare.
+        specSet: { revision: 5, digest: "e".repeat(64), files: [{ path: "auth.md" }], requirementCount: 3 },
+        availability: { status: "available", available: true },
+      },
+    });
+    mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
+      planId: "plan-4", planRevision: 4, requirementCount: 2,
+      runnableWorkPackageIds: ["wp:ready"], blockers: [],
+      workPackages: [
+        { id: "wp:ready", externalId: "ready-api", readiness: "READY", blockers: [] },
+        { id: "wp:blocked", externalId: "future-ui", readiness: "BLOCKED", blockers: ["DEPENDENCY_BLOCKED"] },
+      ],
+    });
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    fireEvent.click(screen.getByRole("radio", { name: "แนบหรือเพิ่ม Spec files" }));
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await screen.findByRole("button", { name: "สั่งพัฒนา ready-api" });
+    expect(screen.getByText(/future-ui/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "สั่งพัฒนา ready-api" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "สั่งพัฒนา future-ui" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา ready-api" }));
+    await waitFor(() => expect(mocks.startWorkspaceMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      mode: "spec_set",
+      specSetRevision: 4,
+      workPackageId: "wp:ready",
+    })));
+  });
+
+  it("uploads multiple allowed Spec files as a revision without starting execution", async () => {
+    mocks.conversationWorkspaceQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        workspace: { conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", snapshotRevision: "r1", revision: 1 },
+        specSet: null,
+        availability: { status: "available", available: true },
+      },
+    });
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    fireEvent.click(screen.getByRole("radio", { name: "แนบหรือเพิ่ม Spec files" }));
+    const files = [new File(["# One"], "one.md"), new File(["{\"requirements\": []}"], "two.json", { type: "application/json" })];
+    fireEvent.change(screen.getByLabelText("แนบไฟล์ Spec 224"), { target: { files } });
+    await waitFor(() => expect(mocks.ingestSpecSetMutateAsync).toHaveBeenCalled());
+    expect(mocks.ingestSpecSetMutateAsync.mock.calls[0][0]).toMatchObject({
+      conversationId: 42,
+      artifacts: [{ path: "one.md" }, { path: "two.json" }],
+    });
+    expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
+  });
+
   it("explains installed, usable, and not-yet-connected harnesses without exposing raw states", () => {
     mocks.runnersQuery.mockReturnValue({
       ...emptyQuery,

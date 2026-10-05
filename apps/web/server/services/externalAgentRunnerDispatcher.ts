@@ -9,6 +9,9 @@ import {
 } from "./runnerJobCommandContracts";
 import { getCachedRunnerControlPlaneOrigin } from "./appRuntimeConfig";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
+import {
+  defaultSpec224RunnerInputStagingService,
+} from "./spec224RunnerInputStaging";
 
 type DispatchResult = {
   status: "accepted" | "duplicate";
@@ -18,7 +21,8 @@ type DispatchResult = {
 };
 
 export type ExternalAgentTaskDispatcherOptions = {
-  dispatch?: (command: RunnerJobCommand) => Promise<DispatchResult>;
+  dispatch?: (command: RunnerJobCommand, options?: { spec224InputFetchGrant?: string }) => Promise<DispatchResult>;
+  bindStagedInput?: typeof defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput;
   now?: () => Date;
   commandId?: () => string;
   controlPlaneOrigin?: string;
@@ -50,12 +54,15 @@ export function createExternalAgentTaskDispatcher(
   options: ExternalAgentTaskDispatcherOptions = {}
 ) {
   const dispatch = options.dispatch ?? dispatchRunnerJobCommand;
+  const bindStagedInput = options.bindStagedInput ?? ((input: Parameters<typeof defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput>[0]) =>
+    defaultSpec224RunnerInputStagingService.bindPreStagedRunnerInput(input));
   const now = options.now ?? (() => new Date());
   const commandId = options.commandId ?? randomUUID;
 
   return async (input: ExternalAgentTaskDispatchInput): Promise<JobResult> => {
     const binding = input.manifest.policyBinding;
     if (!binding) throw new Error("AGENT_POLICY_BINDING_REQUIRED");
+    if (input.manifest.spec224Input && !input.manifest.spec224Execution) throw new Error("SPEC224_EXECUTION_POLICY_REQUIRED");
     if (input.manifest.runtime !== "local_runner") {
       throw new Error("AGENT_RUNTIME_RUNNER_UNSUPPORTED");
     }
@@ -68,8 +75,30 @@ export function createExternalAgentTaskDispatcher(
     }
 
     const startProof = input.protectedExecutionStart;
+    const commandIdentifier = startProof?.authorizedCommandId ?? commandId();
+    const inputSource = input.manifest.spec224Input;
+    const stagedInput = inputSource
+      ? await bindStagedInput({
+          inputSourceRef: inputSource.inputSourceRef,
+          commandId: commandIdentifier,
+          workerJobId: input.context.jobId,
+          attemptId: input.lease.attemptId,
+          attempt: input.context.attempt,
+          leaseId: `lease:${input.lease.jobId}:${input.lease.attemptId}`,
+          fencingToken: input.lease.fencingVersion,
+          tenantId: input.context.tenantId,
+          runnerId: binding.runnerId,
+          runnerSessionId: binding.runnerSessionId,
+          authorizationGrantRef: binding.authorizationGrantRef,
+          workspaceRef: binding.workspaceRef,
+        })
+      : null;
+    if (inputSource && (
+      stagedInput.inputDigest !== inputSource.inputDigest ||
+      stagedInput.totalBytes !== inputSource.totalBytes
+    )) throw new Error("SPEC224_RUNNER_INPUT_SOURCE_MISMATCH");
     const command = validateRunnerJobCommand({
-      commandId: startProof?.authorizedCommandId ?? commandId(),
+      commandId: commandIdentifier,
       commandType: "execute",
       contractVersion: "runner-job-v1",
       jobId: input.context.jobId,
@@ -97,7 +126,7 @@ export function createExternalAgentTaskDispatcher(
         ),
       deadline: binding.deadline,
       authorizationGrantRef: binding.authorizationGrantRef,
-      inputRef: `runner-input:${input.context.jobId}:${input.lease.attemptId}`,
+      inputRef: stagedInput?.inputRef ?? `runner-input:${input.context.jobId}:${input.lease.attemptId}`,
       payload: {
         taskId: input.manifest.taskId,
         goalId: input.manifest.goalId,
@@ -108,6 +137,7 @@ export function createExternalAgentTaskDispatcher(
         skillIds: input.manifest.skillIds,
         mcpGrantIds: input.manifest.mcpGrantIds,
         requestedCapabilities: input.manifest.requestedCapabilities,
+        ...(input.manifest.spec224Execution ? { spec224Execution: input.manifest.spec224Execution } : {}),
         approvalRef: binding.approvalRef,
         budgetReservationRef: binding.budgetReservationRef,
         spendCeilingMicros: binding.spendCeilingMicros,
@@ -166,7 +196,9 @@ export function createExternalAgentTaskDispatcher(
 
     let result: DispatchResult;
     try {
-      result = await dispatch(command);
+      result = stagedInput
+        ? await dispatch(command, { spec224InputFetchGrant: stagedInput.inputFetchGrant })
+        : await dispatch(command);
     } catch (error) {
       await input.controlPlane.failExternalWait(
         command.jobId,

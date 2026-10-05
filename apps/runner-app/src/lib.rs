@@ -13,6 +13,8 @@ pub mod journal;
 pub mod leasing;
 pub mod process;
 pub mod protocol;
+pub mod run_input;
+pub mod spec224_candidate;
 pub mod supervisor;
 pub mod transport;
 pub mod update;

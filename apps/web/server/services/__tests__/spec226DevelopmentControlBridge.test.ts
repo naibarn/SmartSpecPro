@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildDevelopmentRun,
@@ -89,6 +89,34 @@ function memoryAdapter(initial: DevelopmentRunStoreRecord) {
 }
 
 describe("Spec 226 DevelopmentRun control bridge", () => {
+  it("filters workspace history and projects package identity plus pinned Spec revision", async () => {
+    const run = {
+      ...runAtPlanning(),
+      workPackageId: "wp:opaque-id",
+      metadata: { spec224Workspace: { specSetRevision: 3, workPackageExternalId: "api" } },
+    };
+    const other = { ...run, runId: "run-other", workspaceId: "workspace-other" };
+    const listRuns = vi.fn(async () => [run, other]);
+    const bridge = createSpec226DevelopmentControlBridge({
+      persistence: memoryAdapter({ run, revision: 0, events: [] }).adapter,
+      listRuns,
+    });
+
+    await expect(bridge.list({ tenantId: run.tenantId, actorId: run.actorId, limit: 20, workspaceId: run.workspaceId }))
+      .resolves.toMatchObject([{
+        runId: run.runId,
+        workspaceId: run.workspaceId,
+        workPackageId: "wp:opaque-id",
+        workPackageExternalId: "api",
+        specSetRevision: 3,
+      }]);
+    expect(listRuns).toHaveBeenCalledWith({
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+      limit: 20,
+      workspaceId: run.workspaceId,
+    });
+  });
+
   it("projects persisted deferred obligations from canonical closure state", async () => {
     const run = runAtPlanning();
     const memory = memoryAdapter({ run, revision: 0, events: [] });

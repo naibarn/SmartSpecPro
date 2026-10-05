@@ -556,6 +556,20 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "spec224.runner_input_retention",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ reporter, lease }) => {
+    await reporter.assertActive(lease);
+    const { executeSpec224RunnerInputRetentionJob } =
+      await import("../jobs/spec224RunnerInputRetentionJob");
+    const result = await executeSpec224RunnerInputRetentionJob();
+    await reporter.assertActive(lease);
+    return { output: result };
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "gdrive.edit_session_cleanup",
   executionClass: "short",
   contractVersions: new Set(["feature-186-v1"]),

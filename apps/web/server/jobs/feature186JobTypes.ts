@@ -20,6 +20,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "database.backup",
   "database.backup.maintenance",
   "worker.heartbeat_retention",
+  "spec224.runner_input_retention",
   "library.trash_purge",
   "storyboard.skill.run",
   "skill.execute",

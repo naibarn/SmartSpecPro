@@ -44,6 +44,8 @@ export type DevelopmentRun = {
   baseRevision: string;
   contextPackHash: string;
   workspaceId: string;
+  /** Stable package identity used by Spec 224 admission/attestation. */
+  workPackageId?: string;
   state: DevelopmentRunState;
   phaseAttempt: number;
   maxPhaseAttempts: number;
@@ -254,6 +256,7 @@ export function buildDevelopmentRun(input: {
   baseRevision: string;
   contextPackHash: string;
   workspaceId: string;
+  workPackageId?: string;
   maxPhaseAttempts?: number;
   metadata?: Record<string, unknown>;
 }): DevelopmentRun {
@@ -280,7 +283,10 @@ export function buildDevelopmentRun(input: {
     repositoryRef: ref(input.repositoryRef, "REPOSITORY_REF_INVALID"),
     baseRevision: ref(input.baseRevision, "BASE_REVISION_INVALID"),
     contextPackHash: hash(input.contextPackHash, "CONTEXT_HASH_INVALID"),
-    workspaceId: ref(input.workspaceId, "WORKSPACE_REF_INVALID"),
+    // Runner workspace ids are opaque registry identities (for example
+    // `ws-project-a`), not URI refs with a required scheme delimiter.
+    workspaceId: id(input.workspaceId, "WORKSPACE_REF_INVALID"),
+    ...(input.workPackageId === undefined ? {} : { workPackageId: id(input.workPackageId, "WORK_PACKAGE_ID_INVALID") }),
     state: "DISCOVERY",
     phaseAttempt: 0,
     maxPhaseAttempts,
@@ -462,6 +468,8 @@ export function buildDevelopmentHarnessJob(input: {
   manifest: AgentTaskManifest;
   definition: ReturnType<typeof buildAgentJobDefinition>;
 } {
+  const spec224Input = input.run.metadata?.spec224Input;
+  const spec224Execution = input.run.metadata?.spec224Execution;
   const manifest: AgentTaskManifest = {
     taskId: input.run.runId,
     tenantId: input.run.tenantId,
@@ -472,12 +480,19 @@ export function buildDevelopmentHarnessJob(input: {
     provider: input.provider,
     runtime: input.runtime,
     workspaceId: input.run.workspaceId,
+    ...(input.run.workPackageId ? { workPackageId: input.run.workPackageId } : {}),
     contextPackageIds: [`context:${input.run.contextPackHash}`],
     skillIds: input.skillIds.map(skillId => id(skillId, "SKILL_ID_INVALID")),
     mcpGrantIds: [],
     requestedCapabilities: input.requestedCapabilities.map(capability =>
       id(capability, "CAPABILITY_ID_INVALID")
     ),
+    ...(spec224Input && typeof spec224Input === "object" && !Array.isArray(spec224Input)
+      ? { spec224Input: spec224Input as AgentTaskManifest["spec224Input"] }
+      : {}),
+    ...(spec224Execution && typeof spec224Execution === "object" && !Array.isArray(spec224Execution)
+      ? { spec224Execution: spec224Execution as AgentTaskManifest["spec224Execution"] }
+      : {}),
     ...(input.policyBinding ? { policyBinding: input.policyBinding } : {}),
   };
   return { manifest, definition: buildAgentJobDefinition(manifest) };

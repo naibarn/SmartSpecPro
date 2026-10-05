@@ -36,10 +36,18 @@ export type AgentTaskManifest = {
   provider: AgentProvider;
   runtime: AgentRuntime;
   workspaceId: string;
+  workPackageId?: string;
   contextPackageIds: string[];
   skillIds: string[];
   mcpGrantIds: string[];
   requestedCapabilities: string[];
+  /** Opaque pointer to immutable Spec 224 input staged outside the job event log. */
+  spec224Input?: {
+    inputSourceRef: string;
+    inputDigest: string;
+    totalBytes: number;
+  };
+  spec224Execution?: { sourceFingerprint: string; mode: "prompt" | "work_package"; allowedWriteSet: string[] };
   policyBinding?: AgentTaskPolicyBinding;
 };
 
@@ -136,6 +144,9 @@ export function validateAgentTaskManifest(
   const goalId = requiredText(raw.goalId, "goalId", 128);
   const planId = requiredText(raw.planId, "planId", 128);
   const workspaceId = requiredText(raw.workspaceId, "workspaceId", 160);
+  const workPackageId = raw.workPackageId === undefined
+    ? undefined
+    : requiredText(raw.workPackageId, "workPackageId", 160);
   if (
     !Number.isSafeInteger(raw.actorId) ||
     (raw.actorId as number) <= 0 ||
@@ -164,6 +175,34 @@ export function validateAgentTaskManifest(
     raw.requestedCapabilities,
     "requestedCapabilities"
   );
+  let spec224Input: AgentTaskManifest["spec224Input"];
+  if (raw.spec224Input !== undefined) {
+    if (!raw.spec224Input || Array.isArray(raw.spec224Input) || typeof raw.spec224Input !== "object")
+      invalid("spec224Input is invalid");
+    const input = raw.spec224Input as Record<string, unknown>;
+    if (
+      Object.keys(input).sort().join(",") !== "inputDigest,inputSourceRef,totalBytes" ||
+      typeof input.inputDigest !== "string" || !/^[a-f0-9]{64}$/.test(input.inputDigest) ||
+      !Number.isSafeInteger(input.totalBytes) || (input.totalBytes as number) < 1 || (input.totalBytes as number) > 2 * 1024 * 1024
+    ) invalid("spec224Input is invalid");
+    spec224Input = {
+      inputSourceRef: requiredText(input.inputSourceRef, "spec224Input.inputSourceRef", 160),
+      inputDigest: input.inputDigest,
+      totalBytes: input.totalBytes as number,
+    };
+  }
+  let spec224Execution: AgentTaskManifest["spec224Execution"];
+  if (raw.spec224Execution !== undefined) {
+    if (!raw.spec224Execution || Array.isArray(raw.spec224Execution) || typeof raw.spec224Execution !== "object") invalid("spec224Execution is invalid");
+    const execution = raw.spec224Execution as Record<string, unknown>;
+    if (Object.keys(execution).sort().join(",") !== "allowedWriteSet,mode,sourceFingerprint" || typeof execution.sourceFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(execution.sourceFingerprint) || !["prompt", "work_package"].includes(String(execution.mode)) || !Array.isArray(execution.allowedWriteSet) || execution.allowedWriteSet.length < 1 || execution.allowedWriteSet.length > 256) invalid("spec224Execution is invalid");
+    const allowedWriteSet = execution.allowedWriteSet.map((value) => {
+      if (typeof value !== "string" || value.length > 240 || value.startsWith("/") || value.includes("\\") || value.split("/").some(part => !part || part === "." || part === "..") || !/^[A-Za-z0-9*?._/-]+$/.test(value)) invalid("spec224Execution is invalid");
+      return value;
+    });
+    if (new Set(allowedWriteSet).size !== allowedWriteSet.length) invalid("spec224Execution is invalid");
+    spec224Execution = { sourceFingerprint: execution.sourceFingerprint, mode: execution.mode as "prompt" | "work_package", allowedWriteSet };
+  }
   if (containsSecret(manifest))
     invalid("agent manifest cannot contain credentials");
   const policyBinding = raw.policyBinding === undefined
@@ -179,10 +218,13 @@ export function validateAgentTaskManifest(
     provider: raw.provider as AgentProvider,
     runtime: raw.runtime as AgentRuntime,
     workspaceId,
+    ...(workPackageId ? { workPackageId } : {}),
     contextPackageIds,
     skillIds,
     mcpGrantIds,
     requestedCapabilities,
+    ...(spec224Input ? { spec224Input } : {}),
+    ...(spec224Execution ? { spec224Execution } : {}),
     ...(policyBinding ? { policyBinding } : {}),
   };
 }
