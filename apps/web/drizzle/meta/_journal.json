@@ -2619,6 +2619,13 @@
       "when": 1790530000023,
       "tag": "0387_spec278_durable_execution_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 374,
+      "version": "7",
+      "when": 1790530000024,
+      "tag": "0388_worker_job_event_context",
+      "breakpoints": true
     }
   ]
 }

@@ -16741,9 +16741,10 @@ export const workerJobEvents = pgTable(
     workerJobId: varchar("workerJobId", { length: 36 })
       .notNull()
       .references(() => workerJobs.id, { onDelete: "restrict" }),
-    workerJobAttempt: integer("workerJobAttempt").notNull(),
-    leaseFencingVersion: bigint("leaseFencingVersion", { mode: "number" })
-      .notNull(),
+    // Historical and non-lease lifecycle events may not have attempt context.
+    // New inserts are populated by the DB trigger when callers omit these fields.
+    workerJobAttempt: integer("workerJobAttempt"),
+    leaseFencingVersion: bigint("leaseFencingVersion", { mode: "number" }),
     eventType: varchar("eventType", { length: 100 }).notNull(),
     assignmentId: varchar("assignmentId", { length: 160 }),
     sequence: integer("sequence"),
