@@ -1,10 +1,10 @@
 # Progress — Spec 266 R1.2
 
 ## Loop policy
-- Requested post-implementation gap rounds: 10 minimum; completed 11 distinct rounds in `reviews/gap-audit-rounds.md`.
+- Requested post-implementation gap rounds: 10 minimum; completed 12 distinct rounds in `reviews/gap-audit-rounds.md` (one follow-up reconciliation round after handoff).
 - Deep-plan: COMPLETE; source research, interview/spec/plan/TDD, eight sections, self-review, acceptance map, and validators recorded.
 - Deep-implement: COMPLETE for all eight local sections. Section state records are in `implementation/deep_implement_config.json`.
-- Local review: all MUST_FIX findings found by section reviewers and the 11 gap rounds were corrected; focused tests were rerun.
+- Local review: all MUST_FIX findings found by section reviewers and the first 11 gap rounds were corrected; follow-up Round 12 also closed the fixture mismatch; focused tests were rerun.
 - Production gates: OPEN. Schema-owner wave, rights lifecycle, live runtime composition, provider proof, deploy/rollback, migration parity, and user utility remain unverified.
 - Tool telemetry/cost: unknown; discovery used targeted shell reads and one read-only research scout.
 
@@ -23,3 +23,4 @@
 - Section/UI validators: 8/8 sections complete and 8 UI contracts checked successfully.
 - No full-repository typecheck/build/E2E was run.
 - Final lifecycle lane: `HEAVY_PENDING` because shared trust/retrieval/security contracts require serialized integration verification. No schema/migration change was made.
+- Follow-up on `codex/spec266-runtime-composition-20261005`: fixed the unchanged Thailand health-test fixture that omitted required `authenticationVerified`; the combined focused suite now passes 31 files / 228 tests. Production executor composition remains blocked pending a trusted runtime readiness contract, approved provider/rights bindings, durable candidate/notice authority, and the schema-owner window.

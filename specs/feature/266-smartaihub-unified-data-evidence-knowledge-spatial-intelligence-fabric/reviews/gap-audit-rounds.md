@@ -72,7 +72,7 @@ Audits below were run after implementing the local schema-free slices across all
 
 ## Audit result
 
-All eleven post-implementation audit rounds are recorded (the user-required minimum was ten). Review-discovered local MUST_FIX gaps were repaired and the affected focused suites passed. The feature is not production-complete: the open gates in Section 08 and `acceptance-evidence-map.md` remain mandatory and are not waived by these local audits.
+The initial eleven post-implementation audit rounds are recorded (the user-required minimum was ten); follow-up reconciliation is recorded as Round 12. Review-discovered local MUST_FIX gaps were repaired and the affected focused suites passed. The feature is not production-complete: the open gates in Section 08 and `acceptance-evidence-map.md` remain mandatory and are not waived by these local audits.
 
 ## Round 11/10 — Final review corrections after the ten-round baseline
 
@@ -80,3 +80,10 @@ All eleven post-implementation audit rounds are recorded (the user-required mini
 - Added and tightened an Admin component regression for the pending operational-source flow. It asserts the exact Spec 260 PATCH path and exact status/reason body, credentials, and success state.
 - Focused UI proof: `pnpm --filter @smartspec/web exec vitest run client/src/pages/Admin/__tests__/AdminIntelligenceRegistry.test.tsx` — 1 file, 6 tests passed. Independent reviews approved the corrected Section 06 boundary and confirmed the Section 07 route/test behavior.
 - Finding: no remaining local gap in these sections. Schema/runtime/provider/deployment and operational route authorization integration gates remain open as already recorded.
+
+## Round 12/10 — Reconcile focused baseline failure and runtime readiness
+
+- Re-ran the combined Spec 266 focused slice after reconciling with `origin/main`. One unchanged Thailand capability-health test file failed because its shared qualification fixture omitted `authenticationVerified`, a field required by the production qualification function and covered by the adjacent qualification test.
+- Fix: added the missing positive authentication evidence to the verified test fixture; no production qualification behavior changed. The focused suite now passes 31 files / 228 tests.
+- Rechecked the research enqueue boundary: persistence still accepts a caller-provided `runtimeAvailable` boolean, while the canonical research executor remains deliberately unbound. No trusted runtime binder, approved provider policy, candidate/notice ledger, or schema-owner window exists to safely wire execution. Keep research admission unavailable until a server-owned runtime readiness contract is composed; do not treat this audit fix as executor readiness.
+- Production §47, schema-owner, source rights, provider, compatibility replay, deployment and rollback gates remain open.

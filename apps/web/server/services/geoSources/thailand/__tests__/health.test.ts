@@ -8,6 +8,7 @@ const capability = source.capabilities[0]!;
 const verified = {
   endpointVerified: true,
   accessVerified: true,
+  authenticationVerified: true,
   contractFixtureVerified: true,
   schemaVerified: true,
   cadenceVerified: true,
