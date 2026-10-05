@@ -43,6 +43,15 @@ describe("public SEO prerender snapshots", () => {
     expect(html).toContain('href="https://smartaihub.app/docs/seo/ai-search-optimization"');
   });
 
+  it("renders localized and source-backed homepage content for Thai requests", () => {
+    const html = buildPublicSeoSnapshotHtml("/", "https://smartaihub.app", "th");
+
+    expect(html).toContain(`<h1>${PUBLIC_HOME_SEO.th.h1}</h1>`);
+    expect(html).toContain(PUBLIC_HOME_SEO.th.description);
+    expect(html).toContain("ซีรีส์แนวตั้ง");
+    expect(html).not.toContain("What outputs can SmartAIHub create?");
+  });
+
   it("does not inject snapshots into private or API routes", () => {
     expect(injectPublicSeoSnapshot(shell, "/admin/users")).toBe(shell);
     expect(injectPublicSeoSnapshot(shell, "/api/tenant/current")).toBe(shell);

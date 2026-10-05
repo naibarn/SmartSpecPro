@@ -76,7 +76,7 @@ describe("vite production static serving", () => {
     try {
       const app = express();
       serveStatic(app, publicRoot);
-      const response = await request(app).get("/");
+      const response = await request(app).get("/").set("Accept-Language", "en");
 
       expect(response.status).toBe(200);
       expect(response.text).toContain('<main id="smartaihub-prerender" data-seo-prerender="true">');

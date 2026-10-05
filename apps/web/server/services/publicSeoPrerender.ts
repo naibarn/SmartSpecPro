@@ -26,12 +26,12 @@ const routeSnapshots: Record<string, Omit<Snapshot, "path" | "links">> = {
     h1: PUBLIC_HOME_SEO.en.h1,
     sections: [
       {
-        heading: "What is SmartAIHub?",
-        body: productSummary,
+        heading: "Explore a creative workspace",
+        body: PUBLIC_HOME_SEO.en.description,
       },
       {
-        heading: "How does SmartAIHub help teams?",
-        body: "Visitors can browse public product information, documentation, media tools, and support resources.",
+        heading: "Vertical Series",
+        body: "Explore the public Vertical Series feature information and its existing sign-in entry.",
       },
     ],
     faqs: [
@@ -39,11 +39,6 @@ const routeSnapshots: Record<string, Omit<Snapshot, "path" | "links">> = {
         question: "What is SmartAIHub?",
         answer:
           "SmartAIHub provides public information about its product, documentation, and support.",
-      },
-      {
-        question: "What outputs can SmartAIHub create?",
-        answer:
-          "Use the public product pages to explore the currently listed SmartAIHub tools and resources.",
       },
     ],
   },
@@ -170,10 +165,29 @@ function titleFromPath(pathname: string): string {
     .join(" ");
 }
 
-function snapshotFor(pathname: string): Snapshot | null {
+function snapshotFor(pathname: string, language: "en" | "th" = "en"): Snapshot | null {
   if (!isPublicSeoPath(pathname)) return null;
 
-  const known = routeSnapshots[pathname];
+  const known =
+    pathname === "/" && language === "th"
+      ? {
+          ...routeSnapshots["/"],
+          title: PUBLIC_HOME_SEO.th.title,
+          description: PUBLIC_HOME_SEO.th.description,
+          h1: PUBLIC_HOME_SEO.th.h1,
+          sections: [
+            {
+              heading: "สำรวจพื้นที่ทำงานสร้างสรรค์",
+              body: PUBLIC_HOME_SEO.th.description,
+            },
+            {
+              heading: "ซีรีส์แนวตั้ง",
+              body: "ดูข้อมูลฟีเจอร์ซีรีส์แนวตั้งและทางเข้าสู่ระบบที่มีอยู่",
+            },
+          ],
+          faqs: [],
+        }
+      : routeSnapshots[pathname];
   const link = findIndexLink(pathname);
   const base = known || {
     ...fallbackSnapshot,
@@ -229,9 +243,13 @@ function jsonLdFor(snapshot: Snapshot, baseUrl: string): Array<Record<string, un
   return graph;
 }
 
-export function buildPublicSeoSnapshotHtml(originalUrl: string, baseUrl = "https://smartaihub.app"): string {
+export function buildPublicSeoSnapshotHtml(
+  originalUrl: string,
+  baseUrl = "https://smartaihub.app",
+  language: "en" | "th" = "en",
+): string {
   const pathname = normalizePath(originalUrl);
-  const snapshot = snapshotFor(pathname);
+  const snapshot = snapshotFor(pathname, language);
   if (!snapshot) return "";
 
   const canonical = `${baseUrl}${snapshot.path}`;
@@ -278,11 +296,16 @@ ${links}
 <meta name="description" content="${escapeHtml(snapshot.description)}" data-seo-prerender="true" />`;
 }
 
-export function injectPublicSeoSnapshot(html: string, originalUrl: string, baseUrl = "https://smartaihub.app"): string {
-  const snapshotHtml = buildPublicSeoSnapshotHtml(originalUrl, baseUrl);
+export function injectPublicSeoSnapshot(
+  html: string,
+  originalUrl: string,
+  baseUrl = "https://smartaihub.app",
+  language: "en" | "th" = "en",
+): string {
+  const snapshotHtml = buildPublicSeoSnapshotHtml(originalUrl, baseUrl, language);
   if (!snapshotHtml) return html;
 
-  const snapshot = snapshotFor(normalizePath(originalUrl));
+  const snapshot = snapshotFor(normalizePath(originalUrl), language);
   if (!snapshot) return html;
   const titleTag = `<title>${escapeHtml(snapshot.title)}</title>`;
   const titlePattern = /<title(?:\s[^>]*)?>[\s\S]*?<\/title>/i;

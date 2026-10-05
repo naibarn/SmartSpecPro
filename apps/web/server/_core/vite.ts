@@ -144,7 +144,11 @@ function resolveBaseUrl(req: { protocol?: string; hostname?: string; get?: (head
 export function injectRequestSeo(html: string, url: string, req: express.Request): string {
   const tenant = (req as express.Request & { tenant?: { name?: string; primaryDomain?: string } }).tenant;
   if (!tenant || tenant.primaryDomain?.trim().toLowerCase() === "smartaihub.app") {
-    return injectPublicSeoSnapshot(html, url, resolveBaseUrl(req));
+    const acceptLanguage = req.get("accept-language") || "";
+    const language = /(?:^|,)\s*th(?:-[a-z0-9]+)?(?:\s*[;,]|$)/i.test(acceptLanguage)
+      ? "th"
+      : "en";
+    return injectPublicSeoSnapshot(html, url, resolveBaseUrl(req), language);
   }
 
   const safeDomain = [tenant.primaryDomain?.trim().toLowerCase(), req.hostname?.trim().toLowerCase()]

@@ -104,6 +104,7 @@ List changed files, focused commands/results, browser viewport/state captures, s
 - `apps/web` full typecheck failed with 3,218 package diagnostics; no diagnostics matched the changed homepage/Features files. This does not satisfy the repository-wide typecheck gate.
 - Browser screenshot, responsive, screen-reader, keyboard, reduced-motion and public-crawl proof remain unavailable/unverified; Section 05 remains **partial**.
 - Follow-up source repair: production `express.static` served `/index.html` before the SEO fallback, leaving the root HTML without the existing semantic prerender snapshot. `serveStatic` now disables directory index handling and a focused regression verifies the root passes through that fallback. This backend change is integrated in source but awaits safe service source synchronization/restart; production no-JS proof is not yet claimed.
+- Refined the snapshot to match the current bilingual hero/Vertical Series public copy and removed an unsupported output FAQ. `Accept-Language` selects Thai for no-JS root requests. Focused Home/locale/Vite/prerender proof passes (4 suites / 25 tests); production activation remains pending.
 
 ## UI/UX Contract
 
