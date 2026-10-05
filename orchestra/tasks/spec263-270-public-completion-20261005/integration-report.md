@@ -1,11 +1,13 @@
 # Integration Report
 
-## Public homepage RCA repair — continuation in progress (2026-10-05)
-- Latest integrated baseline before this repair: `6c548c19b8963f5725db74210b94e43e60d874c6` on `origin/main`.
+## Public homepage RCA repair — deployed closeout (2026-10-05)
+- Latest code repair integrated: `1b813bf0cf7460e1ba0e1007271580d2ca90e04f` on `origin/main` (baseline `6c548c19b8963f5725db74210b94e43e60d874c6`).
 - Root cause: production served the shared service checkout's old homepage bundle (branch `codex/spec261-spaas-phase-a-20261005`, source `d6ef8f3...`); its Home asset hash matched the public response. The CDN was dynamic/no-store. A second latent issue accepted a global `tenantId=null` DB page for canonical SmartAIHub and overrode the new home after deployment.
 - Repair removes global-page acceptance at the client boundary; only exact tenant-owned, published pages may override their tenant site. Exact tenant lookup/API behavior is unchanged. Focused hook and Home suites passed 2 files / 16 tests on candidate.
-- Existing build dependency fixes were integrated at `6fa47dd...` and `6c548c1...`; isolated canonical build passed at `6c548c1...` before this repair. The final repair has not yet been integrated/rebuilt/deployed at the time this report was drafted.
-- No destructive mutation to the dirty service checkout, database migration, or production write occurred. Public live content is **not yet verified fixed**. Next action: promote repair, rebuild exact resulting `main` SHA, then perform a rollback-safe static artifact deployment and verify public Home bundle/hash plus tenant-isolation behavior. If backend compatibility cannot be established, stop deployment and hand off the specific blocker.
+- Focused hook/Home suites passed 2 files / 16 tests; `git diff --check` passed. Canonical build passed on exact repair SHA `1b813bf0...` at result file `/home/dev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/1b813bf0cf7460e1ba0e1007271580d2ca90e04f-a33c39ca-28cf-45bb-b915-4b7d52a9d9d7.json`.
+- Static artifact was deployed to `/home/dev/projects/SmartSpecPro/apps/web/dist/public`, copying assets first and atomically replacing `index.html`; rollback snapshot is `/home/dev/.cache/codex/deploy-backups/smartaihub-public-20261005T1948+0700`. The dirty service source checkout was preserved. Static assets serve fresh per request; service remained active and did not require restart.
+- Post-deploy public checks: `/features` returned HTTP 200; public `index-fvie897b.js` matched deployed SHA-256 `1e750e0ca1a322aff396fca4f4711b2bdaf853bf7b8e318a3c25acb5940bdeb2`; `Home-BnGBe32f.js` matched `8e021b364bd43da4fb27177bbe1e10f2ffb7c5d21dbcab60e502a38709ab0954`; `/api/tenant/current` identified `tenant-ZCSKEM9s` / `smartaihub.app`; the platform-scoped DB home is rejected by the exact-tenant client rule. Browser visual proof remains unverified because Chromium is unavailable.
+- No DB migration or write occurred. Main code + static runtime mismatch is repaired, but Specs 263/270 remain partial for external authority/provider/asset and browser/accessibility/crawl evidence. Whole-spec completion is not claimed.
 
 - Outcome: `CHECKPOINT_PROMOTED_PARTIAL`.
 - Reconciled `origin/main` before promotion: `58cafcfd60`.
