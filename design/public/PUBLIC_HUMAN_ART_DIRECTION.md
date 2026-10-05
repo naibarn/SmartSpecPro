@@ -2,7 +2,7 @@
 
 ## Active Home candidate
 
-The Home candidate uses one AI-generated editorial image of a person reviewing storyboard panels beside a laptop. It sits next to the code-rendered product-flow panel. The image is illustrative context only, not an actual SmartAIHub customer, employee, creator endorsement, product screenshot, or Film output. The prompt, original source, 480/768/1536px responsive WebP derivative hashes, user authorization, disclosure, and withdrawal path are recorded in `PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json`, `PUBLIC_HUMAN_ASSET_REGISTRY.json`, and `PUBLIC_HUMAN_PLACEMENT_MAP.json`.
+The Home candidate uses one AI-generated editorial image of a person reviewing storyboard panels beside a laptop. It sits next to the code-rendered product-flow panel. The image is illustrative context only, not an actual SmartAIHub customer, employee, creator endorsement, product screenshot, or Film output. The prompt, original source, 480/768/1020/1536px responsive WebP derivative hashes, user authorization, disclosure, and withdrawal path are recorded in `PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json`, `PUBLIC_HUMAN_ASSET_REGISTRY.json`, and `PUBLIC_HUMAN_PLACEMENT_MAP.json`.
 
 Use natural daylight, believable creative work, restrained styling, and a composition where the work artifact is visible. Avoid influencer posing, fake collaboration, staged endorsements, and invented product UI.
 

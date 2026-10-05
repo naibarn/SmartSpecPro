@@ -33,7 +33,7 @@ Use Astryx typography roles and spacing tokens. H1 uses `display-1` with balance
 
 ## Imagery and product evidence
 
-The Home hero pairs a generated editorial image (`public-home-human-editorial`) with the code-rendered product-flow panel in the same responsive sequence. The image has bilingual alt text and visible AI-generated/non-endorsement disclosure; it is never presented as a customer, employee, product screenshot, or Film proof. An image-load failure replaces the media region with localized text while retaining the product flow. The browser selects 480/768/1536px WebP derivatives through `srcset`/`sizes`; all variants preserve the same 3:2 center-safe frame, and desktop/tablet/mobile focal behavior is recorded. Source, prompt, derivative hashes and withdrawal details are in the human asset manifest. The asset remains a repository-owned candidate, not a Spec 270 native artifact approval.
+The Home hero pairs a generated editorial image (`public-home-human-editorial`) with the code-rendered product-flow panel in the same responsive sequence. The image has bilingual alt text and visible AI-generated/non-endorsement disclosure; it is never presented as a customer, employee, product screenshot, or Film proof. An image-load failure replaces the media region with localized text while retaining the product flow. The browser selects 480/768/1020/1536px WebP derivatives through `srcset`/`sizes`; all variants preserve the same 3:2 center-safe frame, and desktop/tablet/mobile focal behavior is recorded. Source, prompt, derivative hashes and withdrawal details are in the human asset manifest. The asset remains a repository-owned candidate, not a Spec 270 native artifact approval.
 
 ## Interaction and motion
 

@@ -53,6 +53,7 @@ describe("publicSite homepage contract", () => {
     for (const image of [
       "client/public/images/public-home-human-editorial-480.webp",
       "client/public/images/public-home-human-editorial-768.webp",
+      "client/public/images/public-home-human-editorial-1020.webp",
       "client/public/images/public-home-human-editorial.webp",
     ]) {
       expect(existsSync(webPath(image))).toBe(true);
@@ -72,6 +73,7 @@ describe("publicSite homepage contract", () => {
     expect(component).toContain("srcSet=");
     expect(component).toContain("public-home-human-editorial-480.webp 480w");
     expect(component).toContain("public-home-human-editorial-768.webp 768w");
+    expect(component).toContain("public-home-human-editorial-1020.webp 1020w");
     expect(component).toContain("sizes=");
     expect(component).toContain("(max-width: 45.99rem) calc(100vw - 4rem)");
     expect(component).toContain("(max-width: 80rem) calc((100vw - 6rem) / 2), 38.25rem");

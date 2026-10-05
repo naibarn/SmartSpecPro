@@ -1,6 +1,6 @@
 {
   "package": "smartaihub-public-web",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "patterns": [
     {
       "id": "outcome-hero",
@@ -36,7 +36,8 @@
       "intent": "pair people-centered creative context with a code-rendered product flow in the same hero sequence",
       "responsive": "right-side media/product stack wide; below copy/actions when narrow",
       "guardrail": "generated context is disclosed; no customer/employee/product proof is implied",
-      "evidence": "Spec 263 §5.6 and §5.11; generated asset manifest and browser evidence"
+      "evidence": "Spec 263 §5.6 and §5.11; generated asset manifest and browser evidence",
+      "version": "1.2.1"
     }
   ]
 }

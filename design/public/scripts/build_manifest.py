@@ -11,6 +11,7 @@ OUTPUT = ROOT / "PUBLIC_DESIGN_PACKAGE.json"
 PUBLIC_DERIVATIVES = [
     PROJECT_ROOT / "apps/web/client/public/images/public-home-human-editorial-480.webp",
     PROJECT_ROOT / "apps/web/client/public/images/public-home-human-editorial-768.webp",
+    PROJECT_ROOT / "apps/web/client/public/images/public-home-human-editorial-1020.webp",
     PROJECT_ROOT / "apps/web/client/public/images/public-home-human-editorial.webp",
 ]
 PACKAGE_FILES = sorted(
@@ -43,10 +44,10 @@ for relative_path in AUTHORITIES:
 canonical = json.dumps(files, ensure_ascii=False, separators=(",", ":")).encode()
 manifest = {
     "package": "smartaihub-public-web",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "aligned_with": "Spec 270 R1.4",
     "experience_authority": "Spec 263 revision 263.8",
-    "artifact_status": "repository-owned public UI candidate v1.2.0; awaits Spec 270 native artifact/catalog authority",
+    "artifact_status": "repository-owned public UI candidate v1.2.1; awaits Spec 270 native artifact/catalog authority",
     "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
     "package_digest": hashlib.sha256(canonical).hexdigest(),
     "files": files,
