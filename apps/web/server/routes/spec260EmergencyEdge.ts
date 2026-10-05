@@ -139,6 +139,8 @@ import {
   resolveSpec262PublicSpatialClass,
 } from "../services/spec262PublicSpatialProjection";
 
+const geographicSearch = createGeographicSearchService();
+
 async function readBoundedMapTile(
   response: globalThis.Response,
   maxBytes: number
@@ -706,7 +708,6 @@ async function createEmergencyEvidenceUpload(input: {
     });
     return { asset, duplicate: false };
   });
-  const geographicSearch = createGeographicSearchService();
   if (created === "idempotency_reused" || created === "not_found")
     return created;
   if (created === "quota") return "quota";
@@ -888,7 +889,7 @@ async function completeEmergencyEvidence(
         safeRecord(current.chainJson).verificationLeaseId === leaseId
       ) {
         const before = safeRecord(current.chainJson);
-        const after = {
+        const after: Record<string, unknown> = {
           ...before,
           phase: verified === "expired" ? "expired" : "pending",
           stagingCleanupPending: true,
@@ -935,7 +936,7 @@ async function completeEmergencyEvidence(
       .limit(1);
     if (prior) return "duplicate" as const;
     const now = new Date();
-    const after = {
+    const after: Record<string, unknown> = {
       ...before,
       phase: "available",
       stagingCleanupPending: true,
@@ -1102,7 +1103,10 @@ async function reconcileEmergencyEvidenceStaging(
       current.stagingCleanupLeaseId !== leaseId
     )
       return false;
-    const next = { ...current, stagingCleanupPending: false };
+    const next: Record<string, unknown> = {
+      ...current,
+      stagingCleanupPending: false,
+    };
     delete next.stagingCleanupLeaseId;
     delete next.stagingCleanupLeaseUntil;
     await tx
@@ -2493,14 +2497,12 @@ async function handleEmergencyRoute(
 
   switch (route.id) {
     case "public.claims": {
-      const rows = await getDb().execute(sql<
-        Array<{
+      const rows = await getDb().execute<{
           claimRef: string;
           summary: unknown;
           updatedAt: Date;
           revision: number;
-        }>
-      >`
+        }>(sql`
         SELECT c."claimRef", c."publicProjectionJson" AS summary, c."updatedAt", c."revision"
         FROM "emergency_intel_claims" c
         WHERE c."tenantId" = ${scopedTenant.id} AND c."status" = 'verified'
@@ -2993,7 +2995,6 @@ async function handleEmergencyRoute(
         if (partner.status !== parsed.data.expectedStatus)
           return "conflict" as const;
         if (
-          partner.status === "revoked" ||
           (partner.status === "pending" &&
             !["active", "revoked"].includes(parsed.data.status)) ||
           (partner.status === "active" &&
@@ -4940,8 +4941,7 @@ async function handleEmergencyRoute(
         res.setHeader("Retry-After", String(rate.retryAfterSeconds ?? 60));
         return reply(res, 429, { error: "MAP_VIEWPORT_RATE_LIMITED" });
       }
-      const situationRows = await getDb().execute(sql<
-        Array<{
+      const situationRows = await getDb().execute<{
           publicRef: string;
           status: string;
           severity: string;
@@ -4951,8 +4951,7 @@ async function handleEmergencyRoute(
           updatedAt: Date;
           observedAt: Date | null;
           freshUntil: Date | null;
-        }>
-      >`
+        }>(sql`
         SELECT "publicRef", "status", "severity", "publicProjectionJson",
           ST_Y(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "latitude",
           ST_X(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "longitude",
@@ -4963,8 +4962,7 @@ async function handleEmergencyRoute(
           AND ST_Intersects(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}), ST_MakeEnvelope(${bounds[0]}, ${bounds[1]}, ${bounds[2]}, ${bounds[3]}, 4326))
         ORDER BY "updatedAt" DESC LIMIT 301
       `);
-      const facilityRows = await getDb().execute(sql<
-        Array<{
+      const facilityRows = await getDb().execute<{
           publicRef: string;
           facilityType: string;
           status: string;
@@ -4974,8 +4972,7 @@ async function handleEmergencyRoute(
           longitude: number;
           updatedAt: Date;
           freshUntil: Date | null;
-        }>
-      >`
+        }>(sql`
         SELECT "publicRef", "facilityType", "status", "capacityClass", "publicProjectionJson",
           ST_Y(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "latitude",
           ST_X(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "longitude",
@@ -4986,8 +4983,7 @@ async function handleEmergencyRoute(
           AND ST_Intersects(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}), ST_MakeEnvelope(${bounds[0]}, ${bounds[1]}, ${bounds[2]}, ${bounds[3]}, 4326))
         ORDER BY "updatedAt" DESC LIMIT 301
       `);
-      const alertRows = await getDb().execute(sql<
-        Array<{
+      const alertRows = await getDb().execute<{
           publicRef: string;
           situationRef: string | null;
           situationPublicProjectionJson: unknown;
@@ -4999,8 +4995,7 @@ async function handleEmergencyRoute(
           longitude: number | null;
           issuedAt: Date | null;
           expiresAt: Date | null;
-        }>
-      >`
+        }>(sql`
         SELECT a."publicRef", s."publicRef" AS "situationRef", s."publicProjectionJson" AS "situationPublicProjectionJson", a."status", a."severity", a."messageJson", a."publicGeometryJson",
           ST_Y(ST_SnapToGrid(s."publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "latitude",
           ST_X(ST_SnapToGrid(s."publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "longitude",
@@ -5171,8 +5166,7 @@ async function handleEmergencyRoute(
         return reply(res, 429, { error: "SEARCH_RATE_LIMITED" });
       }
       const pattern = `%${query}%`;
-      const situationRows = await getDb().execute(sql<
-        Array<{
+      const situationRows = await getDb().execute<{
           publicRef: string;
           status: string;
           severity: string;
@@ -5181,8 +5175,7 @@ async function handleEmergencyRoute(
           longitude: number | null;
           updatedAt: Date;
           freshUntil: Date | null;
-        }>
-      >`
+        }>(sql`
         SELECT "publicRef", "status", "severity", "publicProjectionJson",
           ST_Y(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "latitude",
           ST_X(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "longitude",
@@ -5192,8 +5185,7 @@ async function handleEmergencyRoute(
           AND (COALESCE("publicProjectionJson"->>'summary', '') ILIKE ${pattern} OR "publicRef" ILIKE ${pattern})
         ORDER BY "updatedAt" DESC LIMIT 9
       `);
-      const facilityRows = await getDb().execute(sql<
-        Array<{
+      const facilityRows = await getDb().execute<{
           publicRef: string;
           facilityType: string;
           status: string;
@@ -5203,8 +5195,7 @@ async function handleEmergencyRoute(
           longitude: number | null;
           updatedAt: Date;
           freshUntil: Date | null;
-        }>
-      >`
+        }>(sql`
         SELECT "publicRef", "facilityType", "status", "capacityClass", "publicProjectionJson",
           ST_Y(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "latitude",
           ST_X(ST_SnapToGrid("publicLocation"::geometry, ${PUBLIC_LOCATION_GRID_DEGREES}))::float AS "longitude",
@@ -5214,16 +5205,14 @@ async function handleEmergencyRoute(
           AND (COALESCE("publicProjectionJson"->>'name', '') ILIKE ${pattern} OR COALESCE("publicProjectionJson"->>'description', '') ILIKE ${pattern})
         ORDER BY "updatedAt" DESC LIMIT 9
       `);
-      const alertRows = await getDb().execute(sql<
-        Array<{
+      const alertRows = await getDb().execute<{
           publicRef: string;
           status: string;
           severity: string;
           messageJson: unknown;
           issuedAt: Date | null;
           expiresAt: Date | null;
-        }>
-      >`
+        }>(sql`
         SELECT a."publicRef", a."status", a."severity", a."messageJson", a."issuedAt", a."expiresAt"
         FROM "emergency_public_alerts" a
         LEFT JOIN "emergency_situations" s ON s."id" = a."situationId" AND s."tenantId" = a."tenantId"
@@ -5553,9 +5542,11 @@ async function handleEmergencyRoute(
       const approximateLat = generalizeEmergencyPublicCoordinate(lat);
       const approximateLng = generalizeEmergencyPublicCoordinate(lng);
       const radiusMeters = 5_000;
-      const rows = await getDb().execute(sql<
-        Array<{ publicRef: string; hazard: string; status: string }>
-      >`
+      const rows = await getDb().execute<{
+        publicRef: string;
+        hazard: string;
+        status: string;
+      }>(sql`
         SELECT "publicRef", "severity" AS hazard, "status"
         FROM "emergency_situations"
         WHERE "publicLocation" IS NOT NULL
@@ -8440,8 +8431,7 @@ async function handleEmergencyRoute(
             });
     }
     case "operations.command.cases": {
-      const rows = await getDb().execute(sql<
-        Array<{
+      const rows = await getDb().execute<{
           id: string;
           reportId: string | null;
           status: string;
@@ -8455,8 +8445,7 @@ async function handleEmergencyRoute(
           observedAt: Date | null;
           createdAt: Date;
           updatedAt: Date;
-        }>
-      >`
+        }>(sql`
         SELECT c."id", c."reportId", c."status", c."revision", r."reportType" AS "hazardType",
           r."summary", c."caseContextJson"->'triage'->>'jurisdictionRef' AS "jurisdictionRef", r."locationDisclosure", ST_Y(r."exactLocation"::geometry) AS "locationLatitude",
           ST_X(r."exactLocation"::geometry) AS "locationLongitude", r."observedAt",

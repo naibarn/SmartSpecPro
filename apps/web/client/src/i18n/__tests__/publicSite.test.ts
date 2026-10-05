@@ -9,7 +9,7 @@ describe("publicSite homepage contract", () => {
     expect(Object.keys(th).sort()).toEqual(Object.keys(en).sort());
   });
 
-  it("uses neutral, matching public metadata in the app and crawler snapshot", () => {
+  it("keeps public metadata consistent between the app and crawler snapshot", () => {
     for (const [locale, source] of [
       [en, PUBLIC_HOME_SEO.en],
       [th, PUBLIC_HOME_SEO.th],
@@ -30,6 +30,15 @@ describe("publicSite homepage contract", () => {
       `<meta data-rh="true" name="description" content="${PUBLIC_HOME_SEO.en.description}"`
     );
     expect(staticShell).not.toContain("dashboard-preview.jpg");
+  });
+
+  it("leads with a supported creation outcome instead of generic product information", () => {
+    expect(en["homePublic.title"]).toBe("Start with the work you want to create");
+    expect(th["homePublic.title"]).toBe("เริ่มจากงานที่คุณอยากสร้าง");
+    expect(en["homePublic.description"]).toMatch(/chat, media creation, and presentations/i);
+    expect(th["homePublic.description"]).toMatch(/แชต สร้างสื่อ และงานนำเสนอ/);
+    expect(en["homePublic.title"]).not.toMatch(/product information/i);
+    expect(th["homePublic.title"]).not.toMatch(/ข้อมูลผลิตภัณฑ์/);
   });
 
   it("keeps the homepage copy clear of unverified capability and retired workflow claims", () => {

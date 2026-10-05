@@ -65,6 +65,21 @@ interface TenantContextValue {
 
 const TenantContext = createContext<TenantContextValue | undefined>(undefined);
 
+const defaultTheme: TenantTheme = {
+  primaryColor: "#2563eb",
+  secondaryColor: "#06b6d4",
+  accentColor: "#14b8a6",
+  backgroundColor: "#ffffff",
+  textColor: "#0f172a",
+  fontFamily: "Inter, system-ui, sans-serif",
+  headingFont: "Inter, system-ui, sans-serif",
+  layout: "modern",
+  headerStyle: "blur",
+  footerStyle: "detailed",
+  buttonStyle: "rounded",
+  cardStyle: "elevated",
+};
+
 export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,18 +92,35 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        setTenant(data.tenant);
+        const tenantData = data?.tenant as Partial<Tenant> | undefined;
+        if (!tenantData || typeof tenantData.name !== "string") return;
+
+        const theme = { ...defaultTheme, ...(tenantData.theme || {}) };
+        const seo: TenantSeo = {
+          ...tenantData.seo,
+          defaultTitle: tenantData.seo?.defaultTitle || tenantData.name,
+          defaultDescription: tenantData.seo?.defaultDescription || "",
+          defaultKeywords: tenantData.seo?.defaultKeywords || [],
+          twitterCard: tenantData.seo?.twitterCard || "summary_large_image",
+        };
+        const normalizedTenant = {
+          ...tenantData,
+          theme,
+          seo,
+          settings: tenantData.settings || {},
+        } as Tenant;
+        setTenant(normalizedTenant);
 
         // Apply theme to document
-        applyTheme(data.tenant.theme);
+        applyTheme(theme);
 
         // Update favicon if available
-        if (data.tenant.faviconUrl) {
-          updateFavicon(data.tenant.faviconUrl);
+        if (normalizedTenant.faviconUrl) {
+          updateFavicon(normalizedTenant.faviconUrl);
         }
 
         // Update page title
-        document.title = data.tenant.seo.defaultTitle || data.tenant.name;
+        document.title = seo.defaultTitle;
       }
     } catch (error) {
       console.error("Failed to fetch tenant:", error);
@@ -100,21 +132,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchTenant();
   }, []);
-
-  const defaultTheme: TenantTheme = {
-    primaryColor: "#2563eb",
-    secondaryColor: "#06b6d4",
-    accentColor: "#14b8a6",
-    backgroundColor: "#ffffff",
-    textColor: "#0f172a",
-    fontFamily: "Inter, system-ui, sans-serif",
-    headingFont: "Inter, system-ui, sans-serif",
-    layout: "modern",
-    headerStyle: "blur",
-    footerStyle: "detailed",
-    buttonStyle: "rounded",
-    cardStyle: "elevated",
-  };
 
   return (
     <TenantContext.Provider

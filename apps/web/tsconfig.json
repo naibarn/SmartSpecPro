@@ -9,7 +9,8 @@
     "skills/**/*",
     "vite.config.ts",
     "../../packages/ui/src/**/*",
-    "../../packages/local-ai-core/src/**/*"
+    "../../packages/local-ai-core/src/**/*",
+    "../../packages/shared/src/**/*"
   ],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
   "compilerOptions": {

@@ -98,6 +98,10 @@ function isFiniteNumber(value: unknown, minimum: number, maximum: number): value
   return typeof value === "number" && Number.isFinite(value) && value >= minimum && value <= maximum;
 }
 
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value);
+}
+
 function parseViewport(value: unknown): FeedFocusViewport | undefined {
   if (!isPlainRecord(value) || !hasOnlyKeys(value, ["west", "south", "east", "north"]) ||
     !isFiniteNumber(value.west, -180, 180) || !isFiniteNumber(value.east, -180, 180) ||
@@ -107,11 +111,12 @@ function parseViewport(value: unknown): FeedFocusViewport | undefined {
 }
 
 function parseReference(value: unknown): FeedFocusReference | undefined {
+  const revision = isPlainRecord(value) ? value.revision : undefined;
   if (!isPlainRecord(value) || !hasOnlyKeys(value, ["kind", "id", "revision"]) ||
     typeof value.kind !== "string" || !REF_KIND.test(value.kind) ||
     typeof value.id !== "string" || !REF_ID.test(value.id) ||
-    !Number.isSafeInteger(value.revision) || value.revision < 1 || value.revision > 2_147_483_647) return undefined;
-  return { kind: value.kind, id: value.id, revision: value.revision };
+    !isSafeInteger(revision) || revision < 1 || revision > 2_147_483_647) return undefined;
+  return { kind: value.kind, id: value.id, revision };
 }
 
 function isReferenceRequired(mode: FeedFocusMode): boolean {
@@ -137,9 +142,9 @@ export function parseFeedFocusRequest(value: unknown): FeedFocusRequest | undefi
   const viewport = parseViewport(value.viewport);
   const focusRef = value.focusRef === undefined ? undefined : parseReference(value.focusRef);
   const cursor = value.cursor === undefined ? undefined : typeof value.cursor === "string" && CURSOR.test(value.cursor) ? value.cursor : undefined;
-  const limit = value.limit === undefined ? DEFAULT_LIMIT : value.limit;
+  const limit = value.limit === undefined ? DEFAULT_LIMIT : typeof value.limit === "number" ? value.limit : undefined;
   if (!viewport || (value.focusRef !== undefined && !focusRef) || (value.cursor !== undefined && !cursor) ||
-    !Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT || !supportsFocusMode(value.mode as FeedFocusMode, focusRef)) return undefined;
+    limit === undefined || !Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT || !supportsFocusMode(value.mode as FeedFocusMode, focusRef)) return undefined;
 
   return {
     version: 1,

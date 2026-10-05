@@ -9,7 +9,27 @@ export * from "./helperAvailability";
 export * from "./protocolPacks";
 export * from "./federation";
 export * from "./geospatialPrivacy";
-export * from "./feedFocus";
+export {
+  type FeedFocusMode,
+  type ViewportZoomClass,
+  type FeedFocusSource,
+  type FeedSpatialClassification,
+  type FeedRelevanceReason as FeedFocusRelevanceReason,
+  type FeedFocusViewport,
+  type FeedFocusReference,
+  type FeedFocusRequest,
+  type ViewportZoomThreshold,
+  type FeedImpactExtension,
+  type FeedFocusEnvelope,
+  type FeedFocusRefreshPolicy,
+  type SettledViewportDecision,
+  parseFeedFocusRequest,
+  classifyViewportZoom,
+  viewportOverlapRatio,
+  shouldRefreshFeedFocus,
+  ViewportIntentStabilizer,
+  parseFeedFocusEnvelope,
+} from "./feedFocus";
 export * from "./feedSemantics";
 export * from "./geospatialWatches";
 export * from "./hydroImpactGraph";

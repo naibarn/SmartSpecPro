@@ -25,6 +25,18 @@ export default function SubtitleEditorPanel({ onQueueOperation, assetIds = [] }:
     if (!parsed.length) { setStatus('ไม่พบ cue ที่ถูกต้องในไฟล์'); return; }
     setCues(parsed); setStatus(`นำเข้า ${parsed.length} cue แล้ว`);
   };
+  const queueSubtitleAlignment = async () => {
+    if (!onQueueOperation) {
+      setStatus('Worker handoff ยังไม่พร้อม');
+      return;
+    }
+    try {
+      await onQueueOperation('media.align', { format, burnIn, cueCount: cues.length }, assetIds.filter((asset) => asset.type !== 'image').slice(0, 1).map((asset) => asset.id));
+      setStatus('ส่ง subtitle alignment แล้ว');
+    } catch (error: unknown) {
+      setStatus(error instanceof Error ? error.message : 'ส่ง subtitle ไม่สำเร็จ');
+    }
+  };
   return <section style={panelStyle} aria-label="Subtitle editor">
     <h3 style={{ margin: '0 0 6px', color: '#fff', fontSize: 15 }}>💬 สร้าง Subtitle</h3>
     <p style={{ margin: '0 0 10px', color: '#999' }}>รองรับสร้างเอง, import/export SRT/VTT และเลือก sidecar หรือ burn-in ตอน render</p>
@@ -33,7 +45,7 @@ export default function SubtitleEditorPanel({ onQueueOperation, assetIds = [] }:
     {cues.map((cue, index) => <div key={cue.id} style={{ display: 'grid', gridTemplateColumns: '60px 60px 1fr auto', gap: 5, marginBottom: 6 }}><input aria-label={`เริ่ม cue ${index + 1}`} style={fieldStyle} type="number" min={0} step={0.1} value={cue.start} onChange={(event) => setCues((items) => items.map((item) => item.id === cue.id ? { ...item, start: Number(event.target.value) } : item))} /><input aria-label={`จบ cue ${index + 1}`} style={fieldStyle} type="number" min={0} step={0.1} value={cue.end} onChange={(event) => setCues((items) => items.map((item) => item.id === cue.id ? { ...item, end: Number(event.target.value) } : item))} /><input aria-label={`ข้อความ cue ${index + 1}`} style={fieldStyle} value={cue.text} onChange={(event) => setCues((items) => items.map((item) => item.id === cue.id ? { ...item, text: event.target.value } : item))} placeholder="ข้อความ subtitle" /><button type="button" style={secondaryActionStyle} aria-label={`ลบ cue ${index + 1}`} onClick={() => setCues((items) => items.filter((item) => item.id !== cue.id))}>ลบ</button></div>)}
     <button type="button" style={secondaryActionStyle} onClick={() => setCues((items) => [...items, { id: `cue-${Date.now()}`, start: items.at(-1)?.end || 0, end: (items.at(-1)?.end || 0) + 2, text: '' }])}>+ เพิ่ม cue</button>
     <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}><input type="checkbox" checked={burnIn} onChange={(event) => setBurnIn(event.target.checked)} /> Burn-in ในวิดีโอ (ไม่เลือก = sidecar)</label>
-    <button type="button" style={{ ...actionStyle, marginTop: 9 }} onClick={() => { if (!onQueueOperation) { setStatus('Worker handoff ยังไม่พร้อม'); return; } void onQueueOperation('media.align', { format, burnIn, cueCount: cues.length }, assetIds.filter((asset) => asset.type !== 'image').slice(0, 1).map((asset) => asset.id)).then(() => setStatus('ส่ง subtitle alignment แล้ว')).catch((error) => setStatus(error instanceof Error ? error.message : 'ส่ง subtitle ไม่สำเร็จ')); }}>ส่ง subtitle alignment เข้า Worker</button>
+    <button type="button" style={{ ...actionStyle, marginTop: 9 }} onClick={() => void queueSubtitleAlignment()}>ส่ง subtitle alignment เข้า Worker</button>
     <p role="status" aria-live="polite" style={{ color: hasInvalid ? '#ff9b9b' : '#9bd7ff', marginTop: 9 }}>{status}</p>
   </section>;
 }

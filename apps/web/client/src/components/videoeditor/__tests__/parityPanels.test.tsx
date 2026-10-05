@@ -53,6 +53,20 @@ describe('web editor parity panels', () => {
     expect(screen.getByRole('heading', { name: /อัดเสียง/ })).toBeTruthy();
   });
 
+  it('queues subtitle alignment and reports success when the queue accepts synchronous callbacks', async () => {
+    const queue = vi.fn();
+    render(<SubtitleEditorPanel onQueueOperation={queue} assetIds={[{ id: 'asset-1', name: 'clip.mp4', type: 'video' }]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'ส่ง subtitle alignment เข้า Worker' }));
+
+    await waitFor(() => expect(queue).toHaveBeenCalledWith(
+      'media.align',
+      expect.objectContaining({ format: 'srt', burnIn: false, cueCount: 1 }),
+      ['asset-1'],
+    ));
+    expect(screen.getByRole('status').textContent).toBe('ส่ง subtitle alignment แล้ว');
+  });
+
   it('queues a sanitized stock SVG instead of executing arbitrary code', async () => {
     const queue = vi.fn().mockResolvedValue(undefined);
     render(<SymbolCatalogPanel onQueueOperation={queue} />);

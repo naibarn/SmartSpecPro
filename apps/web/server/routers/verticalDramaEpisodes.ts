@@ -834,6 +834,7 @@ import {
   markEnhancedVideoPromptVariantsStale,
   invalidateVideoPromptVariantsOnInputChange,
   validateVideoPromptVariantForApply,
+  videoPromptVariantStoreSchema,
   type VideoPromptVariantId,
   type VideoPromptVariantStore,
 } from "@shared/verticalDramaSeries/videoPromptVariants";
@@ -2577,7 +2578,6 @@ async function loadOwnedEpisodeBroll(
     storageKey: string | null;
     status: string;
     mimeType: string | null;
-    durationMs: number | null;
   }> = mediaIds.length
     ? await db
         .select({
@@ -2585,7 +2585,6 @@ async function loadOwnedEpisodeBroll(
           storageKey: mediaAssets.storageKey,
           status: mediaAssets.status,
           mimeType: mediaAssets.mimeType,
-          durationMs: mediaAssets.durationMs,
         })
         .from(mediaAssets)
         .where(
@@ -2640,11 +2639,10 @@ async function loadOwnedEpisodeBroll(
     rightsStatus: slot.rightsStatus,
     disclosureStatus: slot.disclosureStatus,
     origin: "source_pack",
-    durationSeconds:
-      slot.mediaAssetId != null &&
-      mediaById.get(slot.mediaAssetId)?.durationMs != null
-        ? Number(mediaById.get(slot.mediaAssetId)!.durationMs) / 1000
-        : null,
+    // `media_assets` does not persist an authoritative media duration. A
+    // source-pack segment only describes its selected range, not the full
+    // source asset, so it must not be presented as a total duration.
+    durationSeconds: null,
   }));
   if (footageMediaId > 0) {
     const footageUrl = urlsByAssetId.get(footageMediaId);
@@ -2665,10 +2663,9 @@ async function loadOwnedEpisodeBroll(
       rightsStatus: "creator_owned",
       disclosureStatus: "not_required",
       origin: "episode_footage",
-      durationSeconds: (() => {
-        const durationMs = mediaById.get(footageMediaId)?.durationMs;
-        return durationMs == null ? null : Number(durationMs) / 1000;
-      })(),
+      // The footage contract records source provenance, not a source duration.
+      // Keep this unknown until the canonical asset metadata supplies one.
+      durationSeconds: null,
     });
   }
   const sourceBySlotId = new Map(
@@ -3030,23 +3027,24 @@ async function reconcilePersistedStartFrameTasks(
   );
   if (pendingTaskIds.length === 0) return null;
 
-  const artifactRows = await db
-    .select({
-      sourceTaskId: mediaTaskArtifacts.sourceTaskId,
-      mediaAssetId: mediaTaskArtifacts.mediaAssetId,
-    })
-    .from(mediaTaskArtifacts)
-    .where(
-      and(
-        eq(mediaTaskArtifacts.tenantId, owner.tenantId),
-        eq(mediaTaskArtifacts.userId, owner.userId),
-        inArray(mediaTaskArtifacts.sourceTaskId, pendingTaskIds),
-        eq(mediaTaskArtifacts.outputIndex, 0),
-        eq(mediaTaskArtifacts.mediaType, "image"),
-        eq(mediaTaskArtifacts.r2Status, "ready"),
-        isNotNull(mediaTaskArtifacts.mediaAssetId)
-      )
-    );
+  const artifactRows: Array<{ sourceTaskId: string; mediaAssetId: number | null }> =
+    await db
+      .select({
+        sourceTaskId: mediaTaskArtifacts.sourceTaskId,
+        mediaAssetId: mediaTaskArtifacts.mediaAssetId,
+      })
+      .from(mediaTaskArtifacts)
+      .where(
+        and(
+          eq(mediaTaskArtifacts.tenantId, owner.tenantId),
+          eq(mediaTaskArtifacts.userId, owner.userId),
+          inArray(mediaTaskArtifacts.sourceTaskId, pendingTaskIds),
+          eq(mediaTaskArtifacts.outputIndex, 0),
+          eq(mediaTaskArtifacts.mediaType, "image"),
+          eq(mediaTaskArtifacts.r2Status, "ready"),
+          isNotNull(mediaTaskArtifacts.mediaAssetId)
+        )
+      );
   if (artifactRows.length === 0) return null;
 
   const candidateAssetIds = artifactRows
@@ -3057,7 +3055,7 @@ async function reconcilePersistedStartFrameTasks(
   // Validate the referenced asset separately. The artifact row is owner
   // scoped, but the asset id must also be owner scoped and ready before it can
   // become the episode's approved frame.
-  const readyAssets = await db
+  const readyAssets: Array<{ id: number }> = await db
     .select({ id: mediaAssets.id })
     .from(mediaAssets)
     .where(
@@ -3268,7 +3266,6 @@ async function resolveOwnedShotBrollBinding(input: {
         status: mediaAssets.status,
         storageKey: mediaAssets.storageKey,
         mimeType: mediaAssets.mimeType,
-        durationMs: mediaAssets.durationMs,
       })
       .from(mediaAssets)
       .where(
@@ -3297,19 +3294,9 @@ async function resolveOwnedShotBrollBinding(input: {
           message: "Selected episode footage must be a video",
         });
       }
-      if (
-        mediaAsset.durationMs != null &&
-        (usage.inSeconds == null ||
-          usage.outSeconds == null ||
-          usage.inSeconds < 0 ||
-          usage.outSeconds > Number(mediaAsset.durationMs) / 1000)
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "Direct footage B-roll bounds exceed the source video duration",
-        });
-      }
+      // `media_assets` currently has no authoritative duration field. Keep
+      // the normal range validation in `validateBrollBinding`, but do not
+      // invent an upper bound from a selected source segment or file size.
     }
   }
 
@@ -18699,7 +18686,7 @@ export const verticalDramaEpisodesRouter = router({
         ]),
         status: "configured" as const,
       };
-      const updatedFrame = {
+      const updatedFrame: VerticalDramaStartFramePlan["frames"][number] = {
         ...(prior ?? {
           shotNumber: input.shotNumber,
           imagePrompt: "",
@@ -19036,7 +19023,10 @@ export const verticalDramaEpisodesRouter = router({
           tenantId,
           userId,
           seriesId,
-          { locationKey: input.locationKey }
+          // The exact key lookup remains authoritative. Supplying the key as
+          // the display-name fallback only satisfies the shared identity
+          // contract when a legacy roster needs name-based resolution.
+          { locationKey: input.locationKey, name: input.locationKey }
         );
         if (!locationRow) {
           throw new TRPCError({
@@ -19101,7 +19091,7 @@ export const verticalDramaEpisodesRouter = router({
           continue;
         }
 
-        const updatedFrame = {
+        const updatedFrame: VerticalDramaStartFramePlan["frames"][number] = {
           ...current,
           locationVariantId: input.locationVariantId ?? undefined,
           approvedMediaAssetId: undefined,
@@ -20958,10 +20948,14 @@ export const verticalDramaEpisodesRouter = router({
         const temporalGuard = applyStartFrameTemporalPromptGuard({
           prompt: softenedImagePrompt,
           negativePrompt: softenedNegativePrompt,
-          canonicalShotSummary:
-            frame.canonicalShotSummary ??
-            storyboardForComposition?.visual_description ??
+          canonicalShotSummary: [
+            frame.canonicalShotSummary,
+            storyboardForComposition?.visual_description,
             storyboardForComposition?.action,
+          ].find(
+            (value): value is string =>
+              typeof value === "string" && value.trim().length > 0
+          ),
         });
         softenedImagePrompt = temporalGuard.prompt;
         softenedNegativePrompt = temporalGuard.negativePrompt;
@@ -21580,84 +21574,91 @@ export const verticalDramaEpisodesRouter = router({
           sceneNeighborAnchorsEnabled) &&
         Array.isArray(plan.frames)
       ) {
-        const persistedPlan = await db.transaction(async tx => {
-          const [freshRow] = await tx
-            .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
-            .from(verticalDramaEpisodes)
-            .where(
-              and(
-                eq(verticalDramaEpisodes.id, episodeId),
-                eq(verticalDramaEpisodes.tenantId, tenantId),
-                eq(verticalDramaEpisodes.userId, userId),
-                eq(verticalDramaEpisodes.seriesId, seriesId)
+        // `plan` is established by the precondition above. Capture the
+        // narrowed value before the async transaction so a concurrent
+        // refresh cannot widen this local fallback to `null`.
+        const establishedPlan = plan;
+        const persistedPlan = await db.transaction<VerticalDramaStartFramePlan>(
+          async tx => {
+            const [freshRow] = await tx
+              .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+              .from(verticalDramaEpisodes)
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episodeId),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
               )
-            )
-            .for("update")
-            .limit(1);
-          const freshPlan =
-            freshRow?.startFramePlan as VerticalDramaStartFramePlan | null;
-          const freshFrames = Array.isArray(freshPlan?.frames)
-            ? freshPlan.frames.slice()
-            : plan.frames.slice();
-          const freshIndex = freshFrames.findIndex(
-            candidate => candidate.shotNumber === input.shotNumber
-          );
-          const freshFrame = freshIndex >= 0 ? freshFrames[freshIndex] : frame;
-          const updatedFrame = {
-            ...freshFrame,
-            ...(imagePromptQc.prompt !== currentRolePrompt ||
-            recoveredPromptHandoff
-              ? frameRole === "stop"
-                ? {
-                    stopFramePrompt: imagePromptQc.prompt,
-                    stopFramePromptHash: sha256Prompt(imagePromptQc.prompt),
-                  }
-                : {
-                    imagePrompt: imagePromptQc.prompt,
-                    imagePromptHash: sha256Prompt(imagePromptQc.prompt),
-                  }
-              : {}),
-            ...(frameRole === "stop"
-              ? { stopFrameNegativePrompt: "" }
-              : { negativePrompt: "" }),
-          };
-          if (sceneNeighborAnchorsEnabled) {
-            if (sceneNeighborAnchor) {
-              updatedFrame.sceneAnchor = {
-                anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
-                mediaAssetId: sceneNeighborAnchor.mediaAssetId,
-                source: sceneNeighborAnchor.source,
-                attachedAt: new Date().toISOString(),
-              };
-            } else {
-              delete updatedFrame.sceneAnchor;
-            }
-          }
-          if (freshIndex >= 0) freshFrames[freshIndex] = updatedFrame;
-          else {
-            freshFrames.push(updatedFrame);
-            freshFrames.sort((a, b) => a.shotNumber - b.shotNumber);
-          }
-          const updatedPlan = {
-            ...(freshPlan ?? plan),
-            frames: freshFrames,
-          };
-          await tx
-            .update(verticalDramaEpisodes)
-            .set({
-              startFramePlan: updatedPlan,
-              updatedAt: new Date(),
-            })
-            .where(
-              and(
-                eq(verticalDramaEpisodes.id, episodeId),
-                eq(verticalDramaEpisodes.tenantId, tenantId),
-                eq(verticalDramaEpisodes.userId, userId),
-                eq(verticalDramaEpisodes.seriesId, seriesId)
-              )
+              .for("update")
+              .limit(1);
+            const freshPlan =
+              freshRow?.startFramePlan as VerticalDramaStartFramePlan | null;
+            const freshFrames = Array.isArray(freshPlan?.frames)
+              ? freshPlan.frames.slice()
+              : establishedPlan.frames.slice();
+            const freshIndex = freshFrames.findIndex(
+              candidate => candidate.shotNumber === input.shotNumber
             );
-          return updatedPlan;
-        });
+            const freshFrame =
+              freshIndex >= 0 ? freshFrames[freshIndex] : frame;
+            const updatedFrame = {
+              ...freshFrame,
+              ...(imagePromptQc.prompt !== currentRolePrompt ||
+              recoveredPromptHandoff
+                ? frameRole === "stop"
+                  ? {
+                      stopFramePrompt: imagePromptQc.prompt,
+                      stopFramePromptHash: sha256Prompt(imagePromptQc.prompt),
+                    }
+                  : {
+                      imagePrompt: imagePromptQc.prompt,
+                      imagePromptHash: sha256Prompt(imagePromptQc.prompt),
+                    }
+                : {}),
+              ...(frameRole === "stop"
+                ? { stopFrameNegativePrompt: "" }
+                : { negativePrompt: "" }),
+            };
+            if (sceneNeighborAnchorsEnabled) {
+              if (sceneNeighborAnchor) {
+                updatedFrame.sceneAnchor = {
+                  anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
+                  mediaAssetId: sceneNeighborAnchor.mediaAssetId,
+                  source: sceneNeighborAnchor.source,
+                  attachedAt: new Date().toISOString(),
+                };
+              } else {
+                delete updatedFrame.sceneAnchor;
+              }
+            }
+            if (freshIndex >= 0) freshFrames[freshIndex] = updatedFrame;
+            else {
+              freshFrames.push(updatedFrame);
+              freshFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+            }
+            const updatedPlan: VerticalDramaStartFramePlan = {
+              ...(freshPlan ?? establishedPlan),
+              frames: freshFrames,
+            };
+            await tx
+              .update(verticalDramaEpisodes)
+              .set({
+                startFramePlan: updatedPlan,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episodeId),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
+              );
+            return updatedPlan;
+          }
+        );
         plan = persistedPlan;
         frameIndex = plan.frames.findIndex(
           candidate => candidate.shotNumber === input.shotNumber
@@ -29877,13 +29878,27 @@ export const verticalDramaEpisodesRouter = router({
           durationSeconds: storyboardShot?.durationSeconds ?? 8,
           dialogue: result.dialogue,
         };
-        const preservedCollapsedClip = matchingClip
-          ? preserveVideoPromptVariantsOnLegacyReplacement({
-              previousClip: matchingClip as unknown as Record<string, unknown>,
-              nextClip: collapsedClip,
-              selectedVideoModelId: pack.selectedVideoModelId,
-            })
-          : collapsedClip;
+        const preservedVariantStore = matchingClip
+          ? videoPromptVariantStoreSchema.safeParse(
+              preserveVideoPromptVariantsOnLegacyReplacement({
+                previousClip: matchingClip,
+                nextClip: collapsedClip,
+                selectedVideoModelId: pack.selectedVideoModelId,
+              }).videoPromptVariants
+            )
+          : null;
+        if (preservedVariantStore && !preservedVariantStore.success) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Video prompt variant history is invalid",
+          });
+        }
+        const preservedCollapsedClip = {
+          ...collapsedClip,
+          ...(preservedVariantStore?.success
+            ? { videoPromptVariants: preservedVariantStore.data }
+            : {}),
+        };
         const updatedClips = [...remainingClips, preservedCollapsedClip];
         updatedPack = { ...pack, clips: updatedClips };
       } else {
@@ -32054,7 +32069,16 @@ export const verticalDramaEpisodesRouter = router({
           : []),
         ...referenceRows.map(row => row.assetId),
       ];
-      const workerAssetRows =
+      const workerAssetRows: Array<{
+        id: number;
+        storageKey: string;
+        checksumSha256: string | null;
+        width: number | null;
+        height: number | null;
+        mimeType: string;
+        status: string | null;
+        updatedAt: Date | null;
+      }> =
         workerAssetIds.length > 0
           ? await db
               .select({

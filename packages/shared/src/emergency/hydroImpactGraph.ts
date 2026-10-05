@@ -117,7 +117,7 @@ function readLimit(value: number | undefined, fallback: number): number {
   return Math.min(value, MAX_LIMIT);
 }
 
-function sortUnique(values: Iterable<string>): readonly string[] {
+function sortUnique<T extends string>(values: Iterable<T>): readonly T[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }
 

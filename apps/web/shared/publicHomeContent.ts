@@ -1,27 +1,29 @@
 export const PUBLIC_HOME_SEO = {
   en: {
-    title: "SmartAIHub | Product Information",
-    h1: "Product information and resources",
+    title: "SmartAIHub | Create with AI",
+    h1: "Start with the work you want to create",
     description:
-      "Explore SmartAIHub product information, documentation, media tools, and support.",
+      "Explore SmartAIHub tools for chat, media creation, and presentations, with guides and support when you need them.",
     keywords: [
       "SmartAIHub",
-      "product information",
+      "AI creation tools",
+      "media creation",
+      "presentations",
       "documentation",
-      "media tools",
       "support",
     ],
   },
   th: {
-    title: "SmartAIHub | ข้อมูลผลิตภัณฑ์",
-    h1: "ข้อมูลผลิตภัณฑ์และแหล่งข้อมูล",
+    title: "SmartAIHub | สร้างสรรค์ผลงานด้วย AI",
+    h1: "เริ่มจากงานที่คุณอยากสร้าง",
     description:
-      "สำรวจข้อมูลผลิตภัณฑ์ เอกสาร เครื่องมือสื่อ และช่องทางติดต่อของ SmartAIHub",
+      "สำรวจเครื่องมือของ SmartAIHub สำหรับแชต สร้างสื่อ และงานนำเสนอ พร้อมคู่มือและช่องทางช่วยเหลือ",
     keywords: [
       "SmartAIHub",
-      "ข้อมูลผลิตภัณฑ์",
+      "เครื่องมือ AI",
+      "สร้างสื่อ",
+      "งานนำเสนอ",
       "เอกสาร",
-      "เครื่องมือสื่อ",
       "ติดต่อ",
     ],
   },

@@ -328,6 +328,7 @@ export function composeLocalSituationFeed(
       policyVersion: FEED_POLICY_VERSION,
       score: scoreCandidate(candidate),
       reasons: orderedReasons(candidate),
+      lane,
       publicRef: source.publicRef,
       title: source.title.trim().slice(0, 200),
       status: source.status.slice(0, 32),

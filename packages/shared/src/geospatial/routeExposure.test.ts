@@ -11,7 +11,7 @@ describe("route exposure contract", () => {
     });
     expect(result.availability).toBe("closed");
     expect(result.clearance).toBe("unknown");
-    expect(result.enrichment.originalGeometryId).toBe("report-geometry:44");
+    expect(result.enrichment).toEqual(expect.objectContaining({ originalGeometryId: "report-geometry:44" }));
   });
 
   it("does not promote an open route into evacuation capacity", () => {

@@ -51,7 +51,7 @@ export function getSafeErrorCopy(error: EditorErrorProjection, language: EditorL
   return { title: error.message, detail: error.detail };
 }
 
-export function formatRevision(revision?: number, revisionId?: string, language: EditorLanguage = 'th'): string {
+export function formatRevision(revision?: number, revisionId?: string | null, language: EditorLanguage = 'th'): string {
   if (revision === undefined && !revisionId) return language === 'th' ? 'ยังไม่มี revision' : 'No revision yet';
   const numberPart = revision === undefined ? '' : `r${revision}`;
   const idPart = revisionId ? ` · ${revisionId.slice(0, 8)}` : '';
