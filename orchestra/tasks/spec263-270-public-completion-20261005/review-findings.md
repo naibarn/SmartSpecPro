@@ -96,3 +96,10 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 40. **No-JS crawler boundary — confirmed operational blocker.** Live raw HTML has duplicate client/prerender metadata and `/features` prerender values for Home. The active Node service is pinned to the dirty shared source checkout, while the authorized canonical builder only publishes static assets. No clean backend rollout/rollback path is configured; primary checkout was preserved.
 
 - Review rounds 39–40 capture the latest repair and runtime boundary. Whole-spec completion is not claimed.
+
+
+41. **Full production axe matrix — first repair insufficient.** On deployed `4b630344...`, the 24 Home/Features × six viewport × two locale cases had one serious 1.04:1 contrast issue at Features 2048px on the floating FeedbackButton over a dark section. The prior emergency CTA repair passes all 24 cases.
+42. **Floating trigger repair — independent review clean.** Opaque white/dark text resolves the overlap-independent contrast issue; explicit dark-mode classes override Astryx outline `dark:bg-transparent`; branding remains tenant-neutral. Test asserts both light and dark base classes. Focused run passed 4 files / 44 tests; final browser proof must follow deploy.
+43. **Raw HTML route crawler — FAIL confirmed.** Googlebot responses have duplicate canonical/description tags at `/` and `/features`, with conflicting Features server/client values. Exact body hashes are in `evidence/browser-production-4b630344/raw-googlebot-html.json`; active backend source is dirty primary checkout, no safe exact-SHA service release lane is configured.
+
+44. **Dark-mode cascade review — clean after repair.** Independent review confirmed the explicit dark background/text utilities share the same dark-mode scope as Astryx outline's transparent background and therefore win by stylesheet order; test asserts these classes, with no tenant token/behavior dependency.

@@ -687,7 +687,7 @@ export function FeedbackButton() {
           size="sm"
           variant="outline"
           aria-label="Open AI Chat and Feedback"
-          className="z-50 h-11 w-11 rounded-full p-0 shadow-lg sm:h-8 sm:w-auto sm:gap-2 sm:px-3"
+          className="z-50 h-11 w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:h-8 sm:w-auto sm:gap-2 sm:px-3"
           style={{
             position: "fixed",
             touchAction: "none",

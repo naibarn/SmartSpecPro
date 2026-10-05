@@ -97,3 +97,12 @@
 - Outcome stays `CHECKPOINT_PROMOTED_PARTIAL`; deployment and route availability do not satisfy Spec 263 production acceptance.
 
 - Independent Spec 270 reconciliation confirmed no native canonical design artifact/version, catalog owner/digest publication, resolver record, durable artifact store, or callable Spec 224/256 authority. The public package manifest was repaired: all 24 local file hashes validate and digest is `cfb27353181ed1100c26f6de570dcc293c22c9792b2cf8e09fb43226e437e3e7`; classification remains candidate-only.
+
+
+## Production acceptance at `4b630344` — 2026-10-06
+- Canonical build and static publication passed for exact `origin/main` SHA `4b6303443762f4465472eff024a14fb7169a841f`. Rollback snapshot `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T194604.160228Z`; 1,554 assets; published index SHA-256 `7b438ceb47735d4c3f806edcfa1ab37e7a9452c57ce09b3e4ce4c0a5952a7ff6`. Primary dirty checkout remained unchanged.
+- Production browser report `evidence/browser-production-4b630344/production-acceptance.json`: 9/9 routes HTTP 200, one H1 each, one active client metadata set after hydration, no same-origin 4xx/page errors/broken images/overflow; mobile menu keyboard open/Escape/focus restore passed. Axe passed 22/24; two serious variants were the same FeedbackButton contrast failure at 2048px in EN and TH. Emergency report CTA passed all cases. Candidate repair adds stable light/dark opaque colors and has independent review.
+- Raw Googlebot route snapshots in `evidence/browser-production-4b630344/raw-googlebot-html.json` still FAIL: duplicate canonical and descriptions on `/` and `/features`; Features prerender metadata disagrees with client route values. Live server uses dirty shared checkout branch `codex/spec261-spaas-phase-a-20261005` at `168641dc...` with 166 dirty paths. We did not alter or restart it. Safe next action/owner: establish a clean exact-SHA backend release lane with compatibility preflight and rollback, then activate the already integrated prerender repair.
+- Current candidate source repair is not yet integrated/deployed. Whole Spec 263 remains `PARTIAL_INTEGRATED — PRODUCTION CHECKPOINT DEPLOYED — ACCEPTANCE OPEN`.
+
+- Candidate repair is `FeedbackButton.tsx` + focused test: a persistent opaque white/dark foreground fixes the single serious overlap contrast node from deployed SHA `4b630344...`; dark-specific override fixes the variant cascade. Independent review is clean; focused 4-file suite is 44/44. This repair has not yet been integrated or deployed.

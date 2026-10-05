@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-10-06",
+  "deployedStaticSha": "4b6303443762f4465472eff024a14fb7169a841f",
+  "service": {
+    "unit": "smartspec-web.service",
+    "workingDirectory": "/home/dev/projects/SmartSpecPro/apps/web",
+    "gitBranch": "codex/spec261-spaas-phase-a-20261005",
+    "gitHead": "168641dcfa01a827cc68530a5096c821457d7fdb",
+    "dirtyPathCount": 166
+  },
+  "routes": [
+    {
+      "route": "/",
+      "status": "HTTP/2 200 ",
+      "bodyBytes": 10662,
+      "bodySha256": "8aef5a752cf81215be6c66051acf2ea1257a6259682f0fb30dc46b00f81c8ea7",
+      "titles": [
+        "SmartAIHub | From idea to your next creation"
+      ],
+      "descriptions": [
+        "<meta data-rh=\"true\" name=\"description\" content=\"Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.\" />",
+        "<meta name=\"description\" content=\"Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.\" data-seo-prerender=\"true\" />"
+      ],
+      "canonicals": [
+        "<link data-rh=\"true\" rel=\"canonical\" href=\"https://smartaihub.app/\" />",
+        "<link rel=\"canonical\" href=\"https://smartaihub.app/\" data-seo-prerender=\"true\" />"
+      ]
+    },
+    {
+      "route": "/features",
+      "status": "HTTP/2 200 ",
+      "bodyBytes": 9927,
+      "bodySha256": "99775840acad9a239410e9f86f669a1b68f0e6244c145593529690b41b2b8503",
+      "titles": [
+        "SmartAIHub Features | Product Overview"
+      ],
+      "descriptions": [
+        "<meta data-rh=\"true\" name=\"description\" content=\"Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.\" />",
+        "<meta name=\"description\" content=\"Explore product information and currently listed SmartAIHub capabilities.\" data-seo-prerender=\"true\" />"
+      ],
+      "canonicals": [
+        "<link data-rh=\"true\" rel=\"canonical\" href=\"https://smartaihub.app/\" />",
+        "<link rel=\"canonical\" href=\"https://smartaihub.app/features\" data-seo-prerender=\"true\" />"
+      ]
+    }
+  ]
+}

@@ -98,6 +98,17 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
 import { FeedbackButton } from "../FeedbackButton";
 
 describe("FeedbackButton placement", () => {
+  it("keeps the floating trigger readable over dark public sections", () => {
+    render(<FeedbackButton />);
+    const trigger = screen.getByLabelText("Open AI Chat and Feedback");
+    expect(trigger).toHaveClass(
+      "bg-white",
+      "text-slate-900",
+      "dark:bg-white",
+      "dark:text-slate-900",
+    );
+  });
+
   beforeEach(() => {
     cleanup();
     localStorage.clear();
