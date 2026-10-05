@@ -25,7 +25,7 @@ use crate::{
 use serde::Serialize;
 use serde_json::json;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -33,9 +33,112 @@ const DEFAULT_REFRESH_INTERVAL_SECONDS: u64 = 300;
 const MIN_REFRESH_INTERVAL_SECONDS: u64 = 15;
 const MAX_REFRESH_INTERVAL_SECONDS: u64 = 86_400;
 const CONTROL_CHANNEL_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
+#[cfg(target_os = "linux")]
+const MAX_SAFE_JS_INTEGER: u64 = 9_007_199_254_740_991;
 
 fn keepalive_due(idle_for: Duration, interval: Duration) -> bool {
     idle_for >= interval
+}
+
+#[cfg(target_os = "linux")]
+fn valid_inventory_uuid(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 36
+        && [8, 13, 18, 23].iter().all(|index| bytes[*index] == b'-')
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| [8, 13, 18, 23].contains(&index) || byte.is_ascii_hexdigit())
+        && matches!(bytes[14].to_ascii_lowercase(), b'1'..=b'8')
+        && matches!(bytes[19].to_ascii_lowercase(), b'8'..=b'b')
+}
+
+#[cfg(target_os = "linux")]
+fn valid_inventory_session_state(value: &str) -> bool {
+    matches!(
+        value,
+        "provisioning"
+            | "starting"
+            | "running"
+            | "disconnected"
+            | "recovering"
+            | "quiescing"
+            | "quiesced"
+            | "checkpointing"
+            | "completed"
+            | "failed"
+            | "cancelled"
+            | "incompatible"
+            | "unknown"
+    )
+}
+
+#[cfg(target_os = "linux")]
+fn build_local_session_inventories(
+    data_root: &Path,
+    runner_id: &str,
+    runner_session_id: &str,
+) -> Result<Vec<serde_json::Value>, String> {
+    let registry = crate::session_registry::SessionRegistry::open(data_root)?;
+    let records = registry
+        .verified_process_inventory()?
+        .into_iter()
+        .filter(|session| {
+            session.runner_id == runner_id
+                && session.host_process.is_some()
+                && valid_inventory_uuid(&session.worker_job_id)
+                && session.session_id.len() <= 160
+                && !session.session_id.is_empty()
+                && session
+                    .session_id
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+                && valid_inventory_session_state(&session.last_state)
+                && [
+                    session.session_generation,
+                    session.lease_fencing_version,
+                    session.authority_epoch,
+                    session.placement_epoch,
+                    session.job_control_revision,
+                    session.command_sequence,
+                    session.event_sequence,
+                ]
+                .into_iter()
+                .all(|revision| revision <= MAX_SAFE_JS_INTEGER)
+        })
+        .map(|session| {
+            json!({
+                "sessionId": session.session_id,
+                "workerJobId": session.worker_job_id,
+                "generation": session.session_generation,
+                "workerJobAttempt": session.worker_job_attempt,
+                "leaseFencingVersion": session.lease_fencing_version,
+                "authorityEpoch": session.authority_epoch,
+                "placementEpoch": session.placement_epoch,
+                "jobControlRevision": session.job_control_revision,
+                "lastState": session.last_state,
+                "commandSequence": session.command_sequence,
+                "eventSequence": session.event_sequence,
+                "processIdentity": session.process,
+                "hostIdentity": session.host_process,
+            })
+        })
+        .collect::<Vec<_>>();
+    let chunks = if records.is_empty() {
+        vec![&records[..]]
+    } else {
+        records.chunks(64).collect::<Vec<_>>()
+    };
+    Ok(chunks
+        .into_iter()
+        .map(|records| {
+            json!({
+                "type": "runner.session.inventory",
+                "runnerSessionId": runner_session_id,
+                "records": records,
+            })
+        })
+        .collect())
 }
 
 pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
@@ -371,8 +474,32 @@ fn connection_status_inner(
             "command": command
         }),
     );
-    reconciliation_envelope.correlation_id = correlation_id;
+    reconciliation_envelope.correlation_id = correlation_id.clone();
     let reconciliation_event = channel.next_event(reconciliation_envelope)?;
+    #[cfg(target_os = "linux")]
+    let mut session_inventory_events = Vec::new();
+    #[cfg(target_os = "linux")]
+    if let Some(session_id) = runner_session_id.as_deref() {
+        for (batch_index, payload) in build_local_session_inventories(
+            Path::new(&config.data_root),
+            &config.runner_id,
+            session_id,
+        )?
+        .into_iter()
+        .enumerate()
+        {
+            let mut envelope = Envelope::new(
+                node_kind,
+                &config.runner_id,
+                config.job_id.as_deref(),
+                config.attempt_id.as_deref(),
+                config.lease_id.as_deref(),
+                payload,
+            );
+            envelope.correlation_id = format!("{correlation_id}:sessions:{batch_index}");
+            session_inventory_events.push(channel.next_event(envelope)?);
+        }
+    }
     let snapshot_count = capability_event
         .payload
         .get("snapshot")
@@ -382,6 +509,10 @@ fn connection_status_inner(
     let mut coordinator = TransportCoordinator::new(endpoint.clone(), 128)?;
     coordinator.enqueue(capability_event)?;
     coordinator.enqueue(reconciliation_event)?;
+    #[cfg(target_os = "linux")]
+    for event in session_inventory_events {
+        coordinator.enqueue(event)?;
+    }
     let device_proof = match config.profile {
         crate::config::RunnerProfile::LocalDevice if !configured_token.trim().is_empty() => {
             DeviceProofSigner::from_env(
@@ -411,7 +542,9 @@ fn connection_status_inner(
         device_proof,
     )?;
     let mut delivery = json!({ "delivery": "accepted" });
-    for attempt in 0..2 {
+    let startup_event_count = coordinator.reconcile("startup").pending_events;
+    let mut unavailable_retries = 0;
+    for _attempt in 0..startup_event_count.saturating_add(1) {
         match coordinator.flush_one(&mut transport) {
             Ok(Some(ack)) => {
                 if !matches!(
@@ -434,7 +567,10 @@ fn connection_status_inner(
                 break;
             }
             Ok(None) => break,
-            Err(TransportError::Unavailable) if attempt == 0 => continue,
+            Err(TransportError::Unavailable) if unavailable_retries == 0 => {
+                unavailable_retries += 1;
+                continue;
+            }
             Err(error) => {
                 delivery = json!({ "delivery": "queued", "error": format!("{error:?}") });
                 break;
@@ -442,6 +578,9 @@ fn connection_status_inner(
         }
     }
     if command == "run" {
+        if coordinator.reconcile("runner_startup").pending_events > 0 {
+            return Err("RUNNER_STARTUP_RECONCILIATION_INCOMPLETE".into());
+        }
         return run_live_control_loop(
             config,
             &endpoint,
@@ -2454,11 +2593,12 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::{
-        build_keepalive_envelope, cancellation_target_command_id, cancellation_target_matches,
-        capability_snapshot, delivery_transport_label, keepalive_due, parse_refresh_interval,
-        persist_and_send_runner_receipt, recover_interrupted_external_agent_commands,
-        replay_pending_runner_receipts, runner_receipt_payload, semantic_receipt_payload,
-        snapshot_evidence, update_ack_statuses,
+        build_keepalive_envelope, build_local_session_inventories, cancellation_target_command_id,
+        cancellation_target_matches, capability_snapshot, delivery_transport_label, keepalive_due,
+        parse_refresh_interval, persist_and_send_runner_receipt,
+        recover_interrupted_external_agent_commands, replay_pending_runner_receipts,
+        runner_receipt_payload, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
+        MAX_SAFE_JS_INTEGER,
     };
     use crate::config::{RunnerConfig, RunnerProfile};
     use crate::control_channel::{ControlChannel, RunnerExecutionBinding};
@@ -2608,6 +2748,65 @@ mod lifecycle_tests {
 
         assert_eq!(envelope.payload["type"], "runner.reconcile");
         assert_eq!(envelope.payload["command"], "keepalive");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn startup_inventory_serializes_only_live_registry_processes() {
+        let temp = tempfile::tempdir().unwrap();
+        let identity =
+            crate::session_registry::capture_process_identity(std::process::id()).unwrap();
+        let mut registry = crate::session_registry::SessionRegistry::open(temp.path()).unwrap();
+        let manifest = crate::session_registry::LocalSessionManifest {
+            schema_version: crate::session_registry::SESSION_REGISTRY_SCHEMA_VERSION,
+            session_id: "session-live".into(),
+            worker_job_id: "123e4567-e89b-42d3-a456-426614174000".into(),
+            worker_job_attempt: 1,
+            lease_fencing_version: 3,
+            runner_id: "runner-1".into(),
+            session_generation: 2,
+            authority_epoch: 4,
+            placement_epoch: 5,
+            job_control_revision: 6,
+            driver_id: "linux.pty.v1".into(),
+            continuity_class: "reattachable".into(),
+            session_host_version: "1".into(),
+            process: identity.clone(),
+            host_process: Some(identity),
+            workspace_ref: "workspace-1".into(),
+            command_sequence: 7,
+            event_sequence: 8,
+            last_state: "running".into(),
+        };
+        registry.upsert(manifest.clone()).unwrap();
+        for index in 1..65 {
+            let mut additional = manifest.clone();
+            additional.session_id = format!("session-live-{index}");
+            registry.upsert(additional).unwrap();
+        }
+        let mut unsupported = manifest;
+        unsupported.session_id = "session-invalid-job".into();
+        unsupported.worker_job_id = "not-a-uuid".into();
+        registry.upsert(unsupported).unwrap();
+        let mut unsafe_revision = registry.inventory()[0].clone();
+        unsafe_revision.session_id = "session-unsafe-revision".into();
+        unsafe_revision.lease_fencing_version = MAX_SAFE_JS_INTEGER + 1;
+        registry.upsert(unsafe_revision).unwrap();
+        drop(registry);
+
+        let inventories =
+            build_local_session_inventories(temp.path(), "runner-1", "auth-session").unwrap();
+        assert_eq!(inventories.len(), 2);
+        let inventory = &inventories[0];
+        assert_eq!(inventory["type"], "runner.session.inventory");
+        assert_eq!(inventory["runnerSessionId"], "auth-session");
+        assert_eq!(inventory["records"].as_array().unwrap().len(), 64);
+        assert_eq!(inventories[1]["records"].as_array().unwrap().len(), 1);
+        assert_eq!(inventory["records"][0]["generation"], 2);
+        assert_eq!(
+            inventory["records"][0]["processIdentity"]["pid"],
+            std::process::id()
+        );
     }
 
     #[test]

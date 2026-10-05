@@ -84,6 +84,7 @@ import {
   defaultSpec224RunnerInputStagingService,
   Spec224RunnerInputStagingError,
 } from "../services/spec224RunnerInputStaging";
+import { recordRunnerSessionInventory } from "../services/runnerExecutionSessionService";
 
 let runnerWss: WebSocketServer | null = null;
 export const runnerSessionController = new RunnerSessionController();
@@ -1057,6 +1058,54 @@ export async function handleRunnerSocketMessage(
         ackState: "applied",
         sequence: envelope.sequence,
         idempotencyKey: envelope.idempotencyKey,
+      });
+      return;
+    }
+    if (type === "runner.session.inventory") {
+      const auth = await verifyRunnerControlToken(socketAuthContext.token, {
+        runnerId: socketAuthContext.runnerId,
+        tenantId: socketAuthContext.tenantId,
+        requiredScopes: ["runner:heartbeat"],
+      });
+      if ((auth.runnerSessionId ?? null) !== socketAuthContext.runnerSessionId)
+        throw new RunnerAuthError(
+          "runner_session_mismatch",
+          403,
+          "Runner WSS session context changed"
+        );
+      assertRunnerEnvelopeBinding(envelope, auth);
+      await authorizeRunnerSession(
+        auth,
+        socketAuthContext.deviceProofVerified,
+        gateway,
+        auth
+      );
+      if (
+        !auth.runnerSessionId ||
+        envelope.payload.runnerSessionId !== auth.runnerSessionId
+      )
+        throw new RunnerAuthError(
+          "runner_session_mismatch",
+          403,
+          "Inventory reporter session does not match the authenticated session"
+        );
+      const result = await recordRunnerSessionInventory({
+        tenantId: auth.tenantId,
+        runnerId: auth.runnerId,
+        runnerSessionId: auth.runnerSessionId,
+        batchId: envelope.idempotencyKey,
+        inventory: { records: envelope.payload.records },
+      });
+      sendRunnerSocket(ws, {
+        ackState:
+          result.observed === 0 && result.rejected === 0
+            ? "duplicate"
+            : "applied",
+        sequence: envelope.sequence,
+        idempotencyKey: envelope.idempotencyKey,
+        observed: result.observed,
+        duplicate: result.duplicate,
+        rejected: result.rejected,
       });
       return;
     }
@@ -2275,7 +2324,9 @@ export function registerRunnerControlRoutes(
           ? "runner:capabilities"
           : envelope.payload.type === "runner.reconcile"
             ? "runner:heartbeat"
-            : "runner:status";
+            : envelope.payload.type === "runner.session.inventory"
+              ? "runner:heartbeat"
+              : "runner:status";
       const auth = await verifyRunnerControlToken(token, {
         runnerId: req.params.runnerId,
         requiredScopes: [scope],
@@ -2313,6 +2364,33 @@ export function registerRunnerControlRoutes(
           ackState: "applied",
           sequence: envelope.sequence,
           idempotencyKey: envelope.idempotencyKey,
+        });
+      }
+      if (envelope.payload.type === "runner.session.inventory") {
+        if (
+          !auth.runnerSessionId ||
+          envelope.payload.runnerSessionId !== auth.runnerSessionId
+        )
+          throw new RunnerAuthError(
+            "runner_session_mismatch",
+            403,
+            "Inventory reporter session does not match the authenticated session"
+          );
+        const result = await recordRunnerSessionInventory({
+          tenantId: auth.tenantId,
+          runnerId: auth.runnerId,
+          runnerSessionId: auth.runnerSessionId,
+          batchId: envelope.idempotencyKey,
+          inventory: { records: envelope.payload.records },
+        });
+        return res.json({
+          ackState:
+            result.observed === 0 && result.rejected === 0
+              ? "duplicate"
+              : "applied",
+          sequence: envelope.sequence,
+          idempotencyKey: envelope.idempotencyKey,
+          ...result,
         });
       }
       return res.status(400).json({

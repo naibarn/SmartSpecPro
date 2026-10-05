@@ -104,6 +104,7 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
         failureReason: null,
         canCancel: true,
         workflowRunId: null,
+        executionSession: null,
         outputRefs: [],
         events: [
           {
@@ -138,6 +139,41 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
     // Appears at least twice: once in the list row, once in the detail panel.
     const occurrences = screen.getAllByText("เรนเดอร์วิดีโอ Remotion");
     expect(occurrences.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows the safe unknown-session state without claiming the process recovered", () => {
+    detailQueryMock.mockReturnValue({
+      data: {
+        id: REMOTION_JOB.id,
+        jobType: "remotion_render_video",
+        status: "running",
+        startedAt: null,
+        finishedAt: null,
+        worker: { displayName: "Worker A", status: "online" },
+        failureReason: null,
+        canCancel: true,
+        workflowRunId: null,
+        executionSession: {
+          sessionId: "private-session-id",
+          generation: 3,
+          state: "unknown",
+          continuityClass: "reattachable",
+          enforcementLevel: "PROCESS_PAUSE",
+          driverId: "private-driver-id",
+          observedAt: null,
+        },
+        outputRefs: [],
+        events: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getByText(/Session status unverified/)).toBeInTheDocument();
+    expect(screen.getByText(/current liveness and authority are not verified/)).toBeInTheDocument();
+    expect(screen.queryByText("Recovered")).not.toBeInTheDocument();
+    expect(screen.queryByText("private-session-id")).not.toBeInTheDocument();
+    expect(screen.queryByText("private-driver-id")).not.toBeInTheDocument();
   });
 
   it("still maps shotIndex/shotTotal progress for this job type (no structural change)", () => {

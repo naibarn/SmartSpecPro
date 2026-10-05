@@ -42,7 +42,26 @@ import {
   videoEditorProjectAssets,
   videoEditorProjectJobs,
   mediaModels,
+  runnerExecutionSessions,
+  runnerExecutionSessionEvents,
 } from './schema';
+
+describe('Spec 278 durable execution session schema', () => {
+  test('keeps execution session persistence linked to canonical jobs', () => {
+    const sessionColumns = getTableColumns(runnerExecutionSessions);
+    const eventColumns = getTableColumns(runnerExecutionSessionEvents);
+
+    expect(sessionColumns.workerJobId).toBeDefined();
+    expect(sessionColumns.workerJobAttempt).toBeDefined();
+    expect(sessionColumns.leaseFencingVersion).toBeDefined();
+    expect(sessionColumns.jobControlRevision).toBeDefined();
+    expect(sessionColumns.continuityClass).toBeDefined();
+    expect(sessionColumns.enforcementLevel).toBeDefined();
+    expect(eventColumns.sessionId).toBeDefined();
+    expect(eventColumns.sequence).toBeDefined();
+    expect(eventColumns.idempotencyKey).toBeDefined();
+  });
+});
 
 describe('media_models thinking mode schema', () => {
   test('exposes a default mode and supported modes collection', () => {

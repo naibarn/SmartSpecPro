@@ -5,6 +5,14 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 
+const { recordRunnerSessionInventory } = vi.hoisted(() => ({
+  recordRunnerSessionInventory: vi.fn(),
+}));
+
+vi.mock("../../services/runnerExecutionSessionService", () => ({
+  recordRunnerSessionInventory,
+}));
+
 vi.mock("../../_core/authz", () => ({
   authorizeRequest: vi.fn(),
 }));
@@ -117,6 +125,7 @@ describe("Runner control transport routes", () => {
     vi.stubEnv("RUNNER_CONTROL_PLANE_ORIGIN", "https://runner-test.example");
     vi.mocked(authorizeRequest).mockReset();
     auditLog.mockClear();
+    recordRunnerSessionInventory.mockReset();
   });
 
   afterEach(() => {
@@ -952,6 +961,126 @@ describe("Runner control transport routes", () => {
         publicKey: validPublicKey,
       })
       .expect(401, { error: "RUNNER_SETUP_AUTH_REQUIRED" });
+  });
+
+  it("binds inventory to the authenticated Runner session and acknowledges stale rows as processed", async () => {
+    const runnerId = `runner-inventory-${Date.now()}`;
+    const tenantId = "tenant-inventory";
+    const runnerSessionId = `session-inventory-${Date.now()}`;
+    const repository = new InMemoryRunnerRepository();
+    const gateway = new RunnerGateway(repository);
+    await repository.saveNode({
+      runnerId,
+      tenantId,
+      ownerUserId: null,
+      nodeKind: "managed_container",
+      profile: "shared_container",
+      deviceId: null,
+      displayName: "Inventory Runner",
+      trustState: "trusted",
+      status: "online",
+      currentSnapshotRevision: null,
+      currentSnapshot: null,
+      lastSeenAt: new Date().toISOString(),
+      revokedAt: null,
+      activeSessionId: runnerSessionId,
+    });
+    runnerSessionController.restoreAuthorized({
+      runnerSessionId,
+      runnerId,
+      tenantId,
+      deviceId: runnerId,
+      ownerUserId: null,
+    });
+    const controlToken = createRunnerControlToken({
+      runnerId,
+      tenantId,
+      profile: "shared_container",
+      nodeKind: "managed_container",
+      runnerSessionId,
+    });
+    recordRunnerSessionInventory.mockResolvedValue({
+      observed: 0,
+      duplicate: 0,
+      rejected: 1,
+    });
+    const app = express();
+    app.use(express.json());
+    registerRunnerControlRoutes(app, gateway);
+    const requestEnvelope = {
+      ...envelope(runnerId),
+      payload: {
+        type: "runner.session.inventory",
+        runnerSessionId,
+        records: [{ sessionId: "stale-session" }],
+      },
+    };
+
+    const response = await request(app)
+      .post(`/api/runners/${runnerId}/control`)
+      .set("Authorization", `Bearer ${controlToken}`)
+      .send(requestEnvelope)
+      .expect(200);
+    expect(response.body).toMatchObject({
+      ackState: "applied",
+      observed: 0,
+      rejected: 1,
+    });
+    expect(recordRunnerSessionInventory).toHaveBeenCalledWith({
+      tenantId,
+      runnerId,
+      runnerSessionId,
+      batchId: requestEnvelope.idempotencyKey,
+      inventory: { records: requestEnvelope.payload.records },
+    });
+
+    await request(app)
+      .post(`/api/runners/${runnerId}/control`)
+      .set("Authorization", `Bearer ${controlToken}`)
+      .send({
+        ...requestEnvelope,
+        idempotencyKey: `${requestEnvelope.idempotencyKey}:wrong-session`,
+        payload: {
+          ...requestEnvelope.payload,
+          runnerSessionId: "another-session",
+        },
+      })
+      .expect(403);
+    expect(recordRunnerSessionInventory).toHaveBeenCalledTimes(1);
+
+    const socketMessages: Array<Record<string, unknown>> = [];
+    const ws = {
+      readyState: 1,
+      send: (raw: string) => socketMessages.push(JSON.parse(raw)),
+      close: vi.fn(),
+    } as unknown as WebSocket;
+    await handleRunnerSocketMessage(
+      ws,
+      {
+        token: controlToken,
+        runnerId,
+        tenantId,
+        runnerSessionId,
+        controlPlaneOrigin: "https://runner-test.example",
+        deviceProofVerified: true,
+      },
+      Buffer.from(
+        JSON.stringify({
+          ...requestEnvelope,
+          sequence: 1,
+          idempotencyKey: "inventory-wss-1",
+        })
+      ),
+      gateway
+    );
+    expect(socketMessages).toContainEqual(
+      expect.objectContaining({
+        ackState: "applied",
+        observed: 0,
+        rejected: 1,
+      })
+    );
+    expect(recordRunnerSessionInventory).toHaveBeenCalledTimes(2);
   });
 
   it("rotates control credentials and refreshes execution credentials through Runner routes", async () => {
