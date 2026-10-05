@@ -74,3 +74,9 @@ N/A for direct UI; integration browser evidence is collected in Section 06 and f
 - Added provider regression coverage for missing catalog snapshot fail-fast and canonical `schemaVersion: 1` candidate output.
 - Ten current verification passes are recorded in `orchestra/tasks/spec263-270-public-completion-20261005/test-design.md`.
 - Full typecheck, product build, browser breakpoints/a11y, durable persistence, user-facing authoring UI, live authority/provider, production, and release/deploy proof were not run or inferred. Section remains partial.
+
+### Follow-up tenant and native-service verification — 2026-10-05
+
+- Spec 270 Section 02 service boundary now also verifies replay tenant/project scope and input bounds for fork/compare; fork idempotency is actor-scoped. Regression coverage includes a malicious cross-tenant repository replay.
+- Fresh focused run after the follow-up: 6 files / 47 tests passed, including native artifact service, tenant-domain brand boundary, Navbar, Footer, tenant homepage reduced-motion behavior, and nav translation contract. `git diff --check` and locale JSON parsing passed.
+- This proves the injected service boundary and selected public component paths only. It does not close durable storage, full type safety, browser/UAT, live authority, provider certification, or production/deployment evidence.

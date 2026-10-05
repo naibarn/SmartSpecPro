@@ -98,6 +98,14 @@ List exact retired claims removed, their replacement source (or removal-only dec
 - Focused verification: `cd apps/web && npm test -- --run shared/__tests__/smartaihubPublicTruth.test.ts server/services/publicSeoPrerender.test.ts server/routers/publicSitemap.test.ts` — 3 files, 10 tests passed.
 - Browser viewport, keyboard and consent-declined proof were not run. Pricing/product/security claims and the full auth-intent/analytics allow-list remain open owners in the truth map; only copy/crawl retirement is complete here.
 
+### Tenant-aware public shell follow-up — 2026-10-05
+
+- `Navbar` and `Footer` now resolve platform content from the current tenant's primary domain. Custom tenant domains use their own name/logo, show only the tenant home link, and omit SmartAIHub product/company/resource/social/support/email links. A tenant-provided contact email is shown only when present.
+- If tenant resolution is absent, SmartAIHub-specific public content is shown only on a verified SmartAIHub or local-development host; unknown hosts fail closed. Removed the unused `navbar.workflows` translation key and its required-key assertion.
+- Added bilingual mobile-menu labels, expanded/controls/current-route semantics, Escape-to-close with focus restoration, and reduced-motion handling. Tenant page background video is omitted when the visitor requests reduced motion.
+- Focused regressions: public host brand boundary, Navbar, Footer tenant branding, TenantHomePage reduced-motion, nav localization contract and Spec 270 artifact service — 6 files, 47 tests passed on the task worktree. `git diff --check` and locale JSON parsing passed.
+- This closes local shell identity leakage and the reduced-motion autoplay gap. Tenant-specific editable nav/footer content is not exposed by the current tenant contract; browser viewport/keyboard and deployed-domain evidence remain unverified.
+
 ## UI/UX Contract
 
 ### Target User / JTBD

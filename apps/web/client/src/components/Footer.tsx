@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Sparkles, Mail } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
+import { isSmartAIHubPublicSite } from "@/lib/publicSiteTenant";
 
 const footerLinks = {
   product: [
@@ -50,6 +51,7 @@ const supportLinks = [
 export function Footer() {
   const { tenant } = useTenant();
   const tenantLogoUrl = tenant?.websiteLogoUrl || tenant?.logoUrl || "";
+  const isSmartAIHubSite = isSmartAIHubPublicSite(tenant);
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export function Footer() {
 
       <div className="container relative mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-2 gap-7 sm:gap-8 md:grid-cols-3 lg:grid-cols-6 mb-12">
+        <div className={`grid grid-cols-2 gap-7 sm:gap-8 ${isSmartAIHubSite ? "md:grid-cols-3 lg:grid-cols-6 mb-12" : "md:grid-cols-1"}`}>
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <Link href="/">
@@ -84,31 +86,36 @@ export function Footer() {
                       <Sparkles className="w-5 h-5 text-white" />
                     </div>
                     <span className="text-xl font-bold gradient-text">
-                      SmartAIHub
+                      {isSmartAIHubSite ? "SmartAIHub" : tenant?.name || ""}
                     </span>
                   </>
                 )}
               </div>
             </Link>
-            <p className="text-muted-foreground mb-6 max-w-sm">
-              Explore product information, support, and product updates.
-            </p>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {supportLinks.map(social => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                >
-                  {social.label}
-                </a>
-              ))}
-            </div>
+            {isSmartAIHubSite && (
+              <>
+                <p className="text-muted-foreground mb-6 max-w-sm">
+                  Explore product information, support, and product updates.
+                </p>
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  {supportLinks.map(social => (
+                    <a
+                      key={social.label}
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                    >
+                      {social.label}
+                    </a>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Product Links */}
+          {isSmartAIHubSite && <>
           <div>
             <h4 className="font-semibold mb-4">Product</h4>
             <ul className="space-y-3">
@@ -171,14 +178,15 @@ export function Footer() {
               ))}
             </ul>
           </div>
+          </>}
         </div>
 
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} SmartAIHub. All rights reserved.
+            © {new Date().getFullYear()}{(isSmartAIHubSite || tenant?.name) ? ` ${isSmartAIHubSite ? "SmartAIHub" : tenant?.name}.` : ""}{isSmartAIHubSite ? " All rights reserved." : ""}
           </p>
-          <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+          {isSmartAIHubSite && <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
             <Mail className="w-4 h-4" />
             <a
               href="mailto:smartaihubapp@gmail.com"
@@ -186,7 +194,15 @@ export function Footer() {
             >
               smartaihubapp@gmail.com
             </a>
-          </div>
+          </div>}
+          {!isSmartAIHubSite && tenant?.contactInfo?.email && (
+            <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="w-4 h-4" />
+              <a href={`mailto:${tenant.contactInfo.email}`} className="break-all hover:text-foreground transition-colors">
+                {tenant.contactInfo.email}
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </footer>

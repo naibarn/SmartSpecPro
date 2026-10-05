@@ -234,6 +234,107 @@ describe("native design artifact service boundary", () => {
       .rejects.toMatchObject({ code: "VERSION_CONFLICT" });
   });
 
+  it("forks an immutable scoped version with fresh approval state and idempotent replay", async () => {
+    let id = 0;
+    const service = createTestService({ createId: () => `artifact-${++id}` });
+    const source = await service.createDraft(request, actor);
+    const sourceV2 = await service.appendVersion({
+      actor,
+      artifactId: source.artifactId,
+      expectedLatestVersion: source.version,
+      payload: { kind: "screen", title: "Source v2" },
+    });
+    const operation = {
+      actor,
+      sourceArtifactId: source.artifactId,
+      sourceVersion: sourceV2.version,
+      operationId: "fork-operation-1",
+    };
+    const fork = await service.forkVersion(operation);
+    const replay = await service.forkVersion(operation);
+    expect(replay).toEqual(fork);
+    expect(fork).toMatchObject({
+      artifactId: "artifact-2",
+      version: 1,
+      parentArtifactId: source.artifactId,
+      parentVersion: sourceV2.version,
+      ownerId: actor.userId,
+      createdBy: actor.userId,
+      status: "draft",
+      rights: { ownerId: actor.userId, license: "unknown", assetsCleared: false },
+      actionBindings: [],
+      provenance: { source: "native", requestId: "fork-operation-1", branchId: source.artifactId },
+    });
+    expect(fork.payload).toEqual(sourceV2.payload);
+    await expect(service.forkVersion({ ...operation, operationId: "invalid operation id" }))
+      .rejects.toMatchObject({ code: "INVALID_REQUEST" });
+    await expect(service.forkVersion({ ...operation, actor: { ...actor, projectId: "other-project" }, operationId: "fork-operation-2" }))
+      .rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("compares only scoped immutable versions and audits authorization per artifact", async () => {
+    const actions: Array<{ action: string; artifactId?: string }> = [];
+    const auditEvents: Array<{ action: string; outcome: string }> = [];
+    const service = createTestService({
+      authorization: { authorize: async (_actor, action, artifactId) => { actions.push({ action, artifactId }); return true; } },
+      audit: { record: async ({ action, outcome }) => { auditEvents.push({ action, outcome }); } },
+    });
+    const first = await service.createDraft(request, actor);
+    const second = await service.appendVersion({
+      actor,
+      artifactId: first.artifactId,
+      expectedLatestVersion: 1,
+      payload: { kind: "screen", title: "Changed" },
+    });
+    const diff = await service.compareVersions({
+      actor,
+      from: { artifactId: first.artifactId, version: first.version },
+      to: { artifactId: second.artifactId, version: second.version },
+    });
+    expect(diff).toMatchObject({ fromDigest: first.digest, toDigest: second.digest });
+    expect(diff.changes).toContainEqual({ path: "$.payload.title", kind: "added", summary: "Value added" });
+    expect(actions.filter(({ action }) => action === "compare")).toEqual([{ action: "compare", artifactId: first.artifactId }]);
+    expect(auditEvents.at(-1)).toEqual({ action: "compare", outcome: "attempted" });
+    await expect(service.compareVersions({
+      actor: { ...actor, tenantId: "other-tenant" },
+      from: { artifactId: first.artifactId, version: first.version },
+      to: { artifactId: second.artifactId, version: second.version },
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(service.compareVersions({
+      actor,
+      from: { artifactId: first.artifactId, version: 0 },
+      to: { artifactId: second.artifactId, version: second.version },
+    })).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+  });
+
+  it("does not return a cross-tenant repository replay from create, append, or fork", async () => {
+    const sourceService = createTestService();
+    const source = await sourceService.createDraft(request, actor);
+    const foreignReplay = { ...source, tenantId: "other-tenant" };
+    const baseRepository = createMemoryRepository();
+    const service = createTestService({
+      repository: {
+        ...baseRepository,
+        findIdempotentVersion: async () => foreignReplay,
+        readVersion: async () => source,
+      },
+    });
+
+    await expect(service.createDraft(request, actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(service.appendVersion({
+      actor,
+      artifactId: source.artifactId,
+      expectedLatestVersion: source.version,
+      payload: { kind: "screen", title: "append" },
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(service.forkVersion({
+      actor,
+      sourceArtifactId: source.artifactId,
+      sourceVersion: source.version,
+      operationId: "fork-scope-check",
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("rejects a reused request ID with a changed catalog snapshot", async () => {
     const service = createTestService();
     const first = await service.createDraft(request, actor);

@@ -85,6 +85,12 @@ List changed files, focused commands/results, browser viewport/state captures, s
 - Focused verification: `cd apps/web && npm test -- --run shared/__tests__/smartaihubPublicTruth.test.ts server/services/publicSeoPrerender.test.ts server/routers/publicSitemap.test.ts` — 3 files, 10 tests passed.
 - Cross-route title/canonical alignment, analytics consent payload minimization, viewport/keyboard/contrast/reduced-motion proof and asset withdrawal fallback are not certified by this scoped change. No browser/e2e, production crawl, analytics vendor or CDN proof was collected. Section 05 remains incomplete until Sections 03–04 and these proofs close.
 
+### Accessibility and tenant-shell regression follow-up — 2026-10-05
+
+- Added interaction tests for localized mobile menu state, `aria-expanded`/`aria-controls`, current-route semantics, Escape dismissal/focus restoration, reduced motion, tenant-specific Navbar/Footer branding, tenant-provided email, and reduced-motion video suppression.
+- Focused verification after these changes: 6 files / 47 tests passed; locale JSON parsing and `git diff --check` passed.
+- These are component-level checks only. Browser breakpoints, screen-reader/browser combinations, contrast, consent/analytics behavior, route-wide canonical ownership, performance/RUM, and public deployment remain unverified; section 05 remains partial.
+
 ## UI/UX Contract
 
 ### Target User / JTBD
