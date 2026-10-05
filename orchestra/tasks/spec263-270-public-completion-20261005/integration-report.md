@@ -28,3 +28,14 @@
 - Post-rebase focused verification on the exact candidate SHA: 6 files / 47 tests passed. `git diff --check`, locale JSON parse, stale public navbar workflow-key search, and scoped secret-pattern scan passed.
 - No app build, full typecheck, browser/UAT, production crawl, provider call/certification, production DB write, or deployment was run.
 - Outcome remains `CHECKPOINT_PROMOTED_PARTIAL`, not whole-spec completion. External/authority gates and next actions are listed in `progress.md` and `lifecycle.md`.
+
+## Public SEO/auth/analytics continuation — 2026-10-05
+
+- Candidate started at `0cbb0ae9b21c7c9cdf31d954432ca62139d9cf49`, which matched refreshed `origin/main` immediately before integration.
+- Fixed null tenant/API SEO crash, narrowed auth return intents, added fail-closed PostHog consent/revoke and route-template minimization, excluded marketplace auto-review identifiers, and fixed unsupported Vitest 4.1 worker flags. Added targeted regression tests and updated Spec 263 proof records.
+- FAST gate: 12 focused suites / 65 tests passed; staged diff check passed; no conflict markers or scoped secret pattern found.
+- Commit `d91e090a73821558a9dc52b87750b081bdf22c53` (`fix: close public SEO and analytics gaps`) pushed by normal non-force `git push origin HEAD:main`. A fresh fetch returned the same `origin/main`; `git merge-base --is-ancestor d91e090... origin/main` passed.
+- Package typecheck profile completed `CODE_FAILED` with 927 diagnostics across package/shared sources (available memory 21,674 MiB). Changed task-owned sources had no diagnostics after typed SEO fallback correction. Spec 224 evidence records base HEAD `0cbb0ae9...` for the dirty-tree execution; it is not a clean exact-candidate check. Full repository check is `QUEUE_REQUIRED` until canonical worker admission.
+- Not run: app build (per user), full monorepo typecheck, browser/UAT, production crawl, consent/vendor payload, provider certification, DB writes, or deployment. Source integration does not establish smartaihub.app runtime.
+- Outcome: `CHECKPOINT_PROMOTED_PARTIAL`. Next: repair broad typecheck findings through owning modules and complete external consent/content/rights/durable-provider/catalog plus browser/deployed-site evidence; build/deploy remains a separate lifecycle.
+- Post-integration verification: on exact integrated source SHA `d91e090a73821558a9dc52b87750b081bdf22c53`, repeated the same 12 focused suites; 12 files / 65 tests passed. This is scoped regression proof only, not package typecheck/build/browser/deployment evidence.

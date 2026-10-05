@@ -7,7 +7,7 @@ scope: large
 risk: high
 phase: FINAL_VERIFY
 resume_from: TDD_DESIGN
-state: implementation_checkpoints_integrated_external_proof_open
+state: safe_continuation_integrated_external_proof_open
 user_authorized: autonomous_safe_implementation_and_normal_main_integration
 build_requested: false
 full_typecheck_requested_this_turn: true
@@ -40,6 +40,18 @@ full_typecheck_requested_this_turn: true
 - Whole Specs 263 and 270 are not complete; external/authority and heavy proof gates remain open with owners/next actions in `progress.md`.
 - Do not claim browser, build, deployment, production, provider, or full-typecheck success.
 - These implementation deltas are not stranded; they are integrated through `8f9f635fd2cc65239c4178cc6a79886e7b2d5229`. Keep remaining requirements assigned to external authority/evidence owners and do not claim whole-spec completion.
+
+## Continuation checkpoint — 2026-10-05
+- Integrated safe fixes in `d91e090a73821558a9dc52b87750b081bdf22c53` by normal non-force push; confirmed reachable from refreshed `origin/main`.
+- Exact-scope focused run: 12 suites / 65 tests passed before promotion and again on integrated source SHA `d91e090a73821558a9dc52b87750b081bdf22c53`; staged diff passed `git diff --cached --check`, conflict-marker and scoped secret-pattern checks.
+- Package typecheck failed with 927 broad diagnostics; full typecheck remains `QUEUE_REQUIRED`. No build, browser, production crawl, provider call, DB mutation or deployment was performed.
+- `GAP-263-SEO-NULL`: FIXED / INTEGRATED — null tenant/API metadata no longer crashes `<Seo>`; regression test passes.
+- `GAP-263-AUTH-INTENT`: FIXED / INTEGRATED — only validated dashboard, drama-series, device-code and MCP transaction intents survive redirect parsing.
+- `GAP-263-ANALYTICS-PRIVACY`: CODE_FAIL_CLOSED / INTEGRATED; consent UX/owner BLOCKED — no init before durable explicit grant, revoke resets identity, public pageviews emit only route templates. No approved consent UI/authority was found.
+- `GAP-224-VITEST-WORKERS`: FIXED / INTEGRATED — unsupported Vitest 4.1 `--minWorkers` removed from quick/integration profiles.
+- `GAP-APPS-WEB-TYPECHECK`: CODE_FAILED — 927 diagnostics across package/shared sources. No task-owned changed source diagnostic after SEO correction. Evidence was dirty-tree based on `0cbb0ae9...`, not an exact integrated commit run. Next: owning module fixes and package rerun.
+- `GAP-FULL-TYPECHECK`: QUEUE_REQUIRED — requires canonical `worker_jobs`+outbox admission; enqueue unavailable in this session.
+- Outcome remains `CHECKPOINT_PROMOTED_PARTIAL`. Whole Specs 263/270 remain open for external authority, browser/live proof, and typecheck repair. The user's no-build instruction remains in force.
 
 ## Continuation 2026-10-05
 - Added null-safe SEO defaults after reproducing the actual `/features` `defaultTitle` crash; added explicit auth intent allowlist, PostHog opt-in/revoke boundary and privacy-safe public route templates, and removed Vitest 4.1 unsupported worker flags.
