@@ -1,6 +1,6 @@
 {
   "package": "smartaihub-public-web",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "owner": "SmartAIHub Public Experience",
   "components": [
     {
@@ -63,7 +63,7 @@
       "role": "human-context-media",
       "implementation": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx:HumanProductEvidencePanel",
       "owner": "SmartAIHub Public Experience",
-      "dependency": "Astryx AspectRatio + repository-owned generated WebP with srcset/sizes 480/768/1536px derivatives",
+      "dependency": "Astryx AspectRatio + repository-owned generated WebP with srcset/sizes 480/768/1020/1536px derivatives",
       "status": "candidate-with-disclosure-and-fallback"
     }
   ],

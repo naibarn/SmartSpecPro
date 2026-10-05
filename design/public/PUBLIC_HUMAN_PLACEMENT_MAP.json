@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "package_version": "1.2.0",
+  "package_version": "1.2.1",
   "placements": [
     {
       "asset_id": "public-home-human-editorial",
@@ -25,6 +25,12 @@
           "width": 768,
           "height": 512,
           "sha256": "975e2fa6c0c45f8e838bc96f8c43a9eb5ebc8d2941ae7300776eef4b003bcf7f"
+        },
+        {
+          "path": "apps/web/client/public/images/public-home-human-editorial-1020.webp",
+          "width": 1020,
+          "height": 680,
+          "sha256": "503337c3348e5007f7161777f88a197bc41e72d1608260c4ab8610cde1dc4ffd"
         },
         {
           "path": "apps/web/client/public/images/public-home-human-editorial.webp",

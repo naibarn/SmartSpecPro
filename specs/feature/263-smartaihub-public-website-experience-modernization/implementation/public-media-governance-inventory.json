@@ -259,6 +259,13 @@
           "bytes": 30768
         },
         {
+          "path": "apps/web/client/public/images/public-home-human-editorial-1020.webp",
+          "width": 1020,
+          "height": 680,
+          "sha256": "503337c3348e5007f7161777f88a197bc41e72d1608260c4ab8610cde1dc4ffd",
+          "bytes": 44090
+        },
+        {
           "path": "apps/web/client/public/images/public-home-human-editorial.webp",
           "width": 1536,
           "height": 1024,

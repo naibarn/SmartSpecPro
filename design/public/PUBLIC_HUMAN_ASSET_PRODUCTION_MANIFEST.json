@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "package_version": "1.2.0",
+  "package_version": "1.2.1",
   "human_assets_produced": [
     {
       "asset_id": "public-home-human-editorial",
@@ -15,6 +15,7 @@
       "derivative_ids": [
         "public-home-human-editorial-webp-480w",
         "public-home-human-editorial-webp-768w",
+        "public-home-human-editorial-webp-1020w",
         "public-home-human-editorial-webp-1536w"
       ],
       "synthetic_person_status": "AI-generated adult depiction; not a real or identified person; not a customer, employee, partner, expert, creator endorsement, or testimonial.",
@@ -39,7 +40,7 @@
       "derivative_path": "apps/web/client/public/images/public-home-human-editorial.webp",
       "derivative_sha256": "f04a88583ee31bd517ea83f7befa46b014056edf7f6344c178e5ea48ccd694c5",
       "derivative_media_type": "image/webp",
-      "derivative_dimensions": "1536x1024",
+      "derivative_dimensions": "1536x1024 master; 480x320, 768x512, and 1020x680 responsive",
       "prompt_or_instruction_ref": "design/public/prompts/public-home-human-editorial.md",
       "responsive_derivatives": [
         {
@@ -58,6 +59,15 @@
           "height": 512,
           "sha256": "975e2fa6c0c45f8e838bc96f8c43a9eb5ebc8d2941ae7300776eef4b003bcf7f",
           "bytes": 30768,
+          "media_type": "image/webp"
+        },
+        {
+          "derivative_id": "public-home-human-editorial-webp-1020w",
+          "path": "apps/web/client/public/images/public-home-human-editorial-1020.webp",
+          "width": 1020,
+          "height": 680,
+          "sha256": "503337c3348e5007f7161777f88a197bc41e72d1608260c4ab8610cde1dc4ffd",
+          "bytes": 44090,
           "media_type": "image/webp"
         },
         {

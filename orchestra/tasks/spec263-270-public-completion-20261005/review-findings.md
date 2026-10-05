@@ -56,6 +56,21 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 
 - Responsive-image candidate has ten targeted follow-up review rounds (68–77). Rounds 76–77 are the final two clean passes after the sizing fix. Production `currentSrc`/bandwidth confirmation must be added after integrating and deploying the exact candidate SHA; this finding remains open until then.
 
+## Post-deploy source-selection optimization — 2026-10-06
+
+78. **Deployed source selection — finding fixed.** The first v1.2.0 publication passed all 14 viewport×DPR cases, but exact bytes showed a 464px CSS slot at 1024px/DPR2 selected the 1536px master (71,746 encoded bytes) because 768px was undersized for the 928px density target. Added an intermediate derivative for this real selection gap.
+79. **Derivative geometry — clean.** Chose 1020×680 rather than 1024×683 so all variants retain the required 3:2 frame without introducing a crop. Generated from the 1536px WebP source with the recorded FFmpeg libwebp quality 82/compression level 6 settings.
+80. **Derivative integrity — clean.** The 1020×680 WebP is 44,090 bytes with SHA-256 `503337c3348e5007f7161777f88a197bc41e72d1608260c4ab8610cde1dc4ffd`; `file`, `stat`, and `sha256sum` confirm it.
+81. **Source-set contract — clean.** The image `srcSet` now offers 480w, 768w, 1020w, and 1536w sources. The 1020w option covers the measured 928px density target at 1024px/DPR2 and is 27,656 bytes smaller than the previous selected master. Live `currentSrc` proof follows the next exact-SHA publication.
+82. **Asset authority synchronization — clean.** Component/pattern/human registries, placement map, production manifest, and media governance record the 1020 derivative, hash, dimensions, bytes, provenance and same-frame behavior. Package version advanced to candidate v1.2.1.
+83. **Design copy/withdrawal review — clean.** Public design description and withdrawal runbook enumerate the new responsive derivative; removal instructions now cover all variants.
+84. **Manifest integrity — clean.** `build_manifest.py` includes the 1020 derivative and regenerated package SHA-256 `2f3e69357fd8ba4d6c53ca182d46e4ae5ccab7745f02b5f673e7a8d0e99e92ea`; all design/governance JSON parses.
+85. **Focused regression — PASS.** `publicSite.test.ts` passed 7/7 with an assertion that the 1020px file exists and is advertised at 1020w; `git diff --check` passed.
+86. **LCP/layout/accessibility boundary — clean.** This adds only a same-frame source candidate. Existing production proof establishes the image as sampled LCP at all 14 viewport×DPR cases, no horizontal overflow, unchanged localized alt/disclosure/fallback source behavior, and sampled CLS below 0.014. Field CWV remains external.
+87. **Final pre-integration review — clean.** Reconciled the complete candidate diff with origin/main, checked for conflict markers/secrets, and verified the image bytes, tests, JSON, and content-addressed design package. Only source-selection evidence for v1.2.1 is pending deployment.
+
+- Second responsive-image cycle has ten targeted review rounds (78–87). Final two clean rounds followed the derivative sizing repair. The prior v1.2.0 browser matrix and its source selection are retained as history; v1.2.1 must be built/published before marking the current responsive acceptance closed.
+
 18. **Unpublished tenant noindex test — test harness repair.** Initial assertion could not find the mocked `Seo` metadata because React hoists `<meta>` elements into the document head. Replaced the mock output with an explicit test marker; no production-code change was needed for this test failure.
 19. **Noindex and tenant-crawl regressions — clean.** The route test confirms `noIndex`, canonical path without query, and tenant-specific page-key resolution. The eight-file focused run passed 58 tests, including tenant sitemap, tenant/unknown robots policies and tenant LLM projections.
 20. **Final impact review — clean.** App route wrappers cover supported public marketing/content/legal routes, retain SmartAIHub behavior on its verified domain, and leave emergency routes under their existing owner. Tenant pages are gated by the existing exact-tenant/published hook and sitemap admits only supported route keys. No safe in-scope MUST_DO_NOW code gap found.

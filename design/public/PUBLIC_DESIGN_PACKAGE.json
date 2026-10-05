@@ -1,12 +1,16 @@
 {
   "package": "smartaihub-public-web",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "aligned_with": "Spec 270 R1.4",
   "experience_authority": "Spec 263 revision 263.8",
-  "artifact_status": "repository-owned public UI candidate v1.2.0; awaits Spec 270 native artifact/catalog authority",
+  "artifact_status": "repository-owned public UI candidate v1.2.1; awaits Spec 270 native artifact/catalog authority",
   "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
-  "package_digest": "f33bdb9b14e7730d98598ec507158fc3b4ef8d3c2cbd54e6635c56cb9c82333c",
+  "package_digest": "2f3e69357fd8ba4d6c53ca182d46e4ae5ccab7745f02b5f673e7a8d0e99e92ea",
   "files": [
+    {
+      "path": "apps/web/client/public/images/public-home-human-editorial-1020.webp",
+      "sha256": "503337c3348e5007f7161777f88a197bc41e72d1608260c4ab8610cde1dc4ffd"
+    },
     {
       "path": "apps/web/client/public/images/public-home-human-editorial-480.webp",
       "sha256": "2fadb9e7d5a0dc1cc80ad9434079f5784287de23b77cbe0da9d0bc5772b4b0d5"
@@ -29,7 +33,7 @@
     },
     {
       "path": "PUBLIC_COMPONENT_REGISTRY.json",
-      "sha256": "cfa889d66da683e2ef0c1d1512005bf7b1a5d6701d91b67505d347851d75ff7c"
+      "sha256": "b01610647683550ee82e6240d4d3a030b38d1b06b676e37a906ce481a62a0a5e"
     },
     {
       "path": "PUBLIC_CONTENT_RULES.md",
@@ -37,19 +41,19 @@
     },
     {
       "path": "PUBLIC_DESIGN_DECISION_LOG.md",
-      "sha256": "7c8fde05092f926c18a03accd2cbd39088497ecb00f04fad4e6e410286a38ad1"
+      "sha256": "8151edf612ff685522ea8a34bb87650560588c62dbcc4d0c156125439dbac1e8"
     },
     {
       "path": "PUBLIC_HUMAN_ART_DIRECTION.md",
-      "sha256": "80c3e06afcc752d4504bd50c4838afa1ac40279c40408bc52c7dc8a6dd957a75"
+      "sha256": "ffc8528412db72e82a2f3e960ff7232b00685ee07fc5e22130b5d6871ada5b3e"
     },
     {
       "path": "PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json",
-      "sha256": "3365aed7be7cc5542de163c6f5f2782e72d44d5ab20d2f44296a6f87ac9737a5"
+      "sha256": "d595d427d4ef7acf98c3d5d526524c76ac96bde5990cc48298c52c5218d3d9b7"
     },
     {
       "path": "PUBLIC_HUMAN_ASSET_REGISTRY.json",
-      "sha256": "a208d5e10cdd99f3681ef5eacbbc587753be8e55da270b1e090db0fbf6497cdb"
+      "sha256": "037daebc2e9d63e108e143e03b23f02168fd69078ba79df99d590e50dc4199c2"
     },
     {
       "path": "PUBLIC_HUMAN_EXPERIMENT_GUARDRAILS.md",
@@ -57,19 +61,19 @@
     },
     {
       "path": "PUBLIC_HUMAN_IMAGERY_RULES.md",
-      "sha256": "8f6b7583a0eec5ea02681ca35b11b635757e98be900f33ce45b8fd79514bb304"
+      "sha256": "8d3df99e9942efe11df11ed516a701afa6b8f16f9210fadbea835e225282d23a"
     },
     {
       "path": "PUBLIC_HUMAN_PLACEMENT_MAP.json",
-      "sha256": "b0a7f331dfe63181a8ef93020c8b4ed5a6ed65f934cc3a741222c28f3ee256b5"
+      "sha256": "72aaa5b2edadd7b83b05a434fcd33915f41128881ba759bfedcc8e5958ee4a83"
     },
     {
       "path": "PUBLIC_HUMAN_WITHDRAWAL_RUNBOOK.md",
-      "sha256": "bc543b97f119dafd0b6cfff2578af866f745002ac568b17facf0672ebd800a17"
+      "sha256": "895eec825be8ad46a82b2d7b76f3b1b0adbabbed42528992fbe97ff72c5f3480"
     },
     {
       "path": "PUBLIC_PATTERN_REGISTRY.json",
-      "sha256": "081828d565dc81f0fc58a83c15f496d0b9e573109deaf0e65b6870ca34e31c65"
+      "sha256": "eae11a25a969b766c5eb23c01bab9de945fe913158641b7808ae0ba71285dc23"
     },
     {
       "path": "PUBLIC_SEMANTIC_DESIGN_DIFF.md",
@@ -97,7 +101,7 @@
     },
     {
       "path": "SMARTAIHUB_PUBLIC_DESIGN.md",
-      "sha256": "2151034faf095000bace629ca4fa6e4a9aa861c8806d5537b4844f1cb548fd67"
+      "sha256": "085f20bd71c7e60175c1dee70eefdd0fa5de2f1a267280589ef992f87add87bf"
     },
     {
       "path": "assets/public-home-human-editorial-source.png",
@@ -121,7 +125,7 @@
     },
     {
       "path": "scripts/build_manifest.py",
-      "sha256": "bd16bbff82f914df9612ae1d0f9d028a4b96106eb7d2159f6cd96b4b54a39cd4"
+      "sha256": "990eb1741c8c25332e17fff8df42effd59b36ad91d3ffc36111a7de5ea7b9578"
     }
   ],
   "source_authorities": [
@@ -139,7 +143,7 @@
     },
     {
       "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json",
-      "sha256": "dbd8a619a4cca211228f1eebc53db9a0434791aca96b49d50bfcc65cfa7a4abb"
+      "sha256": "9ffa5a3aa9309a88b54e4ae9e630f73a42d59f070d590a9352dd5e11501534af"
     }
   ]
 }
