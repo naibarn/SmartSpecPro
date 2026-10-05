@@ -12,7 +12,8 @@ shift
 [[ "$1" == "--" ]] || usage
 shift
 [[ $# -gt 0 ]] || usage
-REPO="${CODEX_CANONICAL_CHECKOUT:-/home/dev/projects/SmartSpecPro}"
+REPO="${CODEX_CANONICAL_CHECKOUT:-}"
+[[ -n "$REPO" ]] || { echo 'STATUS=CANONICAL_CHECKOUT_REQUIRED'; exit 2; }
 
 [[ -d "$REPO" ]] || { echo 'STATUS=BUILD_LEASE_CHECKOUT_MISSING'; exit 50; }
 COMMON="$(git -C "$REPO" rev-parse --git-common-dir 2>/dev/null || true)"

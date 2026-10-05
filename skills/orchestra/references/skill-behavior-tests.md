@@ -50,6 +50,9 @@ Maintain scenario coverage for:
 - overlapping writer scenarios split or use explicit worktree isolation
 - installed-skill routing covers launch, deploy, release, security, migration,
   API/health, performance, SEO/content, analytics, rescue, docs, and skill-system flows
+- safe partial checkpoints route through `session-finish` and `integration-controller`
+  before a pause/stop/handoff; task completion and heavy verification are not promotion
+  prerequisites, and `main` does not imply release or production readiness
 
 ## Scenario Format
 

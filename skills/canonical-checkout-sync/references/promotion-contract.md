@@ -2,9 +2,9 @@
 
 ## Role separation
 
-- Implementation work lives in isolated session worktrees/branches.
+- Active implementation may use isolated session worktrees/branches for concurrency, but they are temporary execution workspaces, not durable progress stores. Safe valuable checkpoints must converge to `origin/main`.
 - `origin/main` is the canonical integrated remote baseline.
-- `/home/dev/projects/SmartSpecPro` is the canonical promotion/build checkout.
+- The repository's explicitly selected canonical checkout is the promotion/build checkout.
 - The canonical checkout is not a normal feature-development workspace.
 
 ## Allowed automatic recovery

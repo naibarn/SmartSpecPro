@@ -1,15 +1,13 @@
 ---
 name: canonical-checkout-sync
-description: Safely prepare the canonical SmartSpecPro checkout for build/deploy after integration. It auto-recovers dirty state, preserves local-only commits on verified rescue branches, safely realigns diverged local main to an exact validated target, and certifies the build source without losing work.
+description: Safely prepare a repository's canonical checkout for build/deploy after integration. It preserves local-only commits on verified rescue branches, safely realigns diverged local main to an exact validated target, and certifies the build source without losing work.
 ---
 
 # Canonical Checkout Sync
 
-Use this Skill **after repository integration is complete and before build/deploy**.
+Use this Skill **after the required canonical checkpoint(s) are integrated and before build/deploy**. The parent task may still have other partial work in progress; build/deploy must target an explicitly selected integrated main SHA.
 
-Default canonical checkout:
-
-`/home/dev/projects/SmartSpecPro`
+Set `CODEX_CANONICAL_CHECKOUT` or pass the checkout path to the command. The skill requires an explicit path so it cannot guess which checkout to recover or certify.
 
 Canonical integrated Git baseline:
 
@@ -88,7 +86,7 @@ implementation sessions
 
 ## Canonical checkout policy
 
-`/home/dev/projects/SmartSpecPro` must not be used for normal feature/spec implementation.
+The canonical checkout must not be used for normal feature/spec implementation.
 
 If an implementation task would modify product source there, create an isolated worktree from latest `origin/main` instead.
 

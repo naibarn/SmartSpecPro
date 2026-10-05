@@ -1183,6 +1183,24 @@
         "Verification Before Completion"
       ],
       "why": "Before final summary, Orchestra must triage discovered gaps, fix safe in-scope must-do-now items, and only offer optional or blocked work as next steps."
+    },
+    {
+      "id": "CANONICAL-CHECKPOINT-001",
+      "user_message": "โควต้าจะหมดแล้ว ช่วย checkpoint งานส่วนที่ปลอดภัยเข้า main และเขียน handoff ให้ session ถัดไปทำต่อ",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Skill Behavior Tests",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "wait-for-task-completion",
+        "require-heavy-verification-before-promotion",
+        "leave-safe-progress-only-on-session-branch",
+        "claim-main-is-release-ready"
+      ],
+      "why": "A stop/quota boundary triggers canonicalization of the largest safe partial delta and a durable handoff; main records development state, not release readiness."
     }
   ]
 }

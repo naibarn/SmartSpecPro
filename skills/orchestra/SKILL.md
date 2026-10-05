@@ -70,6 +70,7 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/gap-closure-before-final.md` | Always before final summary after implementation, debugging, review, repair, or skill-system work |
 | `references/review-convergence.md` | Before final summary for medium+ scope/risk, after any review findings, or after any fix caused by review/gate feedback |
 | `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
+| `references/continuous-canonicalization.md` | For every implementation session: checkpoint timing, partial promotion, durable handoff, and the boundary between `main` and release/deployment |
 | `references/skill-behavior-tests.md` | When adding/changing skills, sub-agents, routing triggers, or quality gates |
 | `references/security-review-protocol.md` | Only when `security_gate_required = true` — Step 5/6 |
 | `references/compaction-safety.md` | Only when context state is `yellow` or `red` — Step 8 |
@@ -258,6 +259,8 @@ If both commands return empty output, skip this check silently and proceed.
 **Execution autonomy rule:** Do not ask for permission to inspect the codebase, run repository searches, do web research, or run safe non-destructive shell commands. These are conductor-owned execution steps and should happen automatically. Ask only for destructive/irreversible actions, accepted-risk security bypasses, or genuine product ambiguity.
 
 **Git/GitHub recovery rule:** For repo-local work, treat git history and the GitHub-backed repository as the primary recovery mechanism. Do not stop for confirmation merely because rollback might be needed later. Instead, prefer recoverable workflows: preserve history, avoid destructive rewrites, keep artifacts in git, and continue automatically. Ask only when the next action could destroy data that git/GitHub cannot restore (for example DB table loss, external state deletion, or irreversible side effects outside the repository).
+
+**Continuous canonicalization rule:** `origin/main` is the latest integrated development state, not a claim that the code is release-ready, production-ready, or fully validated. During implementation, promote every coherent, safe, valuable checkpoint after the FAST INTEGRATION GATE; task completion is not required. Use isolated/disabled boundaries for unfinished behavior where needed, and keep release, tag, and production deployment behind their own gates. Read `references/continuous-canonicalization.md` and use `$session-finish` at safe checkpoints and before any pause, stop, quota/context boundary, provider timeout, ownership transfer, or end-of-session handoff. Use `$integration-controller` to reconcile and promote partial or complete work promptly. Never use a readiness marker or pending heavy check as a reason to leave safe progress outside `main`.
 
 **Backup-first rule:** If an operation may destroy data, dump/copy/export the at-risk state to timestamped backup files first, record their paths, and then continue automatically. Examples: SQL dump before destructive migration, file copy before overwrite-heavy refactor, JSON/CSV export before bulk rewrite. Ask the user only if a reliable backup cannot be created or restore viability is unclear.
 
@@ -566,7 +569,9 @@ Read `references/result-integration.md`.
 5. Update `orchestra/progress.md` with wave status: `COMPLETE`, `PARTIAL`, or `FAILED`.
 6. Append all auto-resolution decisions to `orchestra/decisions.md` with ISO timestamp.
 
-**Lifecycle recovery after integration:** Read `references/completion-loop.md`.
+**Canonicalize each safe checkpoint:** After integrating agent results for a wave or any coherent task-owned slice, do not wait for the parent task or spec to complete. Read `references/continuous-canonicalization.md`; if the slice passes the FAST INTEGRATION GATE, use `$session-finish` and `$integration-controller` to record it in `origin/main`, verify the integrated SHA, and write/update the durable handoff before continuing. A partial wave may remain `PARTIAL` in the Orchestra lifecycle while its safe code is already canonical in `main`. If only part is safe, promote that subset and retain the rest with an owner, recovery location, and next action.
+
+**Lifecycle recovery after integration:** Read `references/completion-loop.md`. Git canonicalization is independent from task completion: an incomplete stage or open lifecycle gap does not justify keeping safe valuable code off `main`, and a commit in `main` does not mark the task complete.
 Every partial/failed result, missing artifact, contract mismatch, or new impact
 surface must create/update a gap in `orchestra/lifecycle.md`, set its
 `earliest_affected_stage`, mark downstream evidence stale, and set `resume_from`.
@@ -724,7 +729,7 @@ Files affected: [list]
 Before deciding to finalize, apply `references/completion-loop.md` and reconcile
 the lifecycle ledger. If any mandatory stage is incomplete, any gap is open, or
 any required gate is stale, continue from `resume_from` and do not finalize.
-Only a converged lifecycle may enter the final-summary path.
+Before pausing or finalizing, also run `$session-finish` for any safe valuable delta not yet canonicalized and record the handoff. Only a converged lifecycle may be reported as task-complete; a safely checkpointed partial state may be handed off as `CHECKPOINT_PROMOTED_PARTIAL` with its remaining work and next action explicit.
 
 Read `references/compaction-safety.md` **only** when context state is `yellow` or `red`.
 
@@ -911,6 +916,10 @@ Apply `references/completion-loop.md`; if any mandatory stage is incomplete,
 blocked, stale, or has an open gap, continue from `resume_from` or report a
 typed blocked/deferred outcome. Never report completion from the post-completion
 review while the lifecycle ledger is unresolved.
+`origin/main` records integrated development state and does not imply release or
+production readiness. Before any stop/handoff, ensure safe work is checkpointed
+and report the integrated SHA, completed and remaining scope, pending validation,
+known failures, next action, and durable recovery reference.
 If the user asked to commit, push, open a PR, keep, discard, or otherwise finish the
 branch, also apply `references/branch-finishing.md`.
 

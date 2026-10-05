@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="${1:-${CODEX_CANONICAL_CHECKOUT:-/home/dev/projects/SmartSpecPro}}"
+REPO="${1:-${CODEX_CANONICAL_CHECKOUT:-}}"
+[[ -n "$REPO" ]] || { echo 'STATUS=CANONICAL_CHECKOUT_REQUIRED'; exit 2; }
 EXPECTED="${2:-${CODEX_VALIDATED_MAIN_SHA:-}}"
 STATE_ROOT="${CODEX_SYNC_STATE_DIR:-$HOME/.codex/state/canonical-checkout-sync}"
 NOW="$(date -u +%Y%m%dT%H%M%SZ)"

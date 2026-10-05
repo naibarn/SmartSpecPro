@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO="${1:-${CODEX_CANONICAL_CHECKOUT:-/home/dev/projects/SmartSpecPro}}"
+REPO="${1:-${CODEX_CANONICAL_CHECKOUT:-}}"
+[[ -n "$REPO" ]] || { echo 'STATUS=CANONICAL_CHECKOUT_REQUIRED'; exit 2; }
 EXPECTED="${2:-${CODEX_VALIDATED_MAIN_SHA:-}}"
 REQUIRED_INTEGRATED="${3:-${CODEX_REQUIRED_INTEGRATED_SHA:-}}"
 
