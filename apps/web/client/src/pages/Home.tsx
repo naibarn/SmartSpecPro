@@ -39,8 +39,10 @@ export default function Home() {
     : "en";
   const homeSeo = getPublicHomeSeo(homeLanguage);
   const { tenant, isLoading } = useTenant();
-  const { page: tenantPage } = useTenantPage("home");
   const isPlatformPublicSite = isSmartAIHubPublicSite(tenant);
+  const { page: tenantPage } = useTenantPage("home", {
+    enabled: !isPlatformPublicSite,
+  });
 
   useEffect(() => {
     document.documentElement.lang = homeLanguage;

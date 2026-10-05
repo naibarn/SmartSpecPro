@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   page: null as null | { title: string; tenantId: string; pageKey: string },
   pageLoading: false,
   requestedPageKey: "",
+  requestedEnabled: true,
 }));
 
 vi.mock("wouter", () => ({ useLocation: () => [state.location, vi.fn()] }));
@@ -18,8 +19,9 @@ vi.mock("@/contexts/TenantContext", () => ({
   useTenant: () => ({ tenant: state.tenant, isLoading: state.tenantLoading }),
 }));
 vi.mock("@/hooks/useTenantPage", () => ({
-  useTenantPage: (pageKey: string) => {
+  useTenantPage: (pageKey: string, options?: { enabled?: boolean }) => {
     state.requestedPageKey = pageKey;
+    state.requestedEnabled = options?.enabled ?? true;
     return { page: state.page, isLoading: state.pageLoading };
   },
 }));
@@ -57,6 +59,7 @@ afterEach(() => {
   state.page = null;
   state.pageLoading = false;
   state.requestedPageKey = "";
+  state.requestedEnabled = true;
 });
 
 describe("TenantPublicRoute", () => {
@@ -65,6 +68,7 @@ describe("TenantPublicRoute", () => {
     render(<TenantPublicRoute pageKey="features"><p>Global Features</p></TenantPublicRoute>);
 
     expect(screen.getByText("Global Features")).toBeInTheDocument();
+    expect(state.requestedEnabled).toBe(false);
   });
 
   it("renders the exact tenant's published page instead of global fallback content", () => {
@@ -76,6 +80,7 @@ describe("TenantPublicRoute", () => {
     expect(screen.getByRole("main")).toHaveAttribute("data-canonical", "/features");
     expect(screen.getByRole("main")).toHaveAttribute("data-emergency-entry", "false");
     expect(screen.queryByText("Global Features")).toBeNull();
+    expect(state.requestedEnabled).toBe(true);
   });
 
   it("shows a tenant-branded unpublished state and resolves dynamic page keys", () => {

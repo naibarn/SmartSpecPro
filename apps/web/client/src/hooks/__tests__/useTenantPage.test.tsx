@@ -5,7 +5,7 @@ import React from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const tenantState = vi.hoisted(() => ({ tenant: { id: "tenant-a" } }));
+const tenantState = vi.hoisted(() => ({ tenant: { id: "tenant-a" } as null | { id: string } }));
 
 vi.mock("@/contexts/TenantContext", () => ({
   useTenant: () => ({ tenant: tenantState.tenant }),
@@ -39,7 +39,7 @@ describe("useTenantPage", () => {
 
   it("keeps cache entries and in-flight results isolated by tenant", async () => {
     const fetchMock = vi.fn(async (_url: RequestInfo | URL) => {
-      const requestedTenantId = tenantState.tenant.id;
+      const requestedTenantId = tenantState.tenant?.id;
       return { ok: true, json: async () => page(requestedTenantId) };
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -143,6 +143,30 @@ describe("useTenantPage", () => {
     expect(isTenantOwnedPublicPage(page(null), "tenant-a", "home")).toBe(false);
     expect(isTenantOwnedPublicPage(page("tenant-b"), "tenant-a", "home")).toBe(false);
     expect(isTenantOwnedPublicPage(page("tenant-a"), "tenant-a", "pricing")).toBe(false);
+  });
+
+  it("does not issue a page request when tenant content is disabled for the platform site", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useTenantPage("features", { enabled: false }));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.page).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("waits for tenant resolution before requesting a tenant page", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: false, json: async () => null }));
+    vi.stubGlobal("fetch", fetchMock);
+    tenantState.tenant = null;
+    const { result, rerender } = renderHook(() => useTenantPage("features"));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    tenantState.tenant = { id: "tenant-a" };
+    rerender();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   });
 
   it("partitions public-page cache entries by tenant and host", () => {

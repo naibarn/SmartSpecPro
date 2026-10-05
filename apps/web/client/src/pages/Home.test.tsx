@@ -10,6 +10,7 @@ import th from "../locales/th/publicSite.json";
 const testState = vi.hoisted(() => ({
   language: "en",
   seoProps: [] as Array<Record<string, unknown>>,
+  tenantPageOptions: [] as Array<Record<string, unknown>>,
   tenantPage: null as Record<string, any> | null,
   tenant: {
     id: "tenant-smarthub",
@@ -56,7 +57,10 @@ vi.mock("@/components/emergency/EmergencyPublicEntry", () => ({
   default: () => null,
 }));
 vi.mock("@/hooks/useTenantPage", () => ({
-  useTenantPage: () => ({ page: testState.tenantPage, isLoading: false }),
+  useTenantPage: (_pageKey: string, options?: Record<string, unknown>) => {
+    testState.tenantPageOptions.push(options ?? {});
+    return { page: testState.tenantPage, isLoading: false };
+  },
 }));
 vi.mock("@/contexts/TenantContext", () => ({
   useTenant: () => ({ tenant: testState.tenant, isLoading: testState.isLoading }),
@@ -68,6 +72,7 @@ describe("public homepage", () => {
   beforeEach(() => {
     testState.language = "en";
     testState.seoProps = [];
+    testState.tenantPageOptions = [];
     testState.tenantPage = null;
     testState.isLoading = false;
     testState.tenant = {
@@ -83,6 +88,7 @@ describe("public homepage", () => {
   it("renders its public content and working primary entry points immediately", () => {
     render(<Home />);
 
+    expect(testState.tenantPageOptions).toEqual([{ enabled: false }]);
     expect(
       screen.getByRole("heading", { level: 1, name: en["homePublic.title"] })
     ).toBeTruthy();

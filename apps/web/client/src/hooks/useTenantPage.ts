@@ -67,11 +67,15 @@ export function clearTenantPageCache(pageKey?: string) {
   }
 }
 
-export function useTenantPage(pageKey: string) {
+export function useTenantPage(
+  pageKey: string,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   const { tenant } = useTenant();
   const requestHost =
     typeof window !== "undefined" ? window.location.host.toLowerCase() : "server";
   const cacheKey = getTenantPageCacheKey(tenant?.id, requestHost, pageKey);
+  const shouldFetch = enabled && Boolean(tenant);
   const [state, setState] = useState<{
     cacheKey: string;
     page: TenantPageData | null;
@@ -79,6 +83,11 @@ export function useTenantPage(pageKey: string) {
   }>({ cacheKey, page: null, isLoading: true });
 
   useEffect(() => {
+    if (!shouldFetch) {
+      setState({ cacheKey, page: null, isLoading: false });
+      return;
+    }
+
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       setState({ cacheKey, page: cached.data, isLoading: false });
@@ -112,10 +121,10 @@ export function useTenantPage(pageKey: string) {
       });
 
     return () => controller.abort();
-  }, [cacheKey, pageKey]);
+  }, [cacheKey, pageKey, shouldFetch]);
 
   return {
-    page: tenant && state.cacheKey === cacheKey ? state.page : null,
-    isLoading: state.cacheKey !== cacheKey || state.isLoading,
+    page: shouldFetch && state.cacheKey === cacheKey ? state.page : null,
+    isLoading: shouldFetch && (state.cacheKey !== cacheKey || state.isLoading),
   };
 }

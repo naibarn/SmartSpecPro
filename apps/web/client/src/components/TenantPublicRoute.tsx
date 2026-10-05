@@ -19,11 +19,14 @@ export function TenantPublicRoute({ pageKey, children }: TenantPublicRouteProps)
   const { tenant, isLoading: tenantLoading } = useTenant();
   const [location] = useLocation();
   const resolvedPageKey = typeof pageKey === "function" ? pageKey(location) : pageKey;
-  const { page, isLoading: pageLoading } = useTenantPage(resolvedPageKey);
+  const isPlatformSite = isSmartAIHubPublicSite(tenant);
+  const { page, isLoading: pageLoading } = useTenantPage(resolvedPageKey, {
+    enabled: !isPlatformSite,
+  });
   const { t } = useTranslation("publicSite");
 
   if (tenantLoading) return null;
-  if (isSmartAIHubPublicSite(tenant)) return children;
+  if (isPlatformSite) return children;
   if (pageLoading) return null;
   if (page) {
     const canonicalPath = location.split(/[?#]/, 1)[0] || "/";

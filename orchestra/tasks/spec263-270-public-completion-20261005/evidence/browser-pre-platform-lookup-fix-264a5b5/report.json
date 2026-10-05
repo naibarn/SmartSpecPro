@@ -1,0 +1,618 @@
+{
+  "capturedAt": "2026-10-05T18:48:02.420Z",
+  "host": "https://smartaihub.app",
+  "deployedSha": "264a5b59170cc2d562fd58e341071f579c822ec2",
+  "browser": "chrome",
+  "routeChecks": [
+    {
+      "route": "/",
+      "status": 200,
+      "title": "SmartAIHub | From idea to your next creation",
+      "htmlLang": "en",
+      "h1": [
+        "Turn one idea into work you can keep building"
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/"
+      ],
+      "images": [],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "/features",
+      "status": 200,
+      "title": "SmartAIHub Features | Domain-Specific AI Harness Platform",
+      "htmlLang": "en",
+      "h1": [
+        "A premium creative workspace built around the way you make."
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Explore SmartAIHub, a Domain-Specific AI Harness Platform for renting specialized Skills, Agents, and Plugins across creative and production workflows."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/features"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/features"
+      ],
+      "images": [],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "/pricing",
+      "status": 200,
+      "title": "SmartAIHub Pricing | Plans",
+      "htmlLang": "en",
+      "h1": [
+        "Choose Your\nPerfect Plan"
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Compare available SmartAIHub plans and billing options."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/pricing"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/pricing"
+      ],
+      "images": [],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "/gallery",
+      "status": 200,
+      "title": "SmartAIHub Public Gallery",
+      "htmlLang": "en",
+      "h1": [
+        "Explore Our Gallery"
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Browse examples currently listed in the SmartAIHub public gallery."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/gallery"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/gallery"
+      ],
+      "images": [
+        {
+          "src": "https://smartaihub.app/api/gallery/media/30/thumbnail",
+          "loaded": false,
+          "alt": "ช่วยหน้าปก ซีรีย์\n\nคาเฟ่รีโนเวทเพื่อรัก ตอนรักลับในตึก\n\n**ตอนย่อยที่ 30  · รักลับที่เลือกกันทุกวัน**"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/29/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = คุณกฤต; Image 2 = ไอริณ; Image 3 = ภาคิน; Image 4 = location: คาเฟ่ไอริ"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/28/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = คิริน วัฒนเมธา (physical scene character); Image 2 = location: โรงซ่อมใ"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/27/thumbnail",
+          "loaded": false,
+          "alt": "ช่วยหน้าปก ซีรีย์\n\nGROUND ZERO  เดิมพันรักใต้ปีกบิน\n\n**ตอนย่อยที่ 9  · อดีตที่ตามหลอกหลอน**\n\n**เรื่อ"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/26/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = ลลิน ศิริกุล (physical scene character); Image 2 = คิริน วัฒนเมธา (phys"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/25/thumbnail",
+          "loaded": false,
+          "alt": "Solo cinematic vertical portrait of Mina, an early-20s Thai-American mixed female protagonist and ex"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/24/thumbnail",
+          "loaded": false,
+          "alt": "Solo cinematic vertical portrait of Ethan Brooks, a 21-year-old American engineering student and co-"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/23/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = ไอริณ (physical scene character); Image 2 = ภาคิน (physical scene chara"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/22/thumbnail",
+          "loaded": false,
+          "alt": "wide establishing shot, environment only, no people: a university library with tall bookcases defini"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/21/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = ไอริณ (physical scene character); Image 2 = ภาคิน (physical scene chara"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/20/thumbnail",
+          "loaded": false,
+          "alt": "ช่วยหน้าปก ซีรีย์\n\nคาเฟ่รีโนเวทเพื่อรัก ตอนรักลับในตึก\n\n**ตอนย่อยที่ 29  · คำขอแต่งงานกลางร้านกาแฟ**"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/19/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = ภูมิ (physical scene character); Image 2 = ปราง (physical scene charact"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/18/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = ไอริณ (physical scene character); Image 2 = ภาคิน (physical scene chara"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/17/thumbnail",
+          "loaded": false,
+          "alt": "REFERENCE MAPPING: Image 1 = ไอริณ (physical scene character); Image 2 = ภาคิน (physical scene chara"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/16/thumbnail",
+          "loaded": false,
+          "alt": "ช่วยหน้าปก ซีรีย์\n\nคาเฟ่รีโนเวทเพื่อรัก ตอนรักลับในตึก\n\n**ตอนย่อยที่ 30  · รักลับที่เลือกกันทุกวัน**"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/15/thumbnail",
+          "loaded": false,
+          "alt": "A cozy nursery with dimmed lights and light-blocking curtains, creating a perfect sleeping environme"
+        },
+        {
+          "src": "https://smartaihub.app/api/gallery/media/14/thumbnail",
+          "loaded": false,
+          "alt": "A concerned parent consulting a pediatrician about sleep issues, illustrating the importance of seek"
+        }
+      ],
+      "errors": [],
+      "failedRequests": [
+        {
+          "url": "https://smartaihub.app/api/gallery/media/35/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/33/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/32/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/34/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/31/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/39/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/36/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/38/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/37/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/36/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/33/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/36/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/31/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/32/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/35/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/39/thumbnail",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://smartaihub.app/api/gallery/media/34/thumbnail",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "badResponses": [
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/gallery",
+          "status": 404
+        },
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/gallery",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "route": "/docs/",
+      "status": 200,
+      "title": "SmartAIHub Docs | Domain-Specific AI Harness Platform",
+      "htmlLang": "en",
+      "h1": [
+        "Learn the path from first prompt to finished output."
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Learn what SmartAIHub is, why it is a Domain-Specific AI Harness Platform, and how Skills, Agents, Plugins, Chat, media, and workflows connect."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/docs"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/docs"
+      ],
+      "images": [],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": [
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/docs",
+          "status": 404
+        },
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/docs",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "route": "/blog",
+      "status": 200,
+      "title": "SmartAIHub Blog | Product Updates, Tutorials & Security",
+      "htmlLang": "en",
+      "h1": [
+        "Latest Posts"
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Read SmartAIHub product updates, practical guides, and security information for using its AI workspace."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/blog"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/blog"
+      ],
+      "images": [],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": [
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/blog",
+          "status": 404
+        },
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/blog",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "route": "/contact",
+      "status": 200,
+      "title": "Contact SmartAIHub | Enterprise Support & Sales",
+      "htmlLang": "en",
+      "h1": [
+        "Get in Touch"
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Reach the SmartAIHub team for technical support, enterprise pricing, partnership questions, or feature requests. Contact us by email or Line."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/contact"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/contact"
+      ],
+      "images": [
+        {
+          "src": "https://smartaihub.app/images/smartaihub-line-qr.png",
+          "loaded": true,
+          "alt": "SmartAIHub Line support QR code"
+        }
+      ],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "/marketplace",
+      "status": 200,
+      "title": "SmartAIHub Marketplace | Enterprise Skill Catalog",
+      "htmlLang": "en",
+      "h1": [
+        "Discover AI Agent Skills"
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Browse, search, and reuse enterprise AI skills for chat, presentation, video, automation, translation, and more."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/marketplace"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/marketplace"
+      ],
+      "images": [],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": [
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/marketplace",
+          "status": 404
+        },
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/marketplace",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "route": "/resources",
+      "status": 200,
+      "title": "SmartAIHub Site Index | Resources, Docs, Blog & Search Hubs",
+      "htmlLang": "en",
+      "h1": [
+        "Explore every SmartAIHub search cluster"
+      ],
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "descriptions": [
+        "Browse SmartAIHub's site index for docs, blog, FAQs, media workflows, and enterprise search hubs."
+      ],
+      "canonicals": [
+        "https://smartaihub.app/resources"
+      ],
+      "ogUrls": [
+        "https://smartaihub.app/resources"
+      ],
+      "images": [],
+      "errors": [],
+      "failedRequests": [],
+      "badResponses": [
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/resources",
+          "status": 404
+        },
+        {
+          "url": "https://smartaihub.app/api/tenant/public-pages/resources",
+          "status": 404
+        }
+      ]
+    }
+  ],
+  "viewportChecks": [
+    {
+      "width": 360,
+      "height": 800,
+      "reducedMotion": "reduce",
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "h1": "Turn one idea into work you can keep building",
+      "images": [],
+      "cta": [
+        {
+          "text": "Vertical series",
+          "href": "#home-flagship-title"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        }
+      ],
+      "englishSwitchFound": true,
+      "languageAfter": {
+        "lang": "en",
+        "hasEnglish": true
+      },
+      "errors": []
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "reducedMotion": "reduce",
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "h1": "Turn one idea into work you can keep building",
+      "images": [],
+      "cta": [
+        {
+          "text": "Vertical series",
+          "href": "#home-flagship-title"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        }
+      ],
+      "englishSwitchFound": true,
+      "languageAfter": {
+        "lang": "en",
+        "hasEnglish": true
+      },
+      "errors": []
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "reducedMotion": "reduce",
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "h1": "Turn one idea into work you can keep building",
+      "images": [],
+      "cta": [
+        {
+          "text": "Vertical series",
+          "href": "#home-flagship-title"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        }
+      ],
+      "englishSwitchFound": true,
+      "languageAfter": {
+        "lang": "en",
+        "hasEnglish": true
+      },
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "reducedMotion": "reduce",
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "h1": "Turn one idea into work you can keep building",
+      "images": [],
+      "cta": [
+        {
+          "text": "Vertical series",
+          "href": "#home-flagship-title"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        }
+      ],
+      "englishSwitchFound": true,
+      "languageAfter": {
+        "lang": "en",
+        "hasEnglish": true
+      },
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "reducedMotion": "reduce",
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "h1": "Turn one idea into work you can keep building",
+      "images": [],
+      "cta": [
+        {
+          "text": "Vertical series",
+          "href": "#home-flagship-title"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        }
+      ],
+      "englishSwitchFound": true,
+      "languageAfter": {
+        "lang": "en",
+        "hasEnglish": true
+      },
+      "errors": []
+    },
+    {
+      "width": 2048,
+      "height": 1091,
+      "reducedMotion": "reduce",
+      "title": "SmartAIHub | From idea to your next creation",
+      "lang": "en",
+      "scrollWidth": 800,
+      "innerWidth": 800,
+      "h1": "Turn one idea into work you can keep building",
+      "images": [],
+      "cta": [
+        {
+          "text": "Vertical series",
+          "href": "#home-flagship-title"
+        },
+        {
+          "text": "Explore vertical series",
+          "href": "/login?returnUrl=%2Fdrama-series"
+        },
+        {
+          "text": "See vertical series features",
+          "href": "/features#vertical-series"
+        }
+      ],
+      "englishSwitchFound": true,
+      "languageAfter": {
+        "lang": "en",
+        "hasEnglish": true
+      },
+      "errors": []
+    }
+  ]
+}
