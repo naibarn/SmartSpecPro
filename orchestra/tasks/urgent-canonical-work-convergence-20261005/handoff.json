@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "development-lifecycle.handoff.v1",
+  "workId": "urgent-canonical-work-convergence-20261005",
+  "projectId": "SmartSpecPro",
+  "repositoryId": "naibarn/SmartSpecPro",
+  "source": {
+    "type": "maintenance",
+    "ref": "P0 universal development lifecycle correction"
+  },
+  "canonical": {
+    "target": "refs/heads/main",
+    "revision": "d651f8ec77af3ad915fa0264b148edfc6fc56462"
+  },
+  "progressState": "PARTIAL_INTEGRATED",
+  "completedScope": [
+    "Shared lifecycle contract and skill routing across 46 repository-managed skills",
+    "Configured canonical ref and isolated exact-revision source preparation",
+    "Generic WorkUnit and dependency contracts with partial runnable scope",
+    "Fenced dependency wait/evidence persistence on the existing DevelopmentRun and worker_jobs authority",
+    "Event-first evidence wake, idempotent outbox resume, and periodic event reconciliation",
+    "PR 24 and PR 25 policy/contract checkpoints plus PR 26 runtime dependency checkpoint"
+  ],
+  "remainingScope": [
+    "Register production/domain predicate adapters and migrate real evidence producers",
+    "Resolve universal WorkUnit ownership against existing authorities; Specs 269 and 275 remain unavailable inputs",
+    "Persist and discover generic WorkUnit handoffs across non-DevelopmentRun work without creating a competing ledger",
+    "Run focused Vitest, DB/outbox integration, and exact-SHA typecheck through CI or an admitted runner",
+    "Inventory and disposition live waiting jobs, stranded worktree deltas, and durable handoffs"
+  ],
+  "activeDependencies": [],
+  "immediatelyRunnableScope": [
+    "Continue source/authority compatibility audit and implementation slices that do not require the missing spec owner mapping"
+  ],
+  "pendingValidation": [
+    {
+      "checkType": "focused-vitest",
+      "revision": "d651f8ec77af3ad915fa0264b148edfc6fc56462",
+      "state": "NOT_RUN",
+      "reason": "Vitest executable is unavailable in this worktree",
+      "owner": "CI or dependency-equipped runner"
+    },
+    {
+      "checkType": "database-outbox-integration-and-live-wait-inventory",
+      "revision": "d651f8ec77af3ad915fa0264b148edfc6fc56462",
+      "state": "NOT_RUN",
+      "reason": "No DATABASE_URL and local PostgreSQL socket is unavailable",
+      "owner": "database integration runner"
+    },
+    {
+      "checkType": "repository-typecheck",
+      "revision": "d651f8ec77af3ad915fa0264b148edfc6fc56462",
+      "state": "PENDING",
+      "reason": "Run post-integration under CI or an admitted resource window per AGENTS.md",
+      "owner": "CI"
+    }
+  ],
+  "knownFailures": [
+    "No production predicate adapters or producer calls are registered; generic dependency wait registration fails closed.",
+    "Universal WorkUnit ownership across non-DevelopmentRun tasks is not resolved; do not add a second ledger."
+  ],
+  "resumeFrom": "development-lifecycle/runtime-adapter-and-authority-audit",
+  "nextAction": "Continue compatibility audit against existing WorkUnit/run/task/version authorities, identify safe caller migrations, then wire domain predicate adapters with DB-backed idempotency tests.",
+  "continuation": {
+    "ownerType": "agent",
+    "ownerId": "Codex development lifecycle task",
+    "mode": "automatic"
+  }
+}
