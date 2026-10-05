@@ -1,0 +1,33 @@
+kind: AIApplication
+apiVersion: spaas.smartaihub.app/v1
+metadata:
+  version: 1.0.0
+  slug: construction-ai
+  name: Construction AI
+  id: app_construction
+ownership:
+  ownerId: tenant_acme
+  ownerType: tenant
+compatibility:
+  manifestSchema: "1.0"
+  minimumPlatformVersion: "2026.10"
+  requiredFeatures: [spaas.events.delivery-semantics/v1]
+  optionalFeatures: [spaas.delivery.canary/v1]
+  optionalFeatureFallbacks:
+    spaas.delivery.canary/v1: { policy: SAFE_NO_CANARY, preservesSemantics: true }
+application:
+  primarySurface: web
+  experience: dashboard
+  kind: mini_app
+components:
+  - { id: construction-assistant, type: assistant, source: assistants/construction.yaml, dependsOn: [], sideEffects: [] }
+requires: { capabilities: [], secrets: [], storage: [], network: [] }
+interop:
+  mcp:
+    role: [client]
+    protocol: { preferred: "2026-07-28", minimum: "2026-07-28" }
+    extensions:
+      required: {}
+      optional:
+        io.modelcontextprotocol/tasks: { version: "2026-07-28", fallback: SMARTAIHUB_DURABLE_WRAPPER, omissionSafe: true }
+    unknownExtensionPolicy: { optional: PRESERVE_NO_EXECUTE, required: FAIL_CLOSED }
