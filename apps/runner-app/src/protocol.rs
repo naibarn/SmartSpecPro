@@ -110,6 +110,14 @@ impl RunnerJobCommand {
         if self.attempt == 0 || self.fencing_token == 0 {
             return Err("RUNNER_COMMAND_FENCE_INVALID".into());
         }
+        if let Some(binding) = self.payload.get("executionSession") {
+            validate_execution_session_binding(binding, self)?;
+            if let Some(grant) = self.payload.get("executionAuthorityGrant") {
+                validate_execution_authority_binding(binding, grant, self)?;
+            }
+        } else if self.payload.get("executionAuthorityGrant").is_some() {
+            return Err("RUNNER_AUTHORITY_GRANT_SESSION_REQUIRED".into());
+        }
         let browser_command =
             self.execution_kind == "computer_use.browser" && self.adapter_id == "browser.v1";
         let external_agent_command = self.execution_kind == "external_agent_task"
@@ -215,6 +223,82 @@ impl RunnerJobCommand {
         }
         Ok(())
     }
+}
+
+fn validate_execution_session_binding(
+    value: &Value,
+    command: &RunnerJobCommand,
+) -> Result<(), String> {
+    use crate::session_contract::{ExecutionSessionProjection, SessionState};
+
+    let object = value.as_object().ok_or("RUNNER_SESSION_COMMAND_INVALID")?;
+    const ALLOWED: &[&str] = &[
+        "sessionId",
+        "tenantId",
+        "workerJobId",
+        "workerJobAttempt",
+        "leaseFencingVersion",
+        "runnerId",
+        "generation",
+        "authorityEpoch",
+        "placementEpoch",
+        "jobControlRevision",
+        "state",
+        "continuityClass",
+        "enforcementLevel",
+        "driverId",
+        "driverVersion",
+    ];
+    if object.keys().any(|key| !ALLOWED.contains(&key.as_str())) {
+        return Err("RUNNER_SESSION_COMMAND_INVALID".into());
+    }
+    if command.execution_kind != "external_agent_task" {
+        return Err("RUNNER_SESSION_COMMAND_KIND_UNSUPPORTED".into());
+    }
+    let projection: ExecutionSessionProjection =
+        serde_json::from_value(value.clone()).map_err(|_| "RUNNER_SESSION_COMMAND_INVALID")?;
+    projection.validate().map_err(str::to_string)?;
+    if projection.state != SessionState::Starting
+        || projection.worker_job_id != command.job_id
+        || projection.worker_job_attempt != command.attempt
+        || projection.lease_fencing_version != command.fencing_token
+        || projection.tenant_id != command.tenant_id
+        || projection.runner_id.as_deref() != Some(command.runner_id.as_str())
+    {
+        return Err("RUNNER_SESSION_COMMAND_BINDING_MISMATCH".into());
+    }
+    Ok(())
+}
+
+fn validate_execution_authority_binding(
+    session_value: &Value,
+    grant_value: &Value,
+    command: &RunnerJobCommand,
+) -> Result<(), String> {
+    use crate::authority_grant::ExecutionAuthorityGrant;
+    use crate::session_contract::ExecutionSessionProjection;
+
+    let session: ExecutionSessionProjection = serde_json::from_value(session_value.clone())
+        .map_err(|_| "RUNNER_SESSION_COMMAND_INVALID")?;
+    let grant: ExecutionAuthorityGrant = serde_json::from_value(grant_value.clone())
+        .map_err(|_| "RUNNER_AUTHORITY_GRANT_INVALID")?;
+    let claims = grant.claims;
+    if claims.worker_job_id != command.job_id
+        || claims.session_id != session.session_id
+        || claims.runner_id != command.runner_id
+        || claims.session_generation != session.generation
+        || claims.session_generation != command.attempt as u64
+        || claims.authority_epoch != session.authority_epoch
+        || claims.placement_epoch != session.placement_epoch
+        || claims.job_control_revision != session.job_control_revision
+        || claims.effect_class != "external_agent_task"
+        || claims.grant_id.trim().is_empty()
+        || claims.key_id.trim().is_empty()
+        || claims.required_safety_features.len() > 32
+    {
+        return Err("RUNNER_AUTHORITY_GRANT_SCOPE_INVALID".into());
+    }
+    Ok(())
 }
 
 fn valid_command_id(value: &str) -> bool {
@@ -454,6 +538,29 @@ mod tests {
             payload: serde_json::json!({"taskId": "task-1"}),
         };
         assert!(command.validate().is_ok());
+        command.payload["executionSession"] = serde_json::json!({
+            "sessionId": "s278-session-1",
+            "tenantId": "tenant-1",
+            "workerJobId": "job-1",
+            "workerJobAttempt": 1,
+            "leaseFencingVersion": 1,
+            "runnerId": "runner-1",
+            "generation": 1,
+            "authorityEpoch": 1,
+            "placementEpoch": 1,
+            "jobControlRevision": 1,
+            "state": "starting",
+            "continuityClass": "process_persistent",
+            "enforcementLevel": "PROCESS_PAUSE",
+            "driverId": "local.pty.v1"
+        });
+        assert!(command.validate().is_ok());
+        command.payload["executionSession"]["leaseFencingVersion"] = serde_json::json!(2);
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_SESSION_COMMAND_BINDING_MISMATCH"
+        );
+        command.payload["executionSession"]["leaseFencingVersion"] = serde_json::json!(1);
         command.adapter_id = "browser.v1".into();
         assert_eq!(
             command.validate().unwrap_err(),

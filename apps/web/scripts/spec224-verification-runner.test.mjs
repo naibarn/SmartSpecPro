@@ -9,7 +9,8 @@ test("quick profile accepts only existing test files and runs Vitest serially", 
   const command = resolveSpec224VerificationCommand("quick", ["server/services/__tests__/spec224VerificationResourceControl.test.ts"]);
   assert.equal(command.state, "EXECUTABLE");
   assert.equal(command.requiredMemoryMiB, 512);
-  assert.deepEqual(command.args.slice(0, 6), ["exec", "vitest", "run", "--pool=forks", "--maxWorkers=1", "--minWorkers=1"]);
+  assert.deepEqual(command.args.slice(0, 5), ["exec", "vitest", "run", "--pool=forks", "--maxWorkers=1"]);
+  assert.equal(command.args.includes("--minWorkers=1"), false);
   assert.throws(() => resolveSpec224VerificationCommand("quick", ["../../package.json"]), /SCOPE_INVALID/);
   assert.throws(() => resolveSpec224VerificationCommand("quick", []), /QUICK_SCOPE_REQUIRED/);
 });
@@ -23,7 +24,7 @@ test("package profile raises memory admission for apps/web's configured 8 GiB Ty
 
 test("integration profile selects the repository's bounded database integration script", () => {
   const command = resolveSpec224VerificationCommand("integration", []);
-  assert.deepEqual(command.args, ["run", "test:db-integration", "--", "--pool=forks", "--maxWorkers=1", "--minWorkers=1"]);
+  assert.deepEqual(command.args, ["run", "test:db-integration", "--", "--pool=forks", "--maxWorkers=1"]);
   assert.equal(command.requiredMemoryMiB, 6_144);
 });
 

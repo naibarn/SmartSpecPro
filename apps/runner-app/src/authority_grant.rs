@@ -15,7 +15,7 @@ const MAX_CLOCK_SKEW_MS: u64 = 30_000;
 const MAX_REQUIRED_FEATURES: usize = 32;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExecutionAuthorityClaims {
     pub grant_id: String,
     pub key_id: String,
@@ -33,7 +33,7 @@ pub struct ExecutionAuthorityClaims {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExecutionAuthorityGrant {
     pub claims: ExecutionAuthorityClaims,
     pub signature_base64: String,

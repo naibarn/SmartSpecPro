@@ -13,6 +13,7 @@ import {
 } from "./runnerExecutionSessionService";
 import type { ExecutionSessionEventInput } from "./runnerExecutionSessionService";
 import type { ExecutionSessionProjectionInput } from "./runnerExecutionSessionContracts";
+import { issueRunnerExecutionAuthorityGrant } from "./runnerExecutionAuthorityGrantService";
 import { getCachedRunnerControlPlaneOrigin } from "./appRuntimeConfig";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
 import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
@@ -186,8 +187,8 @@ export function createExternalAgentTaskDispatcher(
       leaseFencingVersion: command.fencingToken,
       runnerId: command.runnerId,
       generation: command.attempt,
-      authorityEpoch: 0,
-      placementEpoch: 0,
+      authorityEpoch: 1,
+      placementEpoch: 1,
       jobControlRevision: 1,
       state: "starting",
       desiredState: "starting",
@@ -201,11 +202,74 @@ export function createExternalAgentTaskDispatcher(
       eventType: "projection_created",
       payload: { source: "external_agent_dispatch" },
     };
-    const sessionProjection = await createSessionProjection(
-      sessionProjectionInput,
-      sessionProjectionEvent
-    );
+    let sessionProjection: Awaited<
+      ReturnType<typeof createExecutionSessionProjection>
+    > = null;
+    try {
+      sessionProjection = await createSessionProjection(
+        sessionProjectionInput,
+        sessionProjectionEvent
+      );
+    } catch (error) {
+      // M0 is a shadow projection. A projection-store failure must not prevent
+      // the existing canonical worker job from reaching its Runner.
+      console.warn("[Spec278] execution session projection unavailable", {
+        tenantId: command.tenantId,
+        runnerId: command.runnerId,
+        reason:
+          error instanceof Error && /^[A-Z0-9_]{1,100}$/.test(error.message)
+            ? error.message
+            : "RUNNER_SESSION_PROJECTION_FAILED",
+      });
+    }
     const executionSessionId = sessionProjection?.sessionId ?? null;
+    if (
+      process.env.SMARTAIHUB_SPEC278_SESSION_HOST === "true" &&
+      !executionSessionId
+    ) {
+      throw new Error("RUNNER_SESSION_PROJECTION_REQUIRED_FOR_HOST");
+    }
+    const executionSession = executionSessionId
+      ? {
+          sessionId: executionSessionId,
+          tenantId: sessionProjectionInput.tenantId,
+          workerJobId: sessionProjectionInput.workerJobId,
+          workerJobAttempt: sessionProjectionInput.workerJobAttempt,
+          leaseFencingVersion: sessionProjectionInput.leaseFencingVersion,
+          runnerId: sessionProjectionInput.runnerId,
+          generation: sessionProjectionInput.generation,
+          authorityEpoch: sessionProjectionInput.authorityEpoch,
+          placementEpoch: sessionProjectionInput.placementEpoch,
+          jobControlRevision: sessionProjectionInput.jobControlRevision,
+          state: sessionProjectionInput.state,
+          continuityClass: sessionProjectionInput.continuityClass,
+          enforcementLevel: sessionProjectionInput.enforcementLevel,
+          driverId: sessionProjectionInput.driverId,
+          driverVersion: sessionProjectionInput.driverVersion,
+        }
+      : undefined;
+    const executionAuthorityGrant = executionSession
+      ? issueRunnerExecutionAuthorityGrant({
+          session: executionSession,
+          effectClass: "external_agent_task",
+          leaseExpiresAt: new Date(input.lease.expiresAt),
+          commandDeadline: new Date(command.deadline),
+          requiredSafetyFeatures: [
+            "session_host_pty",
+            "workspace_write_sandbox",
+          ],
+        })
+      : null;
+    const dispatchCommand = executionSession
+      ? validateRunnerJobCommand({
+          ...command,
+          payload: {
+            ...command.payload,
+            executionSession,
+            ...(executionAuthorityGrant ? { executionAuthorityGrant } : {}),
+          },
+        })
+      : command;
     try {
       await input.reporter.waitForExternal(input.lease, {
         operationKey,
@@ -253,6 +317,10 @@ export function createExternalAgentTaskDispatcher(
             deadline: command.deadline,
             authEvidenceRef: command.authorizationGrantRef,
             inputRef: command.inputRef,
+            ...(executionSession ? { executionSession } : {}),
+            ...(executionAuthorityGrant
+              ? { executionAuthorityGrant }
+              : {}),
           },
         },
       });
@@ -280,10 +348,10 @@ export function createExternalAgentTaskDispatcher(
     let result: DispatchResult;
     try {
       result = stagedInput
-        ? await dispatch(command, {
+        ? await dispatch(dispatchCommand, {
             spec224InputFetchGrant: stagedInput.inputFetchGrant,
           })
-        : await dispatch(command);
+        : await dispatch(dispatchCommand);
     } catch (error) {
       if (executionSessionId) {
         try {

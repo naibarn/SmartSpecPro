@@ -11,8 +11,11 @@ import {
   validateExecutionSessionEventPayload,
   validateExecutionSessionProjection,
   validateRunnerSessionInventory,
+  validateRunnerExecutionSessionBinding,
+  RUNNER_EXECUTION_SESSION_CONTRACT,
   type ExecutionSessionProjectionInput,
   type ExecutionSessionState,
+  type RunnerExecutionSessionBinding,
   type RunnerSessionInventoryCandidate,
 } from "./runnerExecutionSessionContracts";
 
@@ -23,6 +26,7 @@ export interface ExecutionSessionEventInput {
 }
 
 export type SafeTaskControlSessionProjection = {
+  contractVersion: typeof RUNNER_EXECUTION_SESSION_CONTRACT;
   sessionId: string;
   generation: number;
   state: "unknown";
@@ -40,6 +44,20 @@ const terminalJobStates = new Set([
   "cancelled",
   "expired",
 ]);
+const terminalProjectionByJobStatus: Record<string, ExecutionSessionState> = {
+  completed: "completed",
+  succeeded: "completed",
+  failed: "failed",
+  canceled: "cancelled",
+  cancelled: "cancelled",
+  expired: "failed",
+};
+
+export function matchingTerminalExecutionSessionState(
+  jobStatus: string
+): ExecutionSessionState | null {
+  return terminalProjectionByJobStatus[jobStatus] ?? null;
+}
 
 function projectionEnabled(): boolean {
   return process.env.SMARTAIHUB_SPEC278_SESSION_PROJECTION === "true";
@@ -83,6 +101,7 @@ export async function getSafeTaskControlSessionProjection(input: {
     .limit(1);
   if (!row) return null;
   return {
+    contractVersion: RUNNER_EXECUTION_SESSION_CONTRACT,
     ...row,
     state: "unknown",
     observedAt: row.observedAt?.toISOString() ?? null,
@@ -145,8 +164,10 @@ export async function createExecutionSessionProjection(
       .limit(1)
       .for("update");
     if (!job) throw new Error("RUNNER_SESSION_JOB_NOT_FOUND");
-    if (terminalJobStates.has(job.status))
-      throw new Error("RUNNER_SESSION_JOB_TERMINAL");
+    if (terminalJobStates.has(job.status)) {
+      if (matchingTerminalExecutionSessionState(job.status) !== input.state)
+        throw new Error("RUNNER_SESSION_JOB_TERMINAL");
+    }
     if (
       job.attempt !== input.workerJobAttempt ||
       job.fencingVersion !== input.leaseFencingVersion
@@ -219,6 +240,95 @@ export async function createExecutionSessionProjection(
       payloadJson: event.payload,
     });
     return created;
+  });
+}
+
+/** Project an already durable canonical Runner receipt into the observational
+ * session row. Canonical job receipt persistence always happens first; a
+ * projection failure must never change its acknowledgement or job authority.
+ */
+export async function projectRunnerReceiptToExecutionSession(input: {
+  tenantId: string;
+  runnerId: string;
+  receipt: {
+    jobId: string;
+    commandId: string;
+    eventId: string;
+    eventType: string;
+    sequence: number;
+    payload?: Record<string, unknown>;
+  };
+}) {
+  if (!projectionEnabled()) return null;
+  const rawBinding = input.receipt.payload?.executionSession;
+  if (rawBinding === undefined) return null;
+  const payload = input.receipt.payload ?? {};
+  const binding = rawBinding as RunnerExecutionSessionBinding;
+  const invalid = validateRunnerExecutionSessionBinding(rawBinding, {
+    executionKind: "external_agent_task",
+    jobId: input.receipt.jobId,
+    attempt: payload.attempt as number,
+    fencingToken: payload.fenceVersion as number,
+    tenantId: input.tenantId,
+    runnerId: input.runnerId,
+  });
+  if (invalid) throw new Error(invalid);
+
+  const nextState: Partial<Record<string, ExecutionSessionState>> = {
+    EXECUTION_STARTED: "running",
+    EXECUTION_COMPLETED: "completed",
+    EXECUTION_FAILED: "failed",
+    CANCEL_ACKNOWLEDGED: "cancelled",
+    UNKNOWN_OUTCOME: "unknown",
+    COMMAND_REJECTED: "failed",
+  };
+  const state = nextState[input.receipt.eventType];
+  if (!state) return null;
+
+  const db = getDb();
+  const [session] = await db
+    .select({
+      workerJobId: runnerExecutionSessions.workerJobId,
+      workerJobAttempt: runnerExecutionSessions.workerJobAttempt,
+      leaseFencingVersion: runnerExecutionSessions.leaseFencingVersion,
+      runnerId: runnerExecutionSessions.runnerId,
+      jobControlRevision: runnerExecutionSessions.jobControlRevision,
+    })
+    .from(runnerExecutionSessions)
+    .where(
+      and(
+        eq(runnerExecutionSessions.sessionId, binding.sessionId),
+        eq(runnerExecutionSessions.tenantId, input.tenantId)
+      )
+    )
+    .limit(1);
+  if (
+    !session ||
+    session.workerJobId !== input.receipt.jobId ||
+    session.workerJobAttempt !== binding.workerJobAttempt ||
+    session.leaseFencingVersion !== binding.leaseFencingVersion ||
+    session.runnerId !== input.runnerId
+  ) {
+    throw new Error("RUNNER_SESSION_RECEIPT_BINDING_MISMATCH");
+  }
+
+  const receiptKey = createHash("sha256")
+    .update(`${input.receipt.commandId}\0${input.receipt.eventId}`)
+    .digest("hex");
+  return transitionExecutionSessionProjection({
+    sessionId: binding.sessionId,
+    tenantId: input.tenantId,
+    expectedRevision: session.jobControlRevision,
+    nextState: state,
+    event: {
+      idempotencyKey: `spec278:runner_receipt:${receiptKey}`,
+      eventType: `runner_receipt_${input.receipt.eventType.toLowerCase()}`,
+      payload: {
+        commandId: input.receipt.commandId,
+        eventId: input.receipt.eventId,
+        sequence: input.receipt.sequence,
+      },
+    },
   });
 }
 
@@ -326,7 +436,10 @@ export async function transitionExecutionSessionProjection(input: {
       throw new Error("RUNNER_SESSION_REVISION_EXHAUSTED");
     }
 
-    if (terminalJobStates.has(job.status))
+    if (
+      terminalJobStates.has(job.status) &&
+      matchingTerminalExecutionSessionState(job.status) !== input.nextState
+    )
       throw new Error("RUNNER_SESSION_JOB_TERMINAL");
     if (
       job.attempt !== session.workerJobAttempt ||

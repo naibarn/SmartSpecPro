@@ -17,8 +17,9 @@ import {
 import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
 import { LinkProvider } from "@astryxdesign/core/Link";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { TenantPublicRoute } from "@/components/TenantPublicRoute";
 import { getPostHog } from "@/lib/posthog";
-import { redactShareTokenFromUrl } from "@/lib/publicUrlPrivacy";
+import { getSafePublicPageViewPath } from "@/lib/publicUrlPrivacy";
 import {
   ThemeProvider,
   useTheme as useAppTheme,
@@ -545,9 +546,10 @@ function PostHogPageViewTracker() {
   useEffect(() => {
     if (location !== prevPath.current) {
       prevPath.current = location;
-      getPostHog()?.capture("$pageview", {
-        $current_url: redactShareTokenFromUrl(window.location.href),
-      });
+      const safePath = getSafePublicPageViewPath(window.location.href);
+      if (safePath) {
+        getPostHog()?.capture("$pageview", { $current_url: safePath });
+      }
     }
   }, [location]);
 
@@ -643,31 +645,90 @@ function Router() {
           ))}
           <Route path="/" component={Home} />
           <Route path="/__p213/certification/approval-required" component={P213CertificationFixture} />
-          <Route path="/pricing" component={Pricing} />
-          <Route path="/features" component={Features} />
-          <Route path="/docs" component={Docs} />
-          <Route
-            path="/docs/worker-app-macos-build"
-            component={WorkerAppMacBuildGuide}
-          />
-          <Route path="/docs/:slug+" component={DocPage} />
-          <Route path="/help" component={HelpPage} />
-          <Route path="/help/:slug+" component={HelpTopicPage} />
+          <Route path="/pricing">
+            <TenantPublicRoute pageKey="pricing"><Pricing /></TenantPublicRoute>
+          </Route>
+          <Route path="/features">
+            <TenantPublicRoute pageKey="features"><Features /></TenantPublicRoute>
+          </Route>
+          <Route path="/docs">
+            <TenantPublicRoute pageKey="docs"><Docs /></TenantPublicRoute>
+          </Route>
+          <Route path="/docs/worker-app-macos-build">
+            <TenantPublicRoute pageKey="docs-worker-app-macos-build">
+              <WorkerAppMacBuildGuide />
+            </TenantPublicRoute>
+          </Route>
+          <Route path="/docs/:slug+">
+            <TenantPublicRoute
+              pageKey={(path) =>
+                `docs-${path.split("?")[0].slice("/docs/".length).replace(/\//g, "-")}`
+              }
+            >
+              <DocPage />
+            </TenantPublicRoute>
+          </Route>
+          <Route path="/help">
+            <TenantPublicRoute pageKey="help"><HelpPage /></TenantPublicRoute>
+          </Route>
+          <Route path="/help/:slug+">
+            <TenantPublicRoute
+              pageKey={(path) =>
+                `help-${path.split("?")[0].slice("/help/".length).replace(/\//g, "-")}`
+              }
+            >
+              <HelpTopicPage />
+            </TenantPublicRoute>
+          </Route>
           <Route path="/desktop/open" component={DesktopOpen} />
           <Route path="/desktop/view" component={DesktopView} />
-          <Route path="/contact" component={Contact} />
-          <Route path="/about" component={About} />
-          <Route path="/changelog" component={Changelog} />
-          <Route path="/careers" component={Careers} />
-          <Route path="/community" component={Community} />
-          <Route path="/support" component={Support} />
-          <Route path="/resources" component={Resources} />
-          <Route path="/status" component={Status} />
-          <Route path="/security" component={Security} />
-          <Route path="/blog" component={Blog} />
-          <Route path="/blog/:slug" component={BlogPost} />
-          <Route path="/marketplace" component={Marketplace} />
-          <Route path="/marketplace/:slug" component={Marketplace} />
+          <Route path="/contact">
+            <TenantPublicRoute pageKey="contact"><Contact /></TenantPublicRoute>
+          </Route>
+          <Route path="/about">
+            <TenantPublicRoute pageKey="about"><About /></TenantPublicRoute>
+          </Route>
+          <Route path="/changelog">
+            <TenantPublicRoute pageKey="changelog"><Changelog /></TenantPublicRoute>
+          </Route>
+          <Route path="/careers">
+            <TenantPublicRoute pageKey="careers"><Careers /></TenantPublicRoute>
+          </Route>
+          <Route path="/community">
+            <TenantPublicRoute pageKey="community"><Community /></TenantPublicRoute>
+          </Route>
+          <Route path="/support">
+            <TenantPublicRoute pageKey="support"><Support /></TenantPublicRoute>
+          </Route>
+          <Route path="/resources">
+            <TenantPublicRoute pageKey="resources"><Resources /></TenantPublicRoute>
+          </Route>
+          <Route path="/status">
+            <TenantPublicRoute pageKey="status"><Status /></TenantPublicRoute>
+          </Route>
+          <Route path="/security">
+            <TenantPublicRoute pageKey="security"><Security /></TenantPublicRoute>
+          </Route>
+          <Route path="/blog">
+            <TenantPublicRoute pageKey="blog"><Blog /></TenantPublicRoute>
+          </Route>
+          <Route path="/blog/:slug">
+            <TenantPublicRoute
+              pageKey={(path) => `blog-${path.split("?")[0].slice("/blog/".length)}`}
+            >
+              <BlogPost />
+            </TenantPublicRoute>
+          </Route>
+          <Route path="/marketplace">
+            <TenantPublicRoute pageKey="marketplace"><Marketplace /></TenantPublicRoute>
+          </Route>
+          <Route path="/marketplace/:slug">
+            <TenantPublicRoute
+              pageKey={(path) => `marketplace-${path.split("?")[0].slice("/marketplace/".length)}`}
+            >
+              <Marketplace />
+            </TenantPublicRoute>
+          </Route>
           <Route path="/decision-intelligence">
             <RequireAuth>
               <DecisionIntelligencePage />
@@ -738,7 +799,9 @@ function Router() {
               <MarketplaceCaptureProducts />
             </RequireAuth>
           </Route>
-          <Route path="/gallery" component={Gallery} />
+          <Route path="/gallery">
+            <TenantPublicRoute pageKey="gallery"><Gallery /></TenantPublicRoute>
+          </Route>
           <Route path="/admin/gallery">
             <RequireAdmin>
               <AdminGallery />
@@ -1347,8 +1410,12 @@ function Router() {
               <PresentationEditor />
             </RequireAuth>
           </Route>
-          <Route path="/terms" component={Terms} />
-          <Route path="/privacy" component={Privacy} />
+          <Route path="/terms">
+            <TenantPublicRoute pageKey="terms"><Terms /></TenantPublicRoute>
+          </Route>
+          <Route path="/privacy">
+            <TenantPublicRoute pageKey="privacy"><Privacy /></TenantPublicRoute>
+          </Route>
           <Route path="/verify-email" component={VerifyEmail} />
           <Route
             path="/auth/callback/mcp-connect"

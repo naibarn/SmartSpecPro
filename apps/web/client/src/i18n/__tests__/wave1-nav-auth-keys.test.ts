@@ -25,7 +25,7 @@ const REQUIRED_SIDEBAR_KEYS = [
 ];
 
 const REQUIRED_NAVBAR_KEYS = [
-  "navbar.home", "navbar.features", "navbar.workflows", "navbar.pricing",
+  "navbar.home", "navbar.features", "navbar.pricing",
   "navbar.gallery", "navbar.marketplace", "navbar.marketplaceSkills", "navbar.marketplaceAgencies",
   "navbar.docs", "navbar.blog", "navbar.contact",
   "navbar.signIn", "navbar.getStarted",

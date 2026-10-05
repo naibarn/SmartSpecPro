@@ -770,6 +770,10 @@ fn sha256(bytes: &[u8]) -> String {
 }
 
 fn receipt_command_context(command: &RunnerJobCommand) -> serde_json::Value {
+    let mut payload = serde_json::json!({ "taskId": command.payload.get("taskId") });
+    if let Some(session) = command.payload.get("executionSession") {
+        payload["executionSession"] = session.clone();
+    }
     serde_json::json!({
         "commandId": command.command_id,
         "commandType": "execute",
@@ -795,7 +799,7 @@ fn receipt_command_context(command: &RunnerJobCommand) -> serde_json::Value {
         "deadline": command.deadline,
         "authorizationGrantRef": "redacted-recovery-reference",
         "inputRef": "redacted-recovery-reference",
-        "payload": { "taskId": command.payload.get("taskId") },
+        "payload": payload,
     })
 }
 

@@ -198,13 +198,26 @@ mod tests {
         ));
         assert!(!workspace_registry::valid_git_branch(&"a".repeat(121)));
     }
+
+    #[test]
+    fn workspace_fingerprint_path_encoding_supports_unicode_names() {
+        let path = std::path::Path::new("src/ผู้ช่วย.rs");
+        let parsed = workspace_registry::path_from_git_bytes("src/ผู้ช่วย.rs".as_bytes());
+
+        assert_eq!(parsed.as_deref(), Some(path));
+        assert!(!workspace_registry::os_str_identity_bytes(path.as_os_str()).is_empty());
+    }
 }
 use crate::config::RunnerConfig;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::borrow::Cow;
+use std::ffi::OsStr;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
+#[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -305,12 +318,19 @@ pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {
         .ok()
         .filter(|output| output.status.success());
     let paths: Vec<PathBuf> = if let Some(output) = listed {
-        output
+        let parsed: Option<Vec<PathBuf>> = output
             .stdout
             .split(|byte| *byte == 0)
             .filter(|part| !part.is_empty())
-            .map(|part| PathBuf::from(std::ffi::OsStr::from_bytes(part)))
-            .collect()
+            .map(path_from_git_bytes)
+            .collect();
+        if let Some(paths) = parsed {
+            paths
+        } else {
+            let mut paths = Vec::new();
+            collect_files(workspace, workspace, &mut paths)?;
+            paths
+        }
     } else {
         let mut paths = Vec::new();
         collect_files(workspace, workspace, &mut paths)?;
@@ -341,7 +361,7 @@ pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {
             Ok(value) => value,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 hasher.update(b"deleted\0");
-                hasher.update(relative.as_os_str().as_bytes());
+                hasher.update(os_str_identity_bytes(relative.as_os_str()).as_ref());
                 continue;
             }
             Err(_) => return None,
@@ -364,12 +384,43 @@ pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {
         };
         #[cfg(not(unix))]
         let mode = 0u32;
-        hasher.update((relative.as_os_str().as_bytes().len() as u64).to_be_bytes());
-        hasher.update(relative.as_os_str().as_bytes());
+        let relative_bytes = os_str_identity_bytes(relative.as_os_str());
+        hasher.update((relative_bytes.len() as u64).to_be_bytes());
+        hasher.update(relative_bytes.as_ref());
         hasher.update(mode.to_be_bytes());
         hasher.update(Sha256::digest(bytes));
     }
     Some(format!("{:x}", hasher.finalize()))
+}
+
+#[cfg(unix)]
+fn path_from_git_bytes(bytes: &[u8]) -> Option<PathBuf> {
+    Some(PathBuf::from(OsStr::from_bytes(bytes)))
+}
+
+#[cfg(windows)]
+fn path_from_git_bytes(bytes: &[u8]) -> Option<PathBuf> {
+    String::from_utf8(bytes.to_vec()).ok().map(PathBuf::from)
+}
+
+#[cfg(not(any(unix, windows)))]
+fn path_from_git_bytes(bytes: &[u8]) -> Option<PathBuf> {
+    String::from_utf8(bytes.to_vec()).ok().map(PathBuf::from)
+}
+
+#[cfg(unix)]
+fn os_str_identity_bytes(value: &OsStr) -> Cow<'_, [u8]> {
+    Cow::Borrowed(value.as_bytes())
+}
+
+#[cfg(windows)]
+fn os_str_identity_bytes(value: &OsStr) -> Cow<'_, [u8]> {
+    Cow::Owned(value.encode_wide().flat_map(u16::to_le_bytes).collect())
+}
+
+#[cfg(not(any(unix, windows)))]
+fn os_str_identity_bytes(value: &OsStr) -> Cow<'_, [u8]> {
+    Cow::Owned(value.to_string_lossy().as_bytes().to_vec())
 }
 
 fn collect_files(root: &Path, directory: &Path, result: &mut Vec<PathBuf>) -> Option<()> {

@@ -1,3 +1,4 @@
+import { useReducedMotion } from "framer-motion";
 import { Card } from "@astryxdesign/core/Card";
 import { Grid } from "@astryxdesign/core/Grid";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -178,6 +179,7 @@ function TenantSection({
   index: number;
   pageTitle: string;
 }) {
+  const prefersReducedMotion = useReducedMotion();
   const items = sectionItems(section);
   const isHero = section.type === "hero";
   const isCta = section.type === "cta";
@@ -199,10 +201,11 @@ function TenantSection({
       padding={8}
       variant={isHero || isCta ? "muted" : "section"}
     >
-      {backgroundVideo ? (
+      {backgroundVideo && prefersReducedMotion === false ? (
         <video
           src={backgroundVideo}
-          aria-label={heading || ""}
+          aria-hidden="true"
+          tabIndex={-1}
           muted
           loop
           autoPlay
@@ -276,7 +279,15 @@ function TenantSection({
   );
 }
 
-export default function TenantHomePage({ page }: { page: TenantPageData }) {
+export default function TenantHomePage({
+  page,
+  canonicalPath = "/",
+  showEmergencyEntry = true,
+}: {
+  page: TenantPageData;
+  canonicalPath?: string;
+  showEmergencyEntry?: boolean;
+}) {
   const sections = page.sections?.length
     ? page.sections
     : page.content
@@ -307,13 +318,13 @@ export default function TenantHomePage({ page }: { page: TenantPageData }) {
         description={description}
         keywords={keywords}
         image={page.metadata?.ogImage}
-        canonicalPath="/"
+        canonicalPath={canonicalPath}
         fetchTenantSeo={false}
         useTenantDefaults={false}
       />
       <Navbar />
       <main>
-        <EmergencyPublicEntry variant="home" />
+        {showEmergencyEntry && <EmergencyPublicEntry variant="home" />}
         {sections.length ? (
           sections.map((section, index) => (
             <TenantSection

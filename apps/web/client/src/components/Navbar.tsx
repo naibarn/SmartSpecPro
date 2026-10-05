@@ -4,15 +4,16 @@
  * Features: Sticky header, glass effect, smooth transitions
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Sparkles, ChevronDown, Zap, ShieldAlert } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
+import { isSmartAIHubPublicSite } from "@/lib/publicSiteTenant";
 import { getSpec260PagePath } from "@smartspec/shared/src/emergencyRouteManifest";
 
 interface NavLink {
@@ -42,17 +43,26 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuId = useId();
+  const reduceMotion = useReducedMotion();
   const { tenant } = useTenant();
   const { t } = useScopedTranslation("nav");
   const tenantLogoUrl = tenant?.websiteLogoUrl || tenant?.logoUrl || "";
+  const isSmartAIHubSite = isSmartAIHubPublicSite(tenant);
   const emergencyHref = getSpec260PagePath("public.overview");
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
+
+  const closeMobileMenu = ({ restoreFocus = false } = {}) => {
+    setIsMobileMenuOpen(false);
+    if (restoreFocus) mobileMenuButtonRef.current?.focus();
+  };
 
   useEffect(() => {
     setLogoLoadFailed(false);
   }, [tenantLogoUrl]);
 
-  const navItems: NavItem[] = [
+  const platformNavItems: NavItem[] = [
     { href: "/", label: t("navbar.home") },
     { href: emergencyHref, label: t("navbar.emergency") },
     { href: "/features", label: t("navbar.features") },
@@ -73,6 +83,10 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
     { href: "/blog", label: t("navbar.blog") },
     { href: "/contact", label: t("navbar.contact") },
   ];
+  // Global marketing routes and labels belong to SmartAIHub, not tenant domains.
+  const navItems: NavItem[] = isSmartAIHubSite
+    ? platformNavItems
+    : [{ href: "/", label: tenant?.name || t("navbar.home") }];
 
   // Flatten for mobile menu
   const mobileLinks: NavLink[] = navItems.flatMap(item =>
@@ -98,7 +112,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsMobileMenuOpen(false);
+        closeMobileMenu({ restoreFocus: true });
       }
     };
 
@@ -130,23 +144,23 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className={`${embedded ? "sticky" : "fixed"} top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      initial={reduceMotion ? false : { y: -100 }}
+      animate={reduceMotion ? undefined : { y: 0 }}
+      transition={reduceMotion ? { duration: 0 } : { duration: 0.5, ease: "easeOut" }}
+      className={`${embedded ? "sticky" : "fixed"} top-0 left-0 right-0 z-50 transition-all duration-300 motion-reduce:transition-none ${
         isScrolled
           ? "bg-background/70 backdrop-blur-xl border-b border-border/50 shadow-lg"
           : "bg-transparent"
       }`}
     >
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="container mx-auto px-4 sm:px-6 lg:px-8" aria-label={t("navbar.primaryNavigation")}>
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link href="/">
             <motion.div
               className="flex items-center gap-2 cursor-pointer"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
             >
               {tenantLogoUrl && !logoLoadFailed ? (
                 <img
@@ -161,11 +175,13 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                     <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                   </div>
                   <span className="text-base sm:text-xl lg:text-2xl font-bold gradient-text">
-                    SmartAIHub
+                    {isSmartAIHubSite ? "SmartAIHub" : tenant?.name || ""}
                   </span>
-                  <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">
-                    Pro
-                  </span>
+                  {isSmartAIHubSite && (
+                    <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">
+                      Pro
+                    </span>
+                  )}
                 </>
               )}
             </motion.div>
@@ -189,8 +205,11 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                       onClick={() =>
                         setOpenDropdown(isOpen ? null : item.label)
                       }
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      aria-expanded={isOpen}
+                      aria-controls={`${mobileMenuId}-${item.label.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`}
+                      aria-label={t("navbar.openSubmenu", { label: item.label })}
+                      whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+                      whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                     >
                       {item.label}
                       <ChevronDown
@@ -201,10 +220,11 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                     <AnimatePresence>
                       {isOpen && (
                         <motion.div
-                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                          transition={{ duration: 0.15 }}
+                          id={`${mobileMenuId}-${item.label.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`}
+                          initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.95 }}
+                          animate={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+                          exit={reduceMotion ? undefined : { opacity: 0, y: 8, scale: 0.95 }}
+                          transition={reduceMotion ? { duration: 0 } : { duration: 0.15 }}
                           className="absolute top-full left-0 mt-1 w-64 rounded-xl border bg-background/95 backdrop-blur-xl shadow-xl overflow-hidden"
                         >
                           {item.items.map(sub => {
@@ -242,7 +262,11 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
               }
 
               return (
-                <Link key={item.href} href={item.href}>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={location === item.href ? "page" : undefined}
+                >
                   <motion.span
                     className={`inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                       item.href === emergencyHref
@@ -251,8 +275,8 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                           ? "px-4 py-2 text-primary bg-primary/10"
                           : "px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                   >
                     {item.href === emergencyHref && <ShieldAlert className="h-4 w-4" aria-hidden="true" />}
                     {item.label}
@@ -286,10 +310,12 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
 
           {/* Mobile Menu Button */}
           <button
+            ref={mobileMenuButtonRef}
             className="lg:hidden flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted/50 transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-label={isMobileMenuOpen ? t("navbar.closeMenu") : t("navbar.openMenu")}
             aria-expanded={isMobileMenuOpen}
+            aria-controls={mobileMenuId}
           >
             {isMobileMenuOpen ? (
               <X className="w-6 h-6" />
@@ -304,15 +330,22 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
+            id={mobileMenuId}
+            initial={reduceMotion ? false : { opacity: 0, height: 0 }}
+            animate={reduceMotion ? undefined : { opacity: 1, height: "auto" }}
+            exit={reduceMotion ? undefined : { opacity: 0, height: 0 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.2 }}
+            role="region"
+            aria-label={t("navbar.mobileNavigation")}
             className="lg:hidden bg-background/96 backdrop-blur-xl border-b border-border/50 shadow-xl"
           >
             <div className="container mx-auto max-h-[calc(100dvh-4rem)] space-y-2 overflow-y-auto px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               {mobileLinks.map(link => (
-                <Link key={link.href} href={link.href}>
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={location === link.href ? "page" : undefined}
+                >
                   <motion.div
                     className={cn(
                       "block rounded-xl px-4 py-3 text-base font-medium leading-snug transition-colors",
@@ -322,8 +355,8 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    whileTap={{ scale: 0.98 }}
+                    onClick={() => closeMobileMenu()}
+                    whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                   >
                     {link.label}
                   </motion.div>
@@ -337,7 +370,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                   <Button
                     variant="outline"
                     className="h-11 w-full"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={() => closeMobileMenu()}
                   >
                     {t("navbar.signIn")}
                   </Button>
@@ -345,7 +378,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                 <Link href="/signup">
                   <Button
                     className="h-11 w-full bg-gradient-to-r from-blue-500 to-teal-400 text-white"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={() => closeMobileMenu()}
                   >
                     {t("navbar.getStarted")}
                   </Button>

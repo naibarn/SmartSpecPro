@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { generateKeyPairSync } from "node:crypto";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createExternalAgentTaskDispatcher } from "../externalAgentRunnerDispatcher";
 import type { AgentTaskManifest } from "../agentControlPlaneContracts";
@@ -59,6 +60,8 @@ function input() {
 }
 
 describe("Feature 195 external-agent Runner dispatcher", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
   it("waits on the canonical job and dispatches a fenced provider-neutral command", async () => {
     const state = input();
     const dispatch = vi.fn().mockResolvedValue({
@@ -146,6 +149,26 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
       expect.objectContaining({
         metadata: expect.objectContaining({
           executionSessionId: "s278_projection_1",
+          commandTemplate: expect.objectContaining({
+            executionSession: expect.objectContaining({
+              sessionId: "s278_projection_1",
+              workerJobId: "job-1",
+              workerJobAttempt: 1,
+              leaseFencingVersion: 2,
+              state: "starting",
+            }),
+          }),
+        }),
+      })
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          executionSession: expect.objectContaining({
+            sessionId: "s278_projection_1",
+            continuityClass: "ephemeral",
+            enforcementLevel: "COMMAND_ONLY",
+          }),
         }),
       })
     );
@@ -325,5 +348,87 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
       expect.objectContaining({ spec224InputFetchGrant: "g".repeat(48) })
     );
     expect(state.waitForExternal).toHaveBeenCalledOnce();
+  });
+
+  it("keeps canonical Runner dispatch available when the shadow projection store fails", async () => {
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({
+      status: "accepted",
+      commandId: "command-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+    });
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch,
+      createSessionProjection: vi
+        .fn()
+        .mockRejectedValue(new Error("RUNNER_SESSION_STORE_UNAVAILABLE")) as any,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "command-1",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await expect(dispatcher(state as any)).resolves.toMatchObject({
+      deferred: true,
+      output: { commandId: "command-1", status: "accepted" },
+    });
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(state.waitForExternal).toHaveBeenCalledOnce();
+    expect(dispatch.mock.calls[0][0].payload).not.toHaveProperty(
+      "executionSession"
+    );
+  });
+
+  it("attaches a bounded signed authority grant only when Session Host is enabled", async () => {
+    vi.stubEnv("SMARTAIHUB_SPEC278_SESSION_HOST", "true");
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    vi.stubEnv(
+      "SMARTAIHUB_SPEC278_AUTHORITY_KEY_ID",
+      "runner-authority-test"
+    );
+    vi.stubEnv(
+      "SMARTAIHUB_SPEC278_AUTHORITY_SIGNING_KEY_PEM",
+      privateKey.export({ type: "pkcs8", format: "pem" }).toString()
+    );
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({
+      status: "accepted",
+      commandId: "command-grant-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+    });
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch,
+      createSessionProjection: vi
+        .fn()
+        .mockResolvedValue({ sessionId: "s278_grant_session" }) as any,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "command-grant-1",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+
+    await dispatcher(state as any);
+
+    const sentCommand = dispatch.mock.calls[0][0];
+    expect(sentCommand.payload.executionSession).toMatchObject({
+      authorityEpoch: 1,
+      placementEpoch: 1,
+    });
+    expect(sentCommand.payload.executionAuthorityGrant).toMatchObject({
+      claims: {
+        workerJobId: "job-1",
+        sessionId: "s278_grant_session",
+        runnerId: "runner-1",
+        effectClass: "external_agent_task",
+        requiredSafetyFeatures: [
+          "session_host_pty",
+          "workspace_write_sandbox",
+        ],
+      },
+    });
+    expect(state.waitForExternal.mock.calls[0][1].metadata.commandTemplate)
+      .toMatchObject({
+        executionAuthorityGrant: sentCommand.payload.executionAuthorityGrant,
+      });
   });
 });

@@ -8,7 +8,7 @@ import type { TenantRequest } from "../_core/tenant";
 import { getTenantTheme, getTenantSeo, clearTenantCache, sanitizeRetiredPublicClaims } from "../_core/tenant";
 import { db } from "../db";
 import { tenants, tenantPages, themePresets, seoMetadata } from "../../drizzle/schema";
-import { eq, and, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, isNull } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { sanitizeBrandingDeep } from "../services/brandingSanitizer";
 import { SmartAiHubContentManifestSchema } from "../../shared/smartaihubContentManifest";
@@ -677,7 +677,7 @@ export function registerTenantRoutes(app: Express) {
       const { pageKey } = req.params;
 
       const dbInstance = await db.instance;
-      const [page] = await dbInstance
+      const [tenantPage] = await dbInstance
         .select()
         .from(tenantPages)
         .where(
@@ -689,6 +689,31 @@ export function registerTenantRoutes(app: Express) {
         )
         .orderBy(desc(tenantPages.updatedAt), desc(tenantPages.id))
         .limit(1);
+
+      // Legacy SmartAIHub marketing pages may be platform-scoped (tenantId=null).
+      // Serve them only on the canonical host, after preferring exact tenant content.
+      const requestHost = (req.hostname || req.get("host") || "")
+        .trim()
+        .toLowerCase()
+        .replace(/:\d+$/, "")
+        .replace(/\.$/, "")
+        .replace(/^www\./, "");
+      let page = tenantPage;
+      if (!page && pageKey === "home" && requestHost === "smartaihub.app") {
+        const [globalPage] = await dbInstance
+          .select()
+          .from(tenantPages)
+          .where(
+            and(
+              isNull(tenantPages.tenantId),
+              eq(tenantPages.pageKey, pageKey),
+              eq(tenantPages.isPublished, true)
+            )
+          )
+          .orderBy(desc(tenantPages.updatedAt), desc(tenantPages.id))
+          .limit(1);
+        page = globalPage;
+      }
 
       if (!page) {
         return res.status(404).json({ error: "Page not found" });

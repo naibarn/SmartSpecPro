@@ -125,6 +125,50 @@ describe("Runner Job Command/Receipt contract", () => {
     ).toThrow("RUNNER_COMMAND_ADAPTER_UNSUPPORTED");
   });
 
+  it("accepts only a session contract bound to the canonical command identity", () => {
+    const external = {
+      ...command(),
+      executionKind: "external_agent_task",
+      adapterId: "codex.v1",
+      payload: {
+        taskId: "task-p213",
+        executionSession: {
+          sessionId: "s278_session-p213",
+          tenantId: "tenant-p213",
+          workerJobId: "job-p213-1",
+          workerJobAttempt: 1,
+          leaseFencingVersion: 3,
+          runnerId: "runner-p213",
+          generation: 1,
+          authorityEpoch: 1,
+          placementEpoch: 1,
+          jobControlRevision: 1,
+          state: "starting",
+          continuityClass: "process_persistent",
+          enforcementLevel: "PROCESS_PAUSE",
+          driverId: "local.pty.v1",
+          driverVersion: "1.0.0",
+        },
+      },
+    };
+    expect(validateRunnerJobCommand(external).payload.executionSession).toMatchObject({
+      sessionId: "s278_session-p213",
+      continuityClass: "process_persistent",
+    });
+    expect(() =>
+      validateRunnerJobCommand({
+        ...external,
+        payload: {
+          ...external.payload,
+          executionSession: {
+            ...external.payload.executionSession,
+            leaseFencingVersion: 4,
+          },
+        },
+      })
+    ).toThrow("RUNNER_SESSION_COMMAND_BINDING_MISMATCH");
+  });
+
   it("requires an advertised external-agent capability before dispatch", () => {
     const external = {
       ...command(),

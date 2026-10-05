@@ -63,7 +63,9 @@ pub struct ExecutionSessionProjection {
     pub placement_epoch: u64,
     pub job_control_revision: u64,
     pub state: SessionState,
+    #[serde(rename = "continuityClass", alias = "continuity")]
     pub continuity: ContinuityClass,
+    #[serde(rename = "enforcementLevel", alias = "enforcement")]
     pub enforcement: EnforcementLevel,
     pub driver_id: String,
 }

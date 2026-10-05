@@ -3,7 +3,10 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::{Read, Write};
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
@@ -14,6 +17,16 @@ const MAX_BYTES: u64 = 512 * 1024 * 1024;
 pub struct Candidate {
     pub original: PathBuf,
     pub root: PathBuf,
+    baseline: BTreeMap<String, Option<String>>,
+    allowed: Vec<String>,
+    manifest_path: PathBuf,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CandidateManifest {
+    schema_version: u32,
+    original: String,
     baseline: BTreeMap<String, Option<String>>,
     allowed: Vec<String>,
 }
@@ -191,6 +204,57 @@ fn fingerprint(root: &Path) -> Result<String, String> {
     crate::workspace_registry::fingerprint_workspace(root)
         .ok_or_else(|| "SPEC224_SOURCE_FINGERPRINT_FAILED".into())
 }
+fn persist_candidate_manifest(
+    data_root: &Path,
+    run_hash: &str,
+    original: &Path,
+    baseline: &BTreeMap<String, Option<String>>,
+    allowed: &[String],
+) -> Result<PathBuf, String> {
+    let directory = data_root.join("spec224-candidate-manifests");
+    fs::create_dir_all(&directory).map_err(|_| "SPEC224_CANDIDATE_MANIFEST_CREATE_FAILED")?;
+    let metadata =
+        fs::symlink_metadata(&directory).map_err(|_| "SPEC224_CANDIDATE_MANIFEST_CREATE_FAILED")?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err("SPEC224_CANDIDATE_MANIFEST_UNTRUSTED".into());
+    }
+    if directory
+        .canonicalize()
+        .map_err(|_| "SPEC224_CANDIDATE_MANIFEST_UNTRUSTED")?
+        .parent()
+        != Some(data_root)
+    {
+        return Err("SPEC224_CANDIDATE_MANIFEST_UNTRUSTED".into());
+    }
+    set_private_dir(&directory)?;
+    let path = directory.join(format!("{run_hash}.json"));
+    let manifest = CandidateManifest {
+        schema_version: 1,
+        original: original.to_string_lossy().into_owned(),
+        baseline: baseline.clone(),
+        allowed: allowed.to_vec(),
+    };
+    let bytes =
+        serde_json::to_vec(&manifest).map_err(|_| "SPEC224_CANDIDATE_MANIFEST_CREATE_FAILED")?;
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    options
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+    let mut file = options
+        .open(&path)
+        .map_err(|_| "SPEC224_CANDIDATE_MANIFEST_CREATE_FAILED")?;
+    if file
+        .write_all(&bytes)
+        .and_then(|_| file.sync_all())
+        .is_err()
+    {
+        let _ = fs::remove_file(&path);
+        return Err("SPEC224_CANDIDATE_MANIFEST_CREATE_FAILED".into());
+    }
+    Ok(path)
+}
 fn allowed(path: &str, set: &[String]) -> bool {
     set.iter().any(|entry| {
         entry == "**"
@@ -264,11 +328,141 @@ impl Candidate {
             }
             baseline.insert(path, hash);
         }
+        let manifest_path = match persist_candidate_manifest(
+            &data_root,
+            &run_hash[..32],
+            &original,
+            &baseline,
+            &allowed_write_set,
+        ) {
+            Ok(path) => path,
+            Err(error) => {
+                let _ = fs::remove_dir_all(&root);
+                return Err(error);
+            }
+        };
         Ok(Self {
             original,
             root,
             baseline,
             allowed: allowed_write_set,
+            manifest_path,
+        })
+    }
+
+    pub fn reattach_for_command(
+        config: &crate::config::RunnerConfig,
+        command: &crate::protocol::RunnerJobCommand,
+    ) -> Result<Self, String> {
+        let policy = command
+            .payload
+            .get("spec224Execution")
+            .and_then(serde_json::Value::as_object)
+            .ok_or("SPEC224_EXECUTION_POLICY_REQUIRED")?;
+        let allowed = policy
+            .get("allowedWriteSet")
+            .and_then(serde_json::Value::as_array)
+            .filter(|paths| !paths.is_empty() && paths.len() <= 256)
+            .ok_or("SPEC224_EXECUTION_POLICY_INVALID")?
+            .iter()
+            .map(|path| {
+                path.as_str()
+                    .map(str::to_owned)
+                    .ok_or("SPEC224_EXECUTION_POLICY_INVALID")
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if allowed
+            .iter()
+            .any(|path| path != "**" && !safe_relative(path))
+        {
+            return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+        }
+        let original = crate::external_agent::workspace_path(
+            config,
+            command
+                .workspace_ref
+                .as_deref()
+                .ok_or("RUNNER_WORKSPACE_REFERENCE_REQUIRED")?,
+        )?;
+        let data_root = Path::new(&config.data_root)
+            .canonicalize()
+            .map_err(|_| "SPEC224_CANDIDATE_STORAGE_UNAVAILABLE")?;
+        let run_hash = format!("{:x}", Sha256::digest(command.command_id.as_bytes()));
+        let candidates_root = data_root.join("spec224-candidates");
+        let root = candidates_root.join(&run_hash[..32]);
+        let root_metadata =
+            fs::symlink_metadata(&root).map_err(|_| "SPEC224_CANDIDATE_UNAVAILABLE")?;
+        if root_metadata.file_type().is_symlink() || !root_metadata.is_dir() {
+            return Err("SPEC224_CANDIDATE_UNTRUSTED".into());
+        }
+        let canonical_root = root
+            .canonicalize()
+            .map_err(|_| "SPEC224_CANDIDATE_UNTRUSTED")?;
+        if canonical_root.parent() != Some(candidates_root.as_path()) {
+            return Err("SPEC224_CANDIDATE_UNTRUSTED".into());
+        }
+        let manifest_directory = data_root.join("spec224-candidate-manifests");
+        let directory_metadata = fs::symlink_metadata(&manifest_directory)
+            .map_err(|_| "SPEC224_CANDIDATE_MANIFEST_UNAVAILABLE")?;
+        if directory_metadata.file_type().is_symlink() || !directory_metadata.is_dir() {
+            return Err("SPEC224_CANDIDATE_MANIFEST_UNTRUSTED".into());
+        }
+        if manifest_directory
+            .canonicalize()
+            .map_err(|_| "SPEC224_CANDIDATE_MANIFEST_UNTRUSTED")?
+            .parent()
+            != Some(data_root.as_path())
+        {
+            return Err("SPEC224_CANDIDATE_MANIFEST_UNTRUSTED".into());
+        }
+        let manifest_path = manifest_directory.join(format!("{}.json", &run_hash[..32]));
+        let metadata = fs::symlink_metadata(&manifest_path)
+            .map_err(|_| "SPEC224_CANDIDATE_MANIFEST_UNAVAILABLE")?;
+        if metadata.file_type().is_symlink()
+            || !metadata.is_file()
+            || metadata.len() > 32 * 1024 * 1024
+        {
+            return Err("SPEC224_CANDIDATE_MANIFEST_INVALID".into());
+        }
+        #[cfg(unix)]
+        if metadata.permissions().mode() & 0o077 != 0 {
+            return Err("SPEC224_CANDIDATE_MANIFEST_PERMISSIONS_INVALID".into());
+        }
+        let mut options = OpenOptions::new();
+        options.read(true);
+        #[cfg(unix)]
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+        let mut bytes = Vec::new();
+        options
+            .open(&manifest_path)
+            .map_err(|_| "SPEC224_CANDIDATE_MANIFEST_UNAVAILABLE")?
+            .take(32 * 1024 * 1024 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "SPEC224_CANDIDATE_MANIFEST_UNAVAILABLE")?;
+        if bytes.len() > 32 * 1024 * 1024 {
+            return Err("SPEC224_CANDIDATE_MANIFEST_INVALID".into());
+        }
+        let manifest: CandidateManifest =
+            serde_json::from_slice(&bytes).map_err(|_| "SPEC224_CANDIDATE_MANIFEST_INVALID")?;
+        if manifest.schema_version != 1
+            || manifest.original != original.to_string_lossy()
+            || manifest.allowed != allowed
+            || manifest.baseline.len() > MAX_FILES
+            || manifest.baseline.iter().any(|(path, hash)| {
+                !safe_relative(path)
+                    || hash.as_ref().is_some_and(|value| {
+                        value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit())
+                    })
+            })
+        {
+            return Err("SPEC224_CANDIDATE_MANIFEST_SCOPE_MISMATCH".into());
+        }
+        Ok(Self {
+            original,
+            root: canonical_root,
+            baseline: manifest.baseline,
+            allowed: manifest.allowed,
+            manifest_path,
         })
     }
     /// Apply only after provider success. Each target is rechecked against the
@@ -373,6 +567,7 @@ impl Candidate {
         let _ = fs::remove_dir_all(self.root);
         let _ = fs::remove_dir_all(backup_root);
         let _ = fs::remove_file(journal);
+        let _ = fs::remove_file(self.manifest_path);
         Ok(())
     }
 }
@@ -429,6 +624,17 @@ pub fn recover_pending(config: &crate::config::RunnerConfig) -> Result<usize, St
             return Err("SPEC224_RECOVERY_TARGET_UNTRUSTED".into());
         }
         rollback_journal(&journal)?;
+        if let Some(candidate_id) = Path::new(&record.candidate)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .filter(|name| name.len() == 32 && name.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        {
+            let _ = fs::remove_file(
+                Path::new(&config.data_root)
+                    .join("spec224-candidate-manifests")
+                    .join(format!("{candidate_id}.json")),
+            );
+        }
         let _ = fs::remove_dir_all(record.candidate);
         let _ = fs::remove_dir_all(journal.with_extension("backups"));
         recovered += 1;
@@ -533,6 +739,80 @@ mod tests {
         assert_eq!(
             fs::read_to_string(workspace.join("src.txt")).unwrap(),
             "candidate"
+        );
+    }
+
+    #[test]
+    fn candidate_manifest_allows_scoped_reattach_and_apply_after_runner_restart() {
+        let (_temp, workspace, data, fingerprint) = fixture();
+        let config = crate::config::RunnerConfig {
+            data_root: data.to_string_lossy().into_owned(),
+            ..crate::config::RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        let registered = crate::workspace_registry::register(&config, &workspace).unwrap();
+        let command = crate::protocol::RunnerJobCommand {
+            command_id: "spec224-restart-command".into(),
+            command_type: "execute".into(),
+            contract_version: "runner-job-v1".into(),
+            job_id: "job-1".into(),
+            attempt: 1,
+            lease_id: "lease-1".into(),
+            fencing_token: 1,
+            tenant_id: "tenant-1".into(),
+            user_id: Some(1),
+            project_ref: None,
+            workspace_ref: Some(registered.workspace_id),
+            runner_id: "runner-1".into(),
+            runner_session_id: "runner-session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "https://example.test".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: None,
+            browser_engine_constraint: None,
+            idempotency_key: "agent:task-1:1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-1".into(),
+            input_ref: "input-1".into(),
+            payload: serde_json::json!({
+                "taskId": "task-1",
+                "spec224Execution": {
+                    "mode": "prompt",
+                    "sourceFingerprint": fingerprint,
+                    "allowedWriteSet": ["src.txt"]
+                }
+            }),
+        };
+        let candidate = create_for_command(&config, &command).unwrap();
+        fs::write(candidate.root.join("src.txt"), "restart-result").unwrap();
+        let manifest_bytes = fs::read(&candidate.manifest_path).unwrap();
+        let mut tampered: serde_json::Value = serde_json::from_slice(&manifest_bytes).unwrap();
+        tampered["allowed"] = serde_json::json!(["**"]);
+        fs::write(
+            &candidate.manifest_path,
+            serde_json::to_vec(&tampered).unwrap(),
+        )
+        .unwrap();
+        drop(candidate);
+
+        assert_eq!(
+            Candidate::reattach_for_command(&config, &command).unwrap_err(),
+            "SPEC224_CANDIDATE_MANIFEST_SCOPE_MISMATCH"
+        );
+        let run_hash = format!("{:x}", Sha256::digest(command.command_id.as_bytes()));
+        let candidate_root = data.join("spec224-candidates").join(&run_hash[..32]);
+        let manifest_path = data
+            .join("spec224-candidate-manifests")
+            .join(format!("{}.json", &run_hash[..32]));
+        fs::write(&manifest_path, manifest_bytes).unwrap();
+
+        let recovered = Candidate::reattach_for_command(&config, &command).unwrap();
+        assert_eq!(recovered.root, candidate_root);
+        recovered.apply().unwrap();
+        assert_eq!(
+            fs::read_to_string(workspace.join("src.txt")).unwrap(),
+            "restart-result"
         );
     }
 

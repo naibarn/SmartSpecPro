@@ -15,7 +15,9 @@ pub struct ExternalAgentResult {
 }
 
 pub struct ExternalAgentProcess {
-    child: Child,
+    child: Option<Child>,
+    #[cfg(target_os = "linux")]
+    session_host: Option<crate::session_host::SessionHostClient>,
     output_path: PathBuf,
     error_path: PathBuf,
     started_at: Instant,
@@ -205,6 +207,17 @@ pub fn start_external_agent(
     }
     let spec = build_process_spec(candidate, &workspace, &args)?;
     let bounded_duration = deadline_duration(&command.deadline)?;
+    #[cfg(target_os = "linux")]
+    if std::env::var("SMARTAIHUB_SPEC278_SESSION_HOST").as_deref() == Ok("true") {
+        return start_in_session_host(
+            config,
+            command,
+            spec224_candidate,
+            spec,
+            now,
+            bounded_duration,
+        );
+    }
     let log_root = PathBuf::from(&config.data_root).join("agent-logs");
     std::fs::create_dir_all(&log_root).map_err(|_| "RUNNER_AGENT_OUTPUT_CREATE_FAILED")?;
     #[cfg(unix)]
@@ -241,7 +254,9 @@ pub fn start_external_agent(
         .spawn()
         .map_err(|_| "RUNNER_AGENT_PROCESS_SPAWN_FAILED".to_string())?;
     Ok(ExternalAgentProcess {
-        child,
+        child: Some(child),
+        #[cfg(target_os = "linux")]
+        session_host: None,
         output_path,
         error_path,
         started_at: now,
@@ -250,6 +265,279 @@ pub fn start_external_agent(
         // process in the Runner.
         deadline: now + bounded_duration,
         candidate: spec224_candidate,
+    })
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn reattach_session_host(
+    config: &RunnerConfig,
+    command: &RunnerJobCommand,
+) -> Result<Option<ExternalAgentProcess>, String> {
+    use crate::authority_grant::{ExecutionAuthorityGrant, ExpectedAuthority};
+    use crate::session_contract::ExecutionSessionProjection;
+    use crate::session_host::{SessionHostClient, SessionHostDescriptor};
+    use std::collections::HashMap;
+
+    if std::env::var("SMARTAIHUB_SPEC278_SESSION_HOST").as_deref() != Ok("true") {
+        return Ok(None);
+    }
+    let session: ExecutionSessionProjection = serde_json::from_value(
+        command
+            .payload
+            .get("executionSession")
+            .cloned()
+            .ok_or("RUNNER_SESSION_BINDING_REQUIRED")?,
+    )
+    .map_err(|_| "RUNNER_SESSION_BINDING_REQUIRED")?;
+    let grant: ExecutionAuthorityGrant = serde_json::from_value(
+        command
+            .payload
+            .get("executionAuthorityGrant")
+            .cloned()
+            .ok_or("RUNNER_AUTHORITY_GRANT_REQUIRED")?,
+    )
+    .map_err(|_| "RUNNER_AUTHORITY_GRANT_INVALID")?;
+    let trusted: HashMap<String, String> = serde_json::from_str(
+        &std::env::var("SAH_RUNNER_AUTHORITY_PUBLIC_KEYS_JSON")
+            .map_err(|_| "RUNNER_AUTHORITY_TRUST_ROOT_UNAVAILABLE")?,
+    )
+    .map_err(|_| "RUNNER_AUTHORITY_TRUST_ROOT_INVALID")?;
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "RUNNER_AUTHORITY_CLOCK_INVALID")?
+        .as_millis() as u64;
+    let expected = ExpectedAuthority {
+        worker_job_id: &command.job_id,
+        session_id: &session.session_id,
+        runner_id: &command.runner_id,
+        session_generation: session.generation,
+        minimum_authority_epoch: session.authority_epoch,
+        minimum_placement_epoch: session.placement_epoch,
+        minimum_job_control_revision: session.job_control_revision,
+        allowed_effect_class: "external_agent_task",
+        supported_safety_features: &["session_host_pty", "workspace_write_sandbox"],
+    };
+    let accepted = grant
+        .verify(&trusted, &expected, now_ms)
+        .map_err(str::to_string)?;
+    let deadline = deadline_duration(&command.deadline)?;
+    let ttl = accepted
+        .remaining(now_ms, Instant::now())
+        .map_err(str::to_string)?;
+    let state = PathBuf::from(&config.data_root)
+        .join("execution-sessions")
+        .join(format!("{}-{}", session.session_id, session.generation));
+    let descriptor = SessionHostDescriptor::load(&state)
+        .or_else(|_| SessionHostDescriptor::load_for_terminal_receipt(&state))?;
+    if descriptor.session_id != session.session_id
+        || descriptor.session_generation != session.generation
+    {
+        return Err("RUNNER_SESSION_HOST_DESCRIPTOR_SCOPE_MISMATCH".into());
+    }
+    let registry =
+        crate::session_registry::SessionRegistry::open(&PathBuf::from(&config.data_root))?;
+    let registered = registry.inventory().iter().any(|manifest| {
+        manifest.session_id == session.session_id
+            && manifest.worker_job_id == command.job_id
+            && manifest.worker_job_attempt == command.attempt
+            && manifest.lease_fencing_version == command.fencing_token
+            && manifest.runner_id == command.runner_id
+            && manifest.session_generation == session.generation
+            && manifest.authority_epoch == session.authority_epoch
+            && manifest.placement_epoch == session.placement_epoch
+            && manifest.job_control_revision == session.job_control_revision
+            && descriptor
+                .child_identity
+                .as_ref()
+                .is_some_and(|identity| manifest.process == *identity)
+            && manifest.host_process == Some(descriptor.host_identity.clone())
+    });
+    if !registered {
+        return Err("RUNNER_SESSION_REGISTRY_FENCE_MISMATCH".into());
+    }
+    let (client, host_running) = match SessionHostClient::attach(descriptor.clone()) {
+        Ok(client) => match client.status() {
+            Ok(status) => (client, status.status == "running"),
+            Err(_) if client.read_terminal_receipt().is_ok() => (client, false),
+            Err(_) => return Err("RUNNER_SESSION_HOST_STATUS_UNAVAILABLE".into()),
+        },
+        Err(_) => {
+            let client = SessionHostClient::attach_for_terminal_receipt(descriptor)?;
+            client.read_terminal_receipt()?;
+            (client, false)
+        }
+    };
+    if !host_running && client.read_terminal_receipt().is_err() {
+        return Err("RUNNER_SESSION_HOST_TERMINAL_RECEIPT_UNAVAILABLE".into());
+    }
+    if host_running && ttl.is_zero() {
+        if let Ok(status) = client.status() {
+            let _ = client.terminate(
+                status.command_sequence.saturating_add(1),
+                "authority-expired",
+            );
+        }
+        return Ok(None);
+    }
+    let candidate = if command.payload.get("spec224Execution").is_some() {
+        match crate::spec224_candidate::Candidate::reattach_for_command(config, command) {
+            Ok(candidate) => Some(candidate),
+            Err(error) => {
+                if host_running {
+                    if let Ok(status) = client.status() {
+                        let _ = client.terminate(
+                            status.command_sequence.saturating_add(1),
+                            "spec224-candidate-recovery-failed",
+                        );
+                    }
+                    let _ = client.wait_for_exit(Duration::from_secs(2));
+                }
+                return Err(error);
+            }
+        }
+    } else {
+        None
+    };
+    Ok(Some(ExternalAgentProcess {
+        child: None,
+        session_host: Some(client),
+        output_path: PathBuf::new(),
+        error_path: PathBuf::new(),
+        started_at: Instant::now(),
+        deadline: Instant::now() + deadline.min(ttl),
+        candidate,
+    }))
+}
+
+#[cfg(target_os = "linux")]
+fn start_in_session_host(
+    config: &RunnerConfig,
+    command: &RunnerJobCommand,
+    candidate: Option<crate::spec224_candidate::Candidate>,
+    process: crate::process::ProcessSpec,
+    now: Instant,
+    deadline: Duration,
+) -> Result<ExternalAgentProcess, String> {
+    use crate::authority_grant::{ExecutionAuthorityGrant, ExpectedAuthority};
+    use crate::session_contract::ExecutionSessionProjection;
+    use crate::session_host::{
+        launch_registered_with_authority, SessionHostClient, SessionHostRegistration,
+    };
+    use sha2::{Digest, Sha256};
+    use std::collections::HashMap;
+
+    let session: ExecutionSessionProjection = serde_json::from_value(
+        command
+            .payload
+            .get("executionSession")
+            .cloned()
+            .ok_or("RUNNER_SESSION_BINDING_REQUIRED")?,
+    )
+    .map_err(|_| "RUNNER_SESSION_BINDING_REQUIRED")?;
+    let grant: ExecutionAuthorityGrant = serde_json::from_value(
+        command
+            .payload
+            .get("executionAuthorityGrant")
+            .cloned()
+            .ok_or("RUNNER_AUTHORITY_GRANT_REQUIRED")?,
+    )
+    .map_err(|_| "RUNNER_AUTHORITY_GRANT_INVALID")?;
+    let trusted: HashMap<String, String> = serde_json::from_str(
+        &std::env::var("SAH_RUNNER_AUTHORITY_PUBLIC_KEYS_JSON")
+            .map_err(|_| "RUNNER_AUTHORITY_TRUST_ROOT_UNAVAILABLE")?,
+    )
+    .map_err(|_| "RUNNER_AUTHORITY_TRUST_ROOT_INVALID")?;
+    if trusted.is_empty() || trusted.len() > 16 {
+        return Err("RUNNER_AUTHORITY_TRUST_ROOT_INVALID".into());
+    }
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "RUNNER_AUTHORITY_CLOCK_INVALID")?
+        .as_millis() as u64;
+    let expected = ExpectedAuthority {
+        worker_job_id: &command.job_id,
+        session_id: &session.session_id,
+        runner_id: &command.runner_id,
+        session_generation: session.generation,
+        minimum_authority_epoch: session.authority_epoch,
+        minimum_placement_epoch: session.placement_epoch,
+        minimum_job_control_revision: session.job_control_revision,
+        allowed_effect_class: "external_agent_task",
+        supported_safety_features: &["session_host_pty", "workspace_write_sandbox"],
+    };
+    let accepted = grant
+        .verify(&trusted, &expected, now_ms)
+        .map_err(str::to_string)?;
+    let ttl = accepted
+        .remaining(now_ms, Instant::now())
+        .map_err(str::to_string)?;
+    let executable = std::env::var_os("SAH_RUNNER_SESSION_HOST_BINARY")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|path| path.parent().map(|p| p.join("smartaihub-session-host")))
+        })
+        .ok_or("RUNNER_SESSION_HOST_BINARY_UNAVAILABLE")?;
+    let expected_hash = std::env::var("SAH_RUNNER_SESSION_HOST_SHA256")
+        .map_err(|_| "RUNNER_SESSION_HOST_HASH_UNPINNED")?;
+    if expected_hash.len() != 64
+        || !expected_hash.bytes().all(|b| b.is_ascii_hexdigit())
+        || std::fs::symlink_metadata(&executable)
+            .map_err(|_| "RUNNER_SESSION_HOST_BINARY_UNAVAILABLE")?
+            .file_type()
+            .is_symlink()
+    {
+        return Err("RUNNER_SESSION_HOST_BINARY_UNTRUSTED".into());
+    }
+    let mut file =
+        std::fs::File::open(&executable).map_err(|_| "RUNNER_SESSION_HOST_BINARY_UNAVAILABLE")?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|_| "RUNNER_SESSION_HOST_BINARY_UNAVAILABLE")?;
+    if format!("{:x}", hasher.finalize()) != expected_hash.to_ascii_lowercase() {
+        return Err("RUNNER_SESSION_HOST_BINARY_HASH_MISMATCH".into());
+    }
+    let state = PathBuf::from(&config.data_root)
+        .join("execution-sessions")
+        .join(format!("{}-{}", session.session_id, session.generation));
+    let registration = SessionHostRegistration {
+        worker_job_id: command.job_id.clone(),
+        worker_job_attempt: command.attempt,
+        lease_fencing_version: command.fencing_token,
+        runner_id: command.runner_id.clone(),
+        authority_epoch: session.authority_epoch,
+        placement_epoch: session.placement_epoch,
+        job_control_revision: session.job_control_revision,
+        driver_id: session.driver_id.clone(),
+        continuity_class: serde_json::to_value(session.continuity)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .ok_or("RUNNER_SESSION_BINDING_INVALID")?,
+        workspace_ref: command
+            .workspace_ref
+            .clone()
+            .ok_or("RUNNER_WORKSPACE_REFERENCE_REQUIRED")?,
+        session_host_version: crate::RUNNER_VERSION.into(),
+    };
+    let descriptor = launch_registered_with_authority(
+        &executable,
+        &state,
+        &PathBuf::from(&config.data_root),
+        &session.session_id,
+        session.generation,
+        &registration,
+        &process,
+        ttl,
+    )?;
+    let client = SessionHostClient::attach(descriptor)?;
+    Ok(ExternalAgentProcess {
+        child: None,
+        session_host: Some(client),
+        output_path: PathBuf::new(),
+        error_path: PathBuf::new(),
+        started_at: now,
+        deadline: now + deadline,
+        candidate,
     })
 }
 
@@ -276,12 +564,54 @@ impl ExternalAgentProcess {
     }
     pub fn try_collect(&mut self, now: Instant) -> Result<Option<ExternalAgentResult>, String> {
         if now >= self.deadline {
-            let _ = self.child.kill();
-            let _ = self.child.wait();
+            #[cfg(target_os = "linux")]
+            if let Some(host) = self.session_host.as_ref() {
+                if let Ok(status) = host.status() {
+                    let _ = host.terminate(status.command_sequence + 1, "command-deadline");
+                }
+            } else if let Some(child) = self.child.as_mut() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+            #[cfg(not(target_os = "linux"))]
+            if let Some(child) = self.child.as_mut() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
             return Err(self.with_recovery_ref("RUNNER_AGENT_TIMEOUT"));
         }
-        let Some(status) = self
-            .child
+        #[cfg(target_os = "linux")]
+        if let Some(host) = self.session_host.as_ref() {
+            match host.status() {
+                Ok(status) if status.status == "running" => return Ok(None),
+                Ok(_) => {}
+                Err(_) => {
+                    // A completed Host exits after persisting its terminal receipt.
+                    // Its death is expected here; the receipt is the durable result.
+                }
+            }
+            let receipt = host
+                .read_terminal_receipt()
+                .map_err(|_| "RUNNER_AGENT_TERMINAL_RECEIPT_UNAVAILABLE".to_string())?;
+            if receipt.exit_code != 0 {
+                return Err(
+                    self.with_recovery_ref(&format!("RUNNER_AGENT_EXITED_{}", receipt.exit_code))
+                );
+            }
+            if let Some(candidate) = self.candidate.take() {
+                let recovery_ref = candidate.recovery_ref();
+                candidate
+                    .apply()
+                    .map_err(|error| format!("{error}:{recovery_ref}"))?;
+            }
+            return Ok(Some(ExternalAgentResult {
+                result_ref: format!("agent-result:sha256:{}", receipt.output_sha256),
+                evidence_ref: format!("agent-evidence:sha256:{}", receipt.output_sha256),
+                exit_code: receipt.exit_code,
+            }));
+        }
+        let child = self.child.as_mut().ok_or("RUNNER_AGENT_STATUS_FAILED")?;
+        let Some(status) = child
             .try_wait()
             .map_err(|_| "RUNNER_AGENT_STATUS_FAILED".to_string())?
         else {
@@ -319,13 +649,23 @@ impl ExternalAgentProcess {
 
     pub fn cancel(&mut self) -> Result<(), String> {
         let recovery_ref = self.recovery_ref();
-        self.child.kill().map_err(|_| {
+        #[cfg(target_os = "linux")]
+        if let Some(host) = self.session_host.as_ref() {
+            let sequence = host
+                .status()
+                .map_err(|_| "RUNNER_AGENT_CANCEL_FAILED")?
+                .command_sequence;
+            host.terminate(sequence + 1, "runner-cancel")?;
+            return Ok(());
+        }
+        let child = self.child.as_mut().ok_or("RUNNER_AGENT_CANCEL_FAILED")?;
+        child.kill().map_err(|_| {
             format!(
                 "RUNNER_AGENT_CANCEL_FAILED:{}",
                 recovery_ref.unwrap_or_default()
             )
         })?;
-        let _ = self.child.wait();
+        let _ = child.wait();
         let _ = std::fs::remove_file(&self.output_path);
         let _ = std::fs::remove_file(&self.error_path);
         Ok(())

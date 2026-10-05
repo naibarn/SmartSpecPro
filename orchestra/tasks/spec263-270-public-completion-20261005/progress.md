@@ -1,17 +1,31 @@
 # Progress
 
 ## Current checkpoint
-- Worktree branch: `codex/spec263-270-public-completion-20261005`.
-- Reconciled base: `origin/main` at `58cafcfd60`; implementation commit `f10c323eb9760bcb2577f9b93fc6bc6e16193bad` was promoted by normal non-force push and verified reachable from `origin/main`.
-- Work completed: bilingual outcome-led Home and vertical-series discovery using installed Astryx primitives; static SEO shell updated; scoped homepage/provider regressions added; provider adapter fixed for missing catalog context and canonical schema version.
-- Focused proof: 15 test files / 110 tests passed; `git diff --check` passed; commit rebased without conflicts and remote main matched the candidate at verification.
-- No build/typecheck/browser/UAT/production DB write/deploy.
+- Newer code gap closed in this continuation: canonical SmartAIHub `home` now falls back to the published global page (`tenantId=null`) only after exact tenant lookup misses, and only on `smartaihub.app`/`www.smartaihub.app`; client-side validation and tenant+host-scoped cache keys enforce the same boundary. This addresses the recorded production data/API mismatch that caused the legacy static homepage fallback. Test cases were added but not executed because isolated worktree dependency resolution lacks Vitest. TypeScript/TSX syntax parsing and `git diff --check` pass.
+- Post-integration package check on `9524ec7592a4a5b57bf8a65baf1f04b2074ffc21` is `CODE_FAILED` with 1,888 diagnostics across apps/web; none reference the four changed TS/TSX files. Available memory at admission was 21,667 MiB. Earlier 946 diagnostics at `3145dd...` and 942 at `2c2e094...` are superseded. Full repository typecheck remains `QUEUE_REQUIRED` through Spec 224 canonical worker admission. No build/deploy/browser/live proof.
+- Branch/worktree: `codex/spec263-270-public-completion-20261005`; tenant shell/service checkpoint `ec3e469ffff68ec7ee1a8299b8984e45063eddaa`, evidence commit `28b247b427692815a9e9e221976c2587b84920f3`, direct-route/crawler repair `8f9f635fd2cc65239c4178cc6a79886e7b2d5229`, and continuation `d91e090a73821558a9dc52b87750b081bdf22c53` are reachable from `origin/main` (verified immediately after push).
+- This continuation closes repository-owned gaps in tenant brand isolation, public navigation/accessibility, reduced-motion autoplay, stale retired nav metadata, and the injected Spec 270 artifact service boundary.
+- New task-owned fixes: prevent `<Seo>` from crashing when tenant/API SEO data is absent; constrain auth return URLs to explicit public/product intents; fail closed on optional PostHog until explicit consent, reset identity on revoke, and emit only privacy-safe public route templates without origin/query/private IDs; remove unsupported `--minWorkers` from Vitest 4.1 runner profiles.
+- Verification: 12 focused suites / 65 tests passed before and after implementation promotion; post-integration run covered source SHA `d91e090a73821558a9dc52b87750b081bdf22c53`. A corrected dependency-isolated package typecheck ran on exact `origin/main` HEAD `2c2e094b55ef95fe96fdfa1d30e2273a8984052e` and failed with 942 diagnostics across 250 files. No diagnostic referenced task-owned implementation files. Available memory was 21,554 MiB. An earlier 927-diagnostic run resolved some packages through the dirty canonical checkout and is superseded; do not use it as the package result.
+- Focused proof for the integrated checkpoint: 6 files / 47 tests passed. The current direct-route/crawler repair then passed 8 files / 58 tests; App and changed TSX/server syntax parsing, `git diff --check`, and bilingual locale JSON parse passed.
+- No app build, repository-wide typecheck, browser/UAT, production crawl, DB write, provider call/certification, or deployment.
 
-## Remaining repository work
-- No repository-owned implementation action remains in this checkpoint. Follow-up work is gated by the external authorities/evidence below.
-- A public deployment/build is not included; pushing source to `main` does not change the running public website.
+## Current stage and resume
+- Stage: `REVIEW` complete with 30 targeted passes; route and crawler boundaries keep SmartAIHub routes unchanged, resolve tenant page keys to exact published tenant content, and use tenant-only crawler output. Latest review adds direct `/features` SEO-null failure reproduction, auth allowlist, consent gate, and route-template analytics privacy.
+- Resume: `EXTERNAL_AUTHORITY_AND_EVIDENCE`. Whole Specs 263/270 remain `IMPLEMENTED_BUT_BLOCKED` by authority and external-evidence gates below.
 
-## External/authority blockers (must remain explicit)
-- Spec 263: no rights-cleared/provenance-owned Film asset, approved Spec 258 public claim source, complete per-route canonical/browser/crawl/analytics/RUM evidence, or authorized CMS content owner proof.
-- Spec 270: no verified durable tenant/project artifact owner, deletion/retention/backup/recovery/reference-closure authority; no callable Spec 224/256 handoff authorities; no approved SmartAIHub-owned component catalog entries; provider certification/secret binding absent.
-- Therefore public homepage and provider adapter improvements are implemented, but Specs 263 and 270 cannot honestly be marked fully complete or production/deployment verified.
+## Repository-owned scope now closed for this checkpoint
+- SmartAIHub-specific Navbar/Footer content only renders for verified SmartAIHub/local development hosts; unknown hosts fail closed. Custom tenants get their own available logo/name and only tenant-safe public navigation; global social/support/product/company/legal links are not leaked. Tenant-provided email is used only when present.
+- Direct public content URLs are host-aware: tenant domains render only the corresponding exact-tenant published page, or a localized unavailable state. Published pages keep the requested canonical path and only the tenant home shows the emergency entry. SmartAIHub's current domain retains its existing public routes.
+- Tenant sitemap/robots/LLM outputs use the tenant canonical domain and published route-backed content; unknown hosts do not receive SmartAIHub LLM data.
+- Mobile menu semantics, localized labels, active route, Escape close/focus restoration, and reduced-motion animation behavior have focused coverage.
+- Tenant home autoplay video waits for a confirmed non-reduced-motion preference; poster/fallback remains available otherwise.
+- Removed the unused public `navbar.workflows` key and its stale required-key reference; no route/capability was added.
+- Spec 270 service adds bounded native fork/compare and verifies repository replay scope across create/append/fork; fork idempotency is actor scoped. Feature flags remain default-off.
+
+## Remaining blockers / post-integration obligations
+- Spec 263: approved Spec 258 Film public claim source and rights-cleared asset/provenance/withdrawal owner; route-by-route canonical/robots/indexability owners; approved consent authority/UI (analytics now fails closed without explicit persisted grant); real browser viewport/accessibility, crawl, performance/RUM, and deployed-domain evidence.
+- Spec 270: durable artifact storage owner and approved retention/delete/backup/recovery/reference-GC/atomic uniqueness semantics; callable Spec 224/256 authorities; approved SmartAIHub component catalog publication/digest authority; provider terms/certification/credential binding/quotas/egress; native authoring UI remains gated.
+- `apps/web` package typecheck: `CODE_FAILED` with 942 TypeScript diagnostics across 250 files (exact `origin/main` `2c2e094...`, worktree package aliases; 21,554 MiB available); no diagnostics in task-owned source files. Owning module teams must repair the broad package failures. Full repository typecheck remains `QUEUE_REQUIRED` under Spec 224 §36.4.3 until canonical `worker_jobs` + outbox admission; no enqueue tool is exposed. No build is run per user instruction.
+- Integration proof: normal non-force push advanced `main` from `0cbb0ae9b21c7c9cdf31d954432ca62139d9cf49` to `d91e090a73821558a9dc52b87750b081bdf22c53`; post-push fetch confirmed remote SHA and `git merge-base --is-ancestor d91e090... origin/main` passed. Task worktree clean after implementation commit; closeout evidence update follows.
+- Next action: repair package diagnostics through owning modules; request serialized full check when canonical queue is available; obtain consent/legal, asset/claim, durable-storage/provider/catalog owners and browser/deployed-domain evidence. Build/deploy synchronization stays separate.

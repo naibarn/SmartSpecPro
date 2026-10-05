@@ -3,7 +3,7 @@ import { useTenant } from "@/contexts/TenantContext";
 
 export interface TenantPageData {
   id: number;
-  tenantId: string;
+  tenantId: string | null;
   pageKey: string;
   title: string;
   slug: string;
@@ -35,6 +35,24 @@ const cache = new Map<
 >();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+export function isSmartAIHubPublicHost(host: string): boolean {
+  const normalizedHost = host
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "")
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
+  return normalizedHost === "smartaihub.app";
+}
+
+export function getTenantPageCacheKey(
+  tenantId: string | null | undefined,
+  host: string,
+  pageKey: string
+): string {
+  return `${tenantId || "unknown"}@${host.toLowerCase()}:${pageKey}`;
+}
+
 export function clearTenantPageCache(pageKey?: string) {
   if (pageKey) {
     for (const key of cache.keys()) {
@@ -47,10 +65,9 @@ export function clearTenantPageCache(pageKey?: string) {
 
 export function useTenantPage(pageKey: string) {
   const { tenant } = useTenant();
-  const tenantScope =
-    tenant?.id ||
-    (typeof window !== "undefined" ? window.location.host : "server");
-  const cacheKey = `${tenantScope}:${pageKey}`;
+  const requestHost =
+    typeof window !== "undefined" ? window.location.host.toLowerCase() : "server";
+  const cacheKey = getTenantPageCacheKey(tenant?.id, requestHost, pageKey);
   const [state, setState] = useState<{
     cacheKey: string;
     page: TenantPageData | null;
@@ -79,12 +96,17 @@ export function useTenantPage(pageKey: string) {
         const tenantPage =
           data &&
           tenant?.id &&
-          data.tenantId === tenant.id &&
           data.pageKey === pageKey &&
-          data.isPublished === true
+          data.isPublished === true &&
+          (data.tenantId === tenant.id ||
+            (data.tenantId === null &&
+              pageKey === "home" &&
+              typeof window !== "undefined" &&
+              isSmartAIHubPublicHost(window.location.host)))
             ? data
             : null;
-        if (tenantPage) cache.set(cacheKey, { data: tenantPage, timestamp: Date.now() });
+        if (tenantPage)
+          cache.set(cacheKey, { data: tenantPage, timestamp: Date.now() });
         setState({ cacheKey, page: tenantPage, isLoading: false });
       })
       .catch(() => {

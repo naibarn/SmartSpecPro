@@ -98,6 +98,23 @@ List exact retired claims removed, their replacement source (or removal-only dec
 - Focused verification: `cd apps/web && npm test -- --run shared/__tests__/smartaihubPublicTruth.test.ts server/services/publicSeoPrerender.test.ts server/routers/publicSitemap.test.ts` — 3 files, 10 tests passed.
 - Browser viewport, keyboard and consent-declined proof were not run. Pricing/product/security claims and the full auth-intent/analytics allow-list remain open owners in the truth map; only copy/crawl retirement is complete here.
 
+### Follow-up implementation — intent and analytics privacy — 2026-10-05
+
+- Replaced permissive internal return URLs with an explicit allow-list for `/dashboard`, `/drama-series`, validated device user-code entry, and UUID-backed MCP authorization transactions. Unknown paths/fields, fragments, private IDs and retired routes are rejected.
+- PostHog initialization/access now fail closed until a persisted explicit analytics grant. Revocation opts out and resets identity. No approved consent UI/authority exists in this repository, so no new consent copy or prompt was invented; analytics remains off pending privacy-owner connection.
+- Focused proof: `authRedirects.test.ts`, `posthogConsent.test.ts`, and `publicUrlPrivacy.test.ts` pass within the 12-suite / 62-test candidate run. Browser, legal-owner, and vendor payload verification remain open.
+
+### Tenant-aware public shell follow-up — 2026-10-05
+
+- `Navbar` and `Footer` now resolve platform content from the current tenant's primary domain. Custom tenant domains use their own name/logo, show only the tenant home link, and omit SmartAIHub product/company/resource/social/support/email links. A tenant-provided contact email is shown only when present.
+- If tenant resolution is absent, SmartAIHub-specific public content is shown only on a verified SmartAIHub or local-development host; unknown hosts fail closed. Removed the unused `navbar.workflows` translation key and its required-key assertion.
+- Direct public content routes now pass through `TenantPublicRoute`: SmartAIHub keeps its existing route, a custom tenant renders only the exact tenant's published page for that route key, and an unpublished/unknown page shows a localized tenant-safe state. This closes the direct-URL fallback gap for features, pricing, docs/help, company/resources/trust, blog, marketplace, gallery and legal routes; emergency public incident routes remain their separately owned service.
+- Published tenant pages retain the requested route as their canonical path; the emergency notice is rendered only on the tenant home route, not on arbitrary tenant content pages.
+- Tenant `robots.txt` now points to the tenant canonical sitemap and LLM index; custom tenant LLM indexes contain only that tenant's published, route-backed pages. Unknown hosts receive a private crawler policy instead of SmartAIHub crawler metadata. Tenant sitemap output advertises route keys accepted by the shared public route boundary.
+- Added bilingual mobile-menu labels, expanded/controls/current-route semantics, Escape-to-close with focus restoration, and reduced-motion handling. Tenant page background video is omitted when the visitor requests reduced motion.
+- Focused regressions: public host brand boundary, Navbar, Footer tenant branding, tenant direct-route boundary/canonical path, tenant sitemap/robots/LLM output, TenantHomePage reduced-motion, nav localization contract and Spec 270 artifact service — 8 files, 58 tests passed on the task worktree. App and changed component/server syntax parsing, `git diff --check` and locale JSON parsing passed.
+- This closes local shell identity leakage and the reduced-motion autoplay gap. Tenant-specific editable nav/footer content is not exposed by the current tenant contract; browser viewport/keyboard and deployed-domain evidence remain unverified.
+
 ## UI/UX Contract
 
 ### Target User / JTBD

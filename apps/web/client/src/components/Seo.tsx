@@ -140,8 +140,8 @@ export function Seo({
   }, [fetchTenantSeo, resolvedPath, useTenantDefaults]);
 
   const merged = useMemo(() => {
-    const tenantSeo = (useTenantDefaults ? tenant?.seo : {}) as TenantSeoDefaults;
-    const apiSeo = (useTenantDefaults ? remoteSeo?.seo : {}) as TenantSeoDefaults;
+    const tenantSeo: TenantSeoDefaults = (useTenantDefaults ? tenant?.seo : undefined) ?? {};
+    const apiSeo: TenantSeoDefaults = (useTenantDefaults ? remoteSeo?.seo : undefined) ?? {};
     const metadata = useTenantDefaults ? remoteSeo?.metadata || {} : {};
 
     const finalTitle = metadata.title || apiSeo.defaultTitle || tenantSeo.defaultTitle || title;
