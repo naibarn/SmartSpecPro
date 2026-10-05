@@ -1,0 +1,17 @@
+{
+  "source_sha": "66530a6966bcebb7f38bf6a485e670d667c73628",
+  "url": "https://smartaihub.app/",
+  "browser": "Chromium headless",
+  "device_scale_factor": 2,
+  "note": "Production geometry/LCP baseline for the responsive candidate. Existing deployed source has only the 1536px src; candidate srcset selection is verified after deployment.",
+  "observations": [
+    {"viewport": 360, "image_width": 295.98, "image_top": 620, "lcp_final_element": "IMG", "lcp_final_time_ms": 996, "cls": 0.005337},
+    {"viewport": 390, "image_width": 325.98, "image_top": 596, "lcp_final_element": "IMG", "lcp_final_time_ms": 1152, "cls": 0.0138},
+    {"viewport": 700, "image_width": 636, "image_top": 432, "lcp_final_element": "IMG", "lcp_final_time_ms": 892, "cls": 0.003558},
+    {"viewport": 736, "image_width": 319.98, "image_top": 109.44, "lcp_final_element": "IMG", "lcp_final_time_ms": 920, "cls": 0.003558},
+    {"viewport": 768, "image_width": 336, "image_top": 110.72, "lcp_final_element": "IMG", "lcp_final_time_ms": 816, "cls": 0.003558},
+    {"viewport": 1024, "image_width": 463.98, "image_top": 112, "lcp_final_element": "IMG", "lcp_final_time_ms": 892, "cls": 0.00304},
+    {"viewport": 1440, "image_width": 612, "image_top": 112, "lcp_final_element": "IMG", "lcp_final_time_ms": 916, "cls": 0.002162}
+  ],
+  "derived_sizes": "(max-width: 45.99rem) calc(100vw - 4rem), (max-width: 80rem) calc((100vw - 6rem) / 2), 38.25rem"
+}

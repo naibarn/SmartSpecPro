@@ -50,8 +50,13 @@ describe("publicSite homepage contract", () => {
   });
 
   it("keeps the generated human context bilingual, disclosed, and locally owned", () => {
-    const image = webPath("client/public/images/public-home-human-editorial.webp");
-    expect(existsSync(image)).toBe(true);
+    for (const image of [
+      "client/public/images/public-home-human-editorial-480.webp",
+      "client/public/images/public-home-human-editorial-768.webp",
+      "client/public/images/public-home-human-editorial.webp",
+    ]) {
+      expect(existsSync(webPath(image))).toBe(true);
+    }
 
     for (const locale of [en, th]) {
       expect(locale["homePublic.humanImageAlt"]).toBeTruthy();
@@ -64,6 +69,13 @@ describe("publicSite homepage contract", () => {
       "utf8"
     );
     expect(component).toContain("public-home-human-editorial.webp");
+    expect(component).toContain("srcSet=");
+    expect(component).toContain("public-home-human-editorial-480.webp 480w");
+    expect(component).toContain("public-home-human-editorial-768.webp 768w");
+    expect(component).toContain("sizes=");
+    expect(component).toContain("(max-width: 45.99rem) calc(100vw - 4rem)");
+    expect(component).toContain("(max-width: 80rem) calc((100vw - 6rem) / 2), 38.25rem");
+    expect(component).toContain('fetchPriority="high"');
     expect(component).toContain("onError={() => setImageAvailable(false)}");
     expect(component).toContain("copy.humanImageFallback");
   });
