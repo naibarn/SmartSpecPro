@@ -292,8 +292,8 @@ importers:
         specifier: file:../../packages/local-ai-core
         version: link:../../packages/local-ai-core
       '@smartspec/remotion-render':
-        specifier: file:../../packages/remotion-render
-        version: file:packages/remotion-render(@swc/helpers@0.5.23)(@types/react@19.2.17)(lightningcss@1.32.0)(postcss@8.5.16)
+        specifier: workspace:*
+        version: link:../../packages/remotion-render
       '@smartspec/shared':
         specifier: file:../../packages/shared
         version: link:../../packages/shared
@@ -3942,9 +3942,6 @@ packages:
 
   '@smartspec/db@file:packages/db':
     resolution: {directory: packages/db, type: directory}
-
-  '@smartspec/remotion-render@file:packages/remotion-render':
-    resolution: {directory: packages/remotion-render, type: directory}
 
   '@smartspec/skills@file:packages/skills':
     resolution: {directory: packages/skills, type: directory}
@@ -11746,40 +11743,6 @@ snapshots:
       - webpack-cli
       - webpack-hot-middleware
 
-  '@remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
-    dependencies:
-      '@remotion/media-parser': 4.0.496
-      '@remotion/studio': 4.0.496(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@remotion/studio-shared': 4.0.496(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@remotion/timeline-utils': 4.0.496
-      '@rspack/core': 1.7.11(@swc/helpers@0.5.23)
-      '@rspack/plugin-react-refresh': 1.6.1(react-refresh@0.18.0)
-      css-loader: 7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16))
-      esbuild: 0.28.1
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-      react-refresh: 0.18.0
-      remotion: 4.0.496(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      style-loader: 4.0.0(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16))
-      webpack: 5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)
-    transitivePeerDependencies:
-      - '@minify-html/node'
-      - '@swc/core'
-      - '@swc/css'
-      - '@swc/helpers'
-      - '@swc/html'
-      - bufferutil
-      - clean-css
-      - cssnano
-      - csso
-      - html-minifier-terser
-      - lightningcss
-      - postcss
-      - uglify-js
-      - utf-8-validate
-      - webpack-cli
-      - webpack-hot-middleware
-
   '@remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@remotion/media-parser': 4.0.496
@@ -12459,43 +12422,6 @@ snapshots:
   '@smartspec/db@file:packages/db':
     dependencies:
       '@smartspec/shared': link:packages/shared
-
-  '@smartspec/remotion-render@file:packages/remotion-render(@swc/helpers@0.5.23)(@types/react@19.2.17)(lightningcss@1.32.0)(postcss@8.5.16)':
-    dependencies:
-      '@react-three/fiber': 9.6.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(three@0.185.1)
-      '@remotion/bundler': 4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@remotion/renderer': 4.0.496(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@remotion/three': 4.0.496(@react-three/fiber@9.6.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(three@0.185.1))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(remotion@4.0.496(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(three@0.185.1)
-      '@remotion/transitions': 4.0.496(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-      remotion: 4.0.496(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      three: 0.185.1
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - '@minify-html/node'
-      - '@swc/core'
-      - '@swc/css'
-      - '@swc/helpers'
-      - '@swc/html'
-      - '@types/react'
-      - bufferutil
-      - clean-css
-      - cssnano
-      - csso
-      - expo
-      - expo-asset
-      - expo-file-system
-      - expo-gl
-      - html-minifier-terser
-      - immer
-      - lightningcss
-      - postcss
-      - react-native
-      - uglify-js
-      - utf-8-validate
-      - webpack-cli
-      - webpack-hot-middleware
 
   '@smartspec/skills@file:packages/skills':
     dependencies:
