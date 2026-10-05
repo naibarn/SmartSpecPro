@@ -11,7 +11,12 @@ vi.mock("@/contexts/TenantContext", () => ({
   useTenant: () => ({ tenant: tenantState.tenant }),
 }));
 
-import { clearTenantPageCache, useTenantPage } from "../useTenantPage";
+import {
+  clearTenantPageCache,
+  getTenantPageCacheKey,
+  isSmartAIHubPublicHost,
+  useTenantPage,
+} from "../useTenantPage";
 
 function page(tenantId: string | null | undefined) {
   return {
@@ -111,7 +116,7 @@ describe("useTenantPage", () => {
   it("rejects a page payload whose tenant ID does not match the current tenant", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => page("tenant-other") })),
+      vi.fn(async () => ({ ok: true, json: async () => page("tenant-other") }))
     );
     const { result } = renderHook(() => useTenantPage("home"));
 
@@ -119,17 +124,33 @@ describe("useTenantPage", () => {
     expect(result.current.page).toBeNull();
   });
 
-  it.each([null, undefined, ""]) (
+  it.each([null, undefined, ""])(
     "rejects a legacy page without an owned tenant ID (%s)",
     async tenantId => {
       vi.stubGlobal(
         "fetch",
-        vi.fn(async () => ({ ok: true, json: async () => page(tenantId) })),
+        vi.fn(async () => ({ ok: true, json: async () => page(tenantId) }))
       );
       const { result } = renderHook(() => useTenantPage("home"));
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.page).toBeNull();
-    },
+    }
   );
+
+  it("recognizes only the canonical SmartAIHub host for global content", () => {
+    expect(isSmartAIHubPublicHost("smartaihub.app")).toBe(true);
+    expect(isSmartAIHubPublicHost("www.smartaihub.app:443")).toBe(true);
+    expect(isSmartAIHubPublicHost("tenant.smartaihub.app")).toBe(false);
+    expect(isSmartAIHubPublicHost("smartaihub.app.evil.test")).toBe(false);
+  });
+
+  it("partitions public-page cache entries by tenant and host", () => {
+    expect(getTenantPageCacheKey("tenant-a", "smartaihub.app", "home")).not.toBe(
+      getTenantPageCacheKey("tenant-a", "tenant.example", "home")
+    );
+    expect(getTenantPageCacheKey("tenant-a", "tenant.example", "home")).not.toBe(
+      getTenantPageCacheKey("tenant-b", "tenant.example", "home")
+    );
+  });
 });
