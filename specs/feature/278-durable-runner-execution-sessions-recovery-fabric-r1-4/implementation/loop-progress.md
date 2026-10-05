@@ -6,14 +6,14 @@
 - Route: resume existing deep-plan artifacts; deep-implement setup validated all 11 section packets. Implementation continues inline; no agents or shared root `orchestra/` artifacts used.
 - Closed eleven fix groups with additional regression behaviors: Linux process PID/start-tick/boot identity verification; standalone Linux Session Host/PTY/UDS with persisted authenticated reattach descriptor and process-group escalation; durable command ack-loss replay; no-follow registry/shared Journal paths; resource reservation replay/freshness; checkpoint lineage and bounded durable store; bounded critical receipt compaction.
 - RED/GREEN: stale-authority ack replay test failed before the change (`RUNNER_SESSION_COMMAND_STALE_AUTHORITY`) and passed after; process identity positive/stale tests pass.
-- Verification (reconciled candidate): Runner `cargo check` and format check pass. Focused Web contracts/service/protocol/migration tests pass 19 and the authenticated inventory route regression passes 1; `drizzle-kit check` passes with a synthetic local `DATABASE_URL`. Earlier complete Runner suite passed 126 library tests + 6 Linux integration tests, then all 7 integration tests passed after registration validation. Full typecheck remains prohibited; production/browser/provider checks remain pending.
+- Verification: integrated SHA `364157539` passes Runner 141 library + 7 Linux Host integration tests and Web 148 tests across 7 files. The follow-up M0 dispatcher change passes 14 focused tests across 4 files plus the authenticated inventory route test (1). `cargo check`, Rust formatting, Drizzle check, journal JSON, section checker and diff checks pass on the reconciled base. Full typecheck remains prohibited; production/browser/provider checks remain pending.
 - `resume_from`: bind Session Host launch/reattach into caller-bound M2 recovery and server integration. Do not mark the feature complete; external/platform gates remain in `continuation-2026-10-05.md`.
 
 ## Loop policy ledger
 
 - mode: standard-light inline conductor; no sub-agents
 - requested minimum review rounds: 10
-- post-implementation rounds complete: 29 / 10 minimum
+- post-implementation rounds complete: 31 / 10 minimum
 - plan checklist rounds: 2; adversarial review: complete
 - implementation section packets complete: 11 / 11; feature implementation complete: no (see section statuses)
 - tool batches: recorded in section completion notes

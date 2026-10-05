@@ -2,10 +2,10 @@
 
 ## Loop result
 
-- Spec-to-code review rounds recorded: 29 (minimum requested: 10).
+- Spec-to-code review rounds recorded: 31 (minimum requested: 10).
 - Planning section packets: 11/11 complete (`check-sections.py` state `complete`).
 - Local gaps found in this continuation: registration input validation was weaker than the inventory server contract, and migration 0383 collided with current `origin/main` migrations 0383–0386. Fixed pre-spawn validation with a real-process regression test and renumbered Spec 278 migration/journal to 0387/index 373 on the refreshed candidate.
-- Local must-do-now gaps remaining in the inspected registration/test/doc surfaces: none.
+- Local must-do-now gap closed in this continuation: the missing M0 runtime projection producer was wired into the external-agent dispatcher behind the existing default-off feature flag, with stable identity and failure-state handling. Remaining runtime caller work is persistent Session Host start and receipt-driven state updates.
 
 ## Deferred implementation and evidence gates
 
@@ -13,7 +13,7 @@ These are not marked complete because the required canonical callers, authoritie
 
 | Gap | Why it remains open | Smallest next action |
 |---|---|---|
-| Canonical session start and projection caller | Existing `RunnerJobCommand` does not carry the complete canonical session/authority/placement/control revision contract; adding a local caller alone could create unmanaged or unfenced execution. | Extend the canonical start/control-plane contract and persist its session row before wiring Runner start to `launch_registered`. |
+| Canonical persistent-session start and Host caller | The external-agent dispatcher now creates a feature-gated ephemeral shadow projection, but `RunnerJobCommand` still lacks the complete session/authority/placement/control revision contract and no caller invokes `launch_registered`. | Extend the canonical start/control-plane contract and persist its session row before wiring Runner start to `launch_registered`; add receipt-driven projection updates. |
 | Adoption, authority grant lifecycle and Host origin proof | No live signer/trust-root provisioning or host-origin attestation path is configured. | Implement server grant issuance/key rotation and host proof against provisioned trust roots; then wire adoption/expiry to the Host. |
 | Session command/input/reconnect path | Existing PTY stream and durable command lane are not bridged through canonical control watermarks, reconnect, revocation and update-drain behavior. | Define and implement the session-aware command and stream contract end-to-end before exposing interactive sessions. |
 | Placement enforcement and provider drivers | No placement commit, OS resource enforcement, registered ACP/Cloudflare session driver, or provider certification environment is present. | Add approved driver/placement integration and run platform-specific fault certification. |
@@ -22,9 +22,9 @@ These are not marked complete because the required canonical callers, authoritie
 
 ## Verification after the final code change
 
-- Full Runner package: 126 library tests + 6 Linux Host integration tests passed before the final UUID format tightening.
-- Final Runner Host integration target: 7 passed; `cargo fmt --check` and `git diff --check` passed.
-- Web contracts/service/protocol: 16 passed; authenticated inventory route regression: 1 passed; combined focused selection: 5 passed. Full `runnerControl.test.ts`: 22 passed, 1 separate credential-refresh test failed (expects 200, got 503 because refresh storage is unavailable); inventory route passed in the same file.
+- Integrated full Runner package: 141 library tests + 7 Linux Host integration tests passed at SHA `364157539`.
+- After M0 projection producer change: dispatcher/session contract/service/migration tests 14 passed across 4 files; authenticated inventory route regression: 1 passed.
+- Earlier full `runnerControl.test.ts`: 22 passed, 1 separate credential-refresh test failed (expects 200, got 503 because refresh storage is unavailable); inventory route passed in the same file.
 - Section checker: 11/11 complete.
 - No typecheck, production migration, browser/provider action, commit, push or deploy was performed.
 

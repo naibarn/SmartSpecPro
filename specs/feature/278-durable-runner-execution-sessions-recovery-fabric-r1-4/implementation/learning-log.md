@@ -7,11 +7,11 @@ Outcome:
   lifecycle_status: deferred
   resume_from: canonical session start and projection contract
   requested_goal: iterate against Spec 278 until safe blocks and gaps are closed
-  completed_scope: completed 29 spec-to-code review rounds, fixed pre-spawn Session Host registration validation, reconciled the stale-base delta and migration ordering with current origin/main, reran focused Runner/Web checks, and reconciled traceability
+  completed_scope: completed 31 spec-to-code review rounds, integrated the safe foundation checkpoint, added the feature-gated M0 projection producer with terminal-safe failure-state handling, fixed pre-spawn Session Host registration validation, reconciled migration ordering with current origin/main, and reran focused Runner/Web checks
   skipped_or_deferred: canonical start/adoption/grant flow, stream/placement/provider/commercial integration, migration application and browser/platform certification
 
 Loop counters:
-  iterations_used: 29/10
+  iterations_used: 31/10
   tool_call_batches_used: recorded by session; not budget-capped
   dispatch_waves_used: 0
   repair_rounds_used: 1
