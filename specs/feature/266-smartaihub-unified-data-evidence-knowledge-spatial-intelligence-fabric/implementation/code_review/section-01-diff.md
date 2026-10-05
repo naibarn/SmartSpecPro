@@ -10,7 +10,7 @@ index 25560c14c..e47f9b7a0 100644
      expect(mapResearchNeedToRequest({ ...need, decisionProjectRef: "other-project" }, authority)).toMatchObject({ ok: false, code: "RESEARCH_PROJECT_SCOPE_MISMATCH" });
      expect(mapResearchNeedToRequest({ ...need, preferredMode: "FREEFORM" as never }, authority)).toMatchObject({ ok: false, code: "RESEARCH_MODE_UNSUPPORTED" });
    });
- 
+
 +  it("does not accept caller-supplied evidence or source authority when canonicalizing a need", () => {
 +    const untrustedNeed = {
 +      ...need,
@@ -40,7 +40,7 @@ index c7354a6a1..147d831c0 100644
 @@ -16,6 +16,13 @@ describe("parseEvidenceItem", () => {
      expect(parseEvidenceItem(evidence)).toEqual({ ok: true, value: evidence });
    });
- 
+
 +  it("rejects unknown evidence contract versions", () => {
 +    expect(parseEvidenceItem({ ...evidence, contractVersion: "spec266-evidence-v99" })).toMatchObject({
 +      ok: false,
@@ -58,10 +58,10 @@ index ade53f3c3..cd9ab76db 100644
 @@ -1,6 +1,6 @@
 -# Spec 266 Compatibility Inventory: Specs 260 and 262
 +# Spec 266 Compatibility Inventory: Runtime Inspection and Normative Ownership Map
- 
+
 -Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory identifies owners and integration boundaries; it does not authorize cutover or a second registry.
 +Checked against the Spec 266 isolated worktree on 2026-10-05. This inventory identifies owners and integration boundaries; it does not authorize cutover or a second registry. Spec 278 source artifacts were not present in this worktree, so only the ownership contract stated in Spec 266 R1.2 was verified.
- 
+
  | Capability | Current authority | Write / execution path | Spec 266 relationship | Cutover status |
  | --- | --- | --- | --- | --- |
 @@ -10,6 +10,11 @@ Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory
@@ -73,9 +73,9 @@ index ade53f3c3..cd9ab76db 100644
 +| Canonical knowledge semantics and rights | Spec 266 | Shared source/evidence/knowledge semantics and admission policy | Own stable knowledge object identities, provenance, rights, verification, and exchange semantics | No alternate provider or search authority |
 +| Portable Mini App knowledge runtime | Spec 278 (normative ownership mapping only; implementation not inspected) | Per Spec 266 R1.2 §§2.4 and Appendix C: managed/portable/connected/external adapters, SQLite/FTS5 local reference provider, Portable Knowledge Bundle mechanics, and provider capability negotiation | Must preserve 266 identities, lineage, rights, and re-entry admission | No local SQLite/FTS5 runtime in 266 |
 +| SmartAIHub-managed retrieval | Spec 229 Retrieval Broker (normative ownership mapping only; implementation not inspected) | Per Spec 266 R1.2 §2.4; no new runtime claim in this inventory | 266 supplies authorized canonical references and rebuildable projections; search results require reauthorization | No alternate Retrieval Broker |
- 
+
  ## Authority checks
- 
+
 @@ -17,6 +22,9 @@ Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory
  - Spec 266 geometry/semantic/spatial helpers are pure calculations. They do not persist canonical emergency records or publish alerts.
  - The only asynchronous refresh authority identified above is `worker_jobs` plus outbox. Research execution is registered on the same canonical control plane, not a new queue.
@@ -83,9 +83,9 @@ index ade53f3c3..cd9ab76db 100644
 +- Spec 265 owns decision methodology and analysis state; 261 owns package execution; 278 owns portable Mini App provider/runtime mechanics; 229 owns managed retrieval implementation. Spec 266 is the semantic, rights, provenance, and admission authority only.
 +- Knowledge export/import must preserve stable identity/source anchors and re-run current rights and authorization checks. A bundle or vector index is never the canonical database.
 +- Schema-backed portable knowledge object persistence and provider migration are not verified by this compatibility inventory; the active schema-owner marker blocks schema edits in the current session.
- 
+
  ## Files inspected
- 
+
 @@ -25,3 +33,4 @@ Checked against the current SmartSpecPro worktree on 2026-10-02. This inventory
  - `apps/web/server/services/geoSources/refreshPipeline.ts`, `acquisitionJob.ts`, and `drizzlePersistence.ts` — authorized refresh, canonical job admission, and current append-only persistence ports.
  - `apps/web/server/jobs/feature186JobTypes.ts` — server-owned Postgres node job allow-list.
@@ -96,9 +96,9 @@ index f72de87c7..b89785319 100644
 --- a/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md
 +++ b/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-01-authority-and-contracts.md
 @@ -10,17 +10,51 @@ Spec 266 §§2–4, 6, 44–45 Phase 0, 46.11–46.12, Appendix A–E; cross-ref
- 
+
  ## Implementation
- 
+
 -- Produce a checked compatibility inventory for `emergencyIntelSources`, captures, hydrology stations/observations, geo watches, refresh route/job, and renderer projection.
 -- Inventory is recorded in [`compatibility-inventory.md`](../compatibility-inventory.md); it records current owners and explicit no-cutover/no-dual-write boundaries.
 -- Add runtime schemas/types with explicit contract versions and public-vs-tenant scope; reject omitted/ambiguous authorization scope.
@@ -108,16 +108,16 @@ index f72de87c7..b89785319 100644
 +- In `server/services/intelligenceFabric/contracts.ts` and `researchContracts.ts`, maintain explicit versions, reference-only bounded payloads, mandatory PUBLIC/TENANT scope, and detached nested snapshots.
 +- In `decisionIntelligence/researchAdapter.ts`, map consumers into the canonical request without copying evidence authority into caller payloads.
 +- Fail closed on unknown versions and unresolved authority. Preserve `worker_jobs` plus transactional outbox as the sole async authority.
- 
+
  ## Tests
- 
+
 -- Contract parsing rejects unknown version, missing scope, oversized identifiers, and secret-bearing payloads.
 -- Compatibility inventory test or validation proves no second registry/write authority was added.
 +- Extend `contracts.test.ts`, `researchContracts.test.ts`, and adapter tests for unknown version/scope, size limits, secret fields, sparse arrays, and mutation after parse.
 +- Validate compatibility ownership and assert no duplicate writer or retired-system entry point was introduced.
- 
+
  ## Acceptance
- 
+
  Relevant clauses are §§46.11–46.12 items 76–87. No database ownership cutover in this section.
 +## Completed evidence
 +
