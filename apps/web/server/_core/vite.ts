@@ -220,8 +220,8 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "../..", "dist", "public");
+export function serveStatic(app: Express, publicRoot?: string) {
+  const distPath = publicRoot ?? path.resolve(import.meta.dirname, "../..", "dist", "public");
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
@@ -232,6 +232,9 @@ export function serveStatic(app: Express) {
 
   app.use(
     express.static(distPath, {
+      // Let the SPA fallback inject its semantic public snapshot on `/` too.
+      // express.static's default index.html handling bypasses that fallback.
+      index: false,
       setHeaders: (res, filePath) => {
         const cacheControl = cacheControlForStaticFile(filePath);
         if (cacheControl) {

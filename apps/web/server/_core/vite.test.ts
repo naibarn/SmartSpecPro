@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import express from "express";
+import fs from "fs";
+import os from "os";
 import path from "path";
 import request from "supertest";
 
@@ -62,5 +64,26 @@ describe("vite production static serving", () => {
       status: "ok",
       service: "smartaihub-web",
     });
+  });
+
+  it("injects the public homepage snapshot when static hosting serves the root route", async () => {
+    const publicRoot = fs.mkdtempSync(path.join(os.tmpdir(), "smartspec-public-root-"));
+    fs.writeFileSync(
+      path.join(publicRoot, "index.html"),
+      '<!doctype html><html><head><title>SmartAIHub</title></head><body><div id="root"></div></body></html>'
+    );
+
+    try {
+      const app = express();
+      serveStatic(app, publicRoot);
+      const response = await request(app).get("/");
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('<main id="smartaihub-prerender" data-seo-prerender="true">');
+      expect(response.text).toContain("Turn one idea into work you can keep building");
+      expect(response.text).toContain('<div id="root">');
+    } finally {
+      fs.rmSync(publicRoot, { recursive: true, force: true });
+    }
   });
 });

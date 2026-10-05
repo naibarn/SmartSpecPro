@@ -103,6 +103,7 @@ List changed files, focused commands/results, browser viewport/state captures, s
 - Built and published canonical `origin/main` SHA `a3271f7dd1acb86247d2c418038ac549231e0830`; live `/`, `/features`, entry JS, Home chunk, and both homepage images returned HTTP 200 and asset hashes matched the published files. Static assets required no service restart.
 - `apps/web` full typecheck failed with 3,218 package diagnostics; no diagnostics matched the changed homepage/Features files. This does not satisfy the repository-wide typecheck gate.
 - Browser screenshot, responsive, screen-reader, keyboard, reduced-motion and public-crawl proof remain unavailable/unverified; Section 05 remains **partial**.
+- Follow-up source repair: production `express.static` served `/index.html` before the SEO fallback, leaving the root HTML without the existing semantic prerender snapshot. `serveStatic` now disables directory index handling and a focused regression verifies the root passes through that fallback. This backend change is integrated in source but awaits safe service source synchronization/restart; production no-JS proof is not yet claimed.
 
 ## UI/UX Contract
 
