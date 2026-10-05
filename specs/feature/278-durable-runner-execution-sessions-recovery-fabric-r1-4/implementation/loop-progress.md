@@ -2,7 +2,7 @@
 
 ## Orchestra continuation (2026-10-05)
 
-- Current reconciled candidate: `/home/dev/projects/SmartSpecPro-wt-spec278-main`, branch `codex/spec278-safe-checkpoint-20261005`, based on refreshed `origin/main` SHA `5df31462f8edc9b42b2e9758acb4d3474592bfef`. Original `/home/dev/projects/SmartSpecPro-wt-spec278` remains untouched as preservation copy because its HEAD also contains unrelated Spec 261/SPAAS commits.
+- Current reconciled candidate: `/home/dev/projects/SmartSpecPro-wt-spec278-main`, branch `codex/spec278-safe-checkpoint-20261005`, integrated follow-up SHA `e98a1987c` on `origin/main` (based on `b65e1f548`). Original `/home/dev/projects/SmartSpecPro-wt-spec278` remains untouched as preservation copy because its HEAD also contains unrelated Spec 261/SPAAS commits.
 - Route: resume existing deep-plan artifacts; deep-implement setup validated all 11 section packets. Implementation continues inline; no agents or shared root `orchestra/` artifacts used.
 - Closed eleven fix groups with additional regression behaviors: Linux process PID/start-tick/boot identity verification; standalone Linux Session Host/PTY/UDS with persisted authenticated reattach descriptor and process-group escalation; durable command ack-loss replay; no-follow registry/shared Journal paths; resource reservation replay/freshness; checkpoint lineage and bounded durable store; bounded critical receipt compaction.
 - RED/GREEN: stale-authority ack replay test failed before the change (`RUNNER_SESSION_COMMAND_STALE_AUTHORITY`) and passed after; process identity positive/stale tests pass.
@@ -13,14 +13,16 @@
 
 - mode: standard-light inline conductor; no sub-agents
 - requested minimum review rounds: 10
-- post-implementation rounds complete: 31 / 10 minimum
+- post-implementation rounds complete: 41 / 10 minimum (rounds 32–41 re-audited section-to-code status against latest main)
 - plan checklist rounds: 2; adversarial review: complete
 - implementation section packets complete: 11 / 11; feature implementation complete: no (see section statuses)
 - tool batches: recorded in section completion notes
 - repair rounds: 0 / 5 per section before escalation
 - current stage: IMPLEMENTATION_CONTINUATION
+- latest integrated checkpoint: `e98a1987c` — M0 feature-flagged external-agent projection producer and associated failure ordering
+- latest focused Web proof: `externalAgentRunnerDispatcher`, `runnerExecutionSessionContracts`, `runnerExecutionSessionService`, and Spec 278 migration tests — 14 passed across 4 files
 - resume_from: SECTION_02_CANONICAL_WORKER_SESSION_HOST_CALLER_AND_SECTION_03_HOST_AUTHENTICATION
-- stop_reason: Registered Host rollback, host+child identity verification and bounded inventory pass; canonical Worker start does not invoke registration and server lacks cryptographic Host proof, so M1/M2 remain partial
+- stop_reason: Re-audit confirmed no additional safe source-only closure for canonical Worker Host caller, cryptographic Host trust, command authority lane, placement enforcement, registered provider/grant interfaces, or external certification. These remain explicit blocked gates, not completed sections.
 
 ## Preservation boundary
 
