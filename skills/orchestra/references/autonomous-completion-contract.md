@@ -167,6 +167,21 @@ Definition of Done requires production acceptance/deployment evidence, keep
 the task open until that evidence exists. A safe partial checkpoint is
 integrated progress, never task completion.
 
+## Quality evidence
+
+Derive quality checks from applicable requirements and record the relevant
+dimensions separately: functional correctness, visual quality, accessibility,
+security, performance, data integrity, operational readiness, deployment
+readiness, and evidence completeness. Passing one dimension does not imply the
+others passed. Select focused evidence for each required dimension and bind it
+to the canonical revision and target artifact where applicable.
+
+For UI/browser work, use the repository's existing design system and UI quality
+references. Verify representative layouts, states, and viewports with browser or
+visual-regression evidence when the requirement calls for it; absence of
+overflow alone is not a visual-quality pass. Keep accessibility and functional
+checks separate from visual review.
+
 The deterministic decision kernel and its required regression scenarios are
 in `../tools/lifecycle_policy.py` and
 `autonomous-completion-scenarios.json`.
