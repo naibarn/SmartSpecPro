@@ -127,6 +127,13 @@ describe("LocaleToggle — always two buttons", () => {
     expect(screen.getByTitle("ไทย").classList.contains("bg-primary")).toBe(true);
   });
 
+  it("uses a contrast-safe active color on the platform public site", () => {
+    mockLanguage = "th";
+    render(<LocaleToggle platformPublic />);
+    expect(screen.getByTitle("ไทย").classList.contains("bg-blue-700")).toBe(true);
+    expect(screen.getByTitle("ไทย").classList.contains("text-white")).toBe(true);
+  });
+
   it("inactive button has text-muted-foreground class", () => {
     mockLanguage = "th";
     render(<LocaleToggle />);

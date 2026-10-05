@@ -80,3 +80,11 @@
   - Spec 270 provider: **owner unassigned** — provider/legal/security owner to establish terms/certification, credential binding, quota, retention, and egress evidence before enabling provider execution or native authoring UI.
   - Typecheck: **owner unassigned** — web module owners to triage broad package diagnostics; verification platform owner to enqueue serialized full check through canonical `worker_jobs` + outbox.
 - Handoff status: **durably recorded but not fully assigned**. All open items have a durable location and next action; accountable recipient names/teams and due dates have not been supplied, so Specs 263/270 remain open. Resume from `orchestra/tasks/spec263-270-public-completion-20261005/progress.md` and this section. Do not claim live-site, whole-spec, or typecheck completion.
+
+## Accessibility candidate — pre-integration
+
+- Candidate base: `8dfd6a43911ad3285c306d2f13a1fdb1f08c1d0c` (`origin/main` at start); task worktree `/home/dev/.codex/worktrees/fix-canonical-web-build-20261005`, branch `codex/spec263-public-full-20261005`.
+- Candidate source repairs: SmartAIHub-only readable accent/CTA colors, explicit Features heading contrast, and restored browser zoom. Tenant-owned branding and CTA classes remain unchanged.
+- Focused verification: 2 files / 26 tests passed, including platform and custom-tenant CTA assertions on desktop and mobile DOM states; esbuild syntax parse passed for all six changed TS/TSX files; `git diff --check` passed. Full/package typecheck, build, deployment and post-patch browser/axe are pending against the eventual integrated SHA.
+- Independent review: rounds 37–38 caught and closed the CTA contrast and mobile test coverage gap; final result clean.
+- Status: `FAST GATE PASS — PENDING INTEGRATION`; no deployed-source claim for this candidate yet. Primary dirty checkout and running service were not modified.

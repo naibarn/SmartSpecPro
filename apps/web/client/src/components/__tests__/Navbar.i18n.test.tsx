@@ -176,6 +176,44 @@ describe("Navbar i18n migration", () => {
     state.reduceMotion = false;
   });
 
+  it("uses a contrast-safe active navigation color for SmartAIHub public routes", () => {
+    state.location = "/features";
+    render(<Navbar />);
+    const activeLink = screen.getAllByRole("link", { name: "Features" })[0];
+    const activeLabel = activeLink.querySelector("span");
+    expect(activeLabel?.className).toContain("text-blue-700");
+    expect(activeLabel?.className).not.toContain("text-primary");
+  });
+
+  it("uses a contrast-safe platform CTA while preserving tenant CTA branding", () => {
+    const { rerender } = render(<Navbar />);
+    const assertCtaClass = (button: HTMLElement, expected: string, unexpected: string) => {
+      expect(button.className).toContain(expected);
+      expect(button.className).not.toContain(unexpected);
+    };
+
+    const platformDesktopCta = screen.getAllByRole("button", { name: "Get Started" })[0];
+    assertCtaClass(platformDesktopCta, "bg-blue-700", "from-blue-500");
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    let mobileNavigation = screen.getByRole("region", { name: "Mobile navigation" });
+    assertCtaClass(
+      within(mobileNavigation).getByRole("button", { name: "Get Started" }),
+      "bg-blue-700",
+      "from-blue-500",
+    );
+
+    state.tenant = { name: "Acme Studio", primaryDomain: "studio.example" };
+    rerender(<Navbar />);
+    mobileNavigation = screen.getByRole("region", { name: "Mobile navigation" });
+    const tenantDesktopCta = screen.getAllByRole("button", { name: "Get Started" })[0];
+    assertCtaClass(tenantDesktopCta, "from-blue-500", "bg-blue-700");
+    assertCtaClass(
+      within(mobileNavigation).getByRole("button", { name: "Get Started" }),
+      "from-blue-500",
+      "bg-blue-700",
+    );
+  });
+
   it("uses tenant branding and hides SmartAIHub marketing routes on a tenant domain", () => {
     state.tenant = { name: "Acme Studio", primaryDomain: "studio.example" };
     render(<Navbar />);

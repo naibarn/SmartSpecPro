@@ -89,6 +89,12 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
   const navItems: NavItem[] = isSmartAIHubSite
     ? platformNavItems
     : [{ href: "/", label: tenant?.name || t("navbar.home") }];
+  const platformAccentText = isSmartAIHubSite
+    ? "text-blue-700 dark:text-blue-300"
+    : "text-primary";
+  const platformActiveText = isSmartAIHubSite
+    ? "text-blue-700 dark:text-blue-300"
+    : "text-primary";
 
   // Flatten for mobile menu
   const mobileLinks: NavLink[] = navItems.flatMap(item =>
@@ -180,7 +186,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                     {isSmartAIHubSite ? "SmartAIHub" : tenant?.name || ""}
                   </span>
                   {isSmartAIHubSite && (
-                    <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">
+                    <span className={`hidden sm:inline-block px-2 py-0.5 text-xs font-semibold bg-primary/10 ${platformAccentText} rounded-full`}>
                       Pro
                     </span>
                   )}
@@ -201,7 +207,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                     <motion.button
                       className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer ${
                         isActive
-                          ? "text-primary bg-primary/10"
+                          ? `${platformActiveText} bg-primary/10`
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       }`}
                       onClick={() =>
@@ -236,13 +242,13 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                                 <div
                                   className={`flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer ${
                                     location === sub.href
-                                      ? "bg-primary/10 text-primary"
+                                      ? `bg-primary/10 ${platformActiveText}`
                                       : "hover:bg-muted/50"
                                   }`}
                                   onClick={() => setOpenDropdown(null)}
                                 >
                                   <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                    <Icon className="h-4 w-4 text-primary" />
+                                    <Icon className={`h-4 w-4 ${platformAccentText}`} />
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium">
@@ -274,7 +280,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                       item.href === emergencyHref
                         ? "bg-red-600 px-2.5 py-2 text-white shadow-md shadow-red-600/25 hover:bg-red-700"
                         : location === item.href
-                          ? "px-2.5 py-2 text-primary bg-primary/10"
+                          ? `px-2.5 py-2 ${platformActiveText} bg-primary/10`
                           : "px-2.5 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                     whileHover={reduceMotion ? undefined : { scale: 1.02 }}
@@ -290,7 +296,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
 
           {/* CTA Buttons */}
           <div className="hidden xl:flex shrink-0 items-center gap-2">
-            <LocaleToggle />
+            <LocaleToggle platformPublic={isSmartAIHubSite} />
             <Link href="/login">
               <Button
                 variant="ghost"
@@ -303,7 +309,9 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
             <Link href="/signup">
               <Button
                 size="sm"
-                className="bg-gradient-to-r from-blue-500 to-teal-400 hover:from-blue-600 hover:to-teal-500 text-white shadow-lg shadow-blue-500/25"
+                className={isSmartAIHubSite
+                  ? "bg-blue-700 text-white hover:bg-blue-800 shadow-lg shadow-blue-500/25"
+                  : "bg-gradient-to-r from-blue-500 to-teal-400 hover:from-blue-600 hover:to-teal-500 text-white shadow-lg shadow-blue-500/25"}
               >
                 {t("navbar.getStarted")}
               </Button>
@@ -354,7 +362,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                       link.href === emergencyHref
                         ? "bg-red-600 font-semibold text-white hover:bg-red-700"
                         : location === link.href
-                          ? "bg-primary/10 text-primary"
+                          ? `bg-primary/10 ${platformActiveText}`
                           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
                     onClick={() => closeMobileMenu()}
@@ -366,7 +374,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
               ))}
               <div className="space-y-3 pt-4">
                 <div className="flex justify-center pb-2">
-                  <LocaleToggle />
+                  <LocaleToggle platformPublic={isSmartAIHubSite} />
                 </div>
                 <Link href="/login">
                   <Button
@@ -379,7 +387,12 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                 </Link>
                 <Link href="/signup">
                   <Button
-                    className="h-11 w-full bg-gradient-to-r from-blue-500 to-teal-400 text-white"
+                    className={cn(
+                      "h-11 w-full",
+                      isSmartAIHubSite
+                        ? "bg-blue-700 text-white hover:bg-blue-800"
+                        : "bg-gradient-to-r from-blue-500 to-teal-400 text-white",
+                    )}
                     onClick={() => closeMobileMenu()}
                   >
                     {t("navbar.getStarted")}

@@ -11,9 +11,10 @@ const LAST_NON_EN_KEY = "smartspec_last_locale";
 
 interface LocaleToggleProps {
   className?: string;
+  platformPublic?: boolean;
 }
 
-export function LocaleToggle({ className }: LocaleToggleProps) {
+export function LocaleToggle({ className, platformPublic = false }: LocaleToggleProps) {
   const { i18n } = useTranslation();
   // Normalize against SUPPORTED_LANGUAGES to guard against browser-resolved codes like "en-US"
   const lang = (SUPPORTED_LANGUAGES as readonly string[]).includes(i18n.language)
@@ -65,7 +66,9 @@ export function LocaleToggle({ className }: LocaleToggleProps) {
           className={cn(
             "rounded-full px-3 py-1 font-medium transition-colors",
             lang === loc
-              ? "bg-primary text-primary-foreground"
+              ? platformPublic
+                ? "bg-blue-700 text-white"
+                : "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
           aria-pressed={lang === loc}

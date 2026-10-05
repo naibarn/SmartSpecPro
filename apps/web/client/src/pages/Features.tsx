@@ -120,7 +120,7 @@ export default function Features() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
           >
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">
               <Sparkles className="h-4 w-4" /> {t("features.hero.eyebrow")}
             </p>
             <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
@@ -133,7 +133,7 @@ export default function Features() {
               <Button
                 asChild
                 size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                className="bg-blue-700 text-white hover:bg-blue-800"
               >
                 <Link href="/signup">
                   {t("features.hero.primaryCta")}{" "}
@@ -160,7 +160,7 @@ export default function Features() {
         <div className="container mx-auto flex max-w-7xl flex-wrap justify-center gap-x-8 gap-y-3 px-4 text-sm text-muted-foreground sm:px-6 lg:px-8">
           {["vertical", "product", "chat", "skills"].map(key => (
             <span key={key} className="inline-flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <CheckCircle2 className="h-4 w-4 text-blue-700 dark:text-blue-300" />
               {t(`features.proof.${key}`)}
             </span>
           ))}
@@ -176,7 +176,7 @@ export default function Features() {
               <Sparkles className="h-4 w-4" aria-hidden="true" />
               {t("harness.eyebrow")}
             </p>
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl">
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">
               {t("harness.title")}
             </h2>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
@@ -208,7 +208,7 @@ export default function Features() {
       </section>
       <section className="container mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="mb-14 max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-[.25em] text-primary">
+          <p className="text-sm font-semibold uppercase tracking-[.25em] text-blue-700 dark:text-blue-300">
             {t("features.spotlights.eyebrow")}
           </p>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
@@ -235,10 +235,10 @@ export default function Features() {
                 className={`min-h-[18rem] rounded-[1.75rem] border border-border/60 shadow-2xl sm:min-h-[25rem] ${index % 2 ? "lg:order-2" : ""}`}
               />
               <div className={index % 2 ? "lg:order-1" : ""}>
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-cyan-400/20 text-primary">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-cyan-400/20 text-blue-700 dark:text-blue-300">
                   <spotlight.icon className="h-6 w-6" />
                 </div>
-                <p className="text-sm font-semibold uppercase tracking-[.2em] text-primary">
+                <p className="text-sm font-semibold uppercase tracking-[.2em] text-blue-700 dark:text-blue-300">
                   {t(`features.spotlight.${spotlight.key}.eyebrow`)}
                 </p>
                 <h3 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -253,7 +253,7 @@ export default function Features() {
                       key={point}
                       className="flex gap-3 text-sm text-foreground/85"
                     >
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
                       {t(
                         `features.spotlight.${spotlight.key}.point.${point + 1}`
                       )}
@@ -272,7 +272,7 @@ export default function Features() {
                             ? "/docs#worker-render"
                             : "/signup"
                   }
-                  className="mt-8 inline-flex items-center font-semibold text-primary hover:text-primary/80"
+                  className="mt-8 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200"
                 >
                   {t(`features.spotlight.${spotlight.key}.cta`)}{" "}
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -285,7 +285,7 @@ export default function Features() {
       <section className="border-y border-primary/15 bg-primary/5 py-16 sm:py-20">
         <div className="container mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:px-8">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[.25em] text-primary">
+            <p className="text-sm font-semibold uppercase tracking-[.25em] text-blue-700 dark:text-blue-300">
               {t("features.advanced.eyebrow")}
             </p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -304,10 +304,10 @@ export default function Features() {
             className="min-h-[20rem] rounded-[2rem] border border-border/60 shadow-2xl sm:min-h-[28rem]"
           />
           <div>
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-cyan-400/20 text-primary">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-cyan-400/20 text-blue-700 dark:text-blue-300">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <p className="text-sm font-semibold uppercase tracking-[.2em] text-primary">
+            <p className="text-sm font-semibold uppercase tracking-[.2em] text-blue-700 dark:text-blue-300">
               {t("features.organization.eyebrow")}
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -322,7 +322,7 @@ export default function Features() {
                   key={point}
                   className="flex gap-3 text-sm text-foreground/85"
                 >
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
                   {t(`features.organization.point.${point}`)}
                 </li>
               ))}
@@ -333,7 +333,7 @@ export default function Features() {
       <section className="border-y border-border/60 bg-gradient-to-b from-card/70 to-transparent py-20 sm:py-28">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto mb-14 max-w-3xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[.25em] text-primary">
+            <p className="text-sm font-semibold uppercase tracking-[.25em] text-blue-700 dark:text-blue-300">
               {t("features.catalog.eyebrow")}
             </p>
             <h2 className="mt-4 text-3xl font-semibold sm:text-5xl">
@@ -349,7 +349,7 @@ export default function Features() {
               return (
                 <div key={group.key}>
                   <div className="mb-5 flex items-center gap-3">
-                    <GroupIcon className="h-5 w-5 text-primary" />
+                    <GroupIcon className="h-5 w-5 text-blue-700 dark:text-blue-300" />
                     <h3 className="text-xl font-semibold">
                       {t(`features.group.${group.key}`)}
                     </h3>
@@ -385,7 +385,7 @@ export default function Features() {
           </p>
           <Link
             href="/docs#smartaihub-story"
-            className="mt-7 inline-flex items-center font-semibold text-primary hover:text-primary/80"
+            className="mt-7 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200"
           >
             {t("features.story.cta")} <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
@@ -393,7 +393,7 @@ export default function Features() {
       </section>
       <section className="container mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:py-28 lg:px-8">
         <div className="rounded-[2rem] border border-primary/20 bg-gradient-to-br from-primary/15 via-cyan-400/10 to-card/60 p-8 text-center shadow-2xl shadow-primary/10 sm:p-14">
-          <Bot className="mx-auto h-12 w-12 text-primary" />
+          <Bot className="mx-auto h-12 w-12 text-blue-700 dark:text-blue-300" />
           <h2 className="mt-5 text-3xl font-semibold sm:text-5xl">
             {t("features.cta.title")}
           </h2>
@@ -404,7 +404,7 @@ export default function Features() {
             <Button
               asChild
               size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className="bg-blue-700 text-white hover:bg-blue-800"
             >
               <Link href="/signup">{t("features.cta.primary")}</Link>
             </Button>

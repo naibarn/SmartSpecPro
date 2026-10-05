@@ -82,3 +82,11 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 35. **Conductor final diff and proof review — clean.** Re-inspected complete changed scope, regression boundaries, and production evidence; this is the second consecutive clean round after the lookup repair. No current code finding remains in the task-owned patch.
 
 - The first deployment/browser evidence at `evidence/browser-pre-platform-lookup-fix-264a5b5/` is intentionally labeled pre-repair: all nine public routes were 200, client SEO heads were singular, all six viewports had no horizontal overflow or page errors, but five routes showed nonfatal no-tenant-page 404s. New source must be rebuilt/deployed at its exact integrated SHA, then the same network assertions re-run.
+
+## Accessibility follow-up rounds — 2026-10-06
+
+36. **Production axe scan — findings fixed in candidate.** On deployed source `8dfd6a4`, the corrected six-viewport browser run passed route availability, no-overflow and hydrated-head checks, but axe found low contrast on platform cyan text/CTA, one black heading over a dark section, and browser zoom disabled. Candidate restores documented neutral Astryx public accent tokens, applies higher contrast SmartAIHub-only nav/locale/CTA colors, fixes the Features heading, and removes `maximum-scale=1`.
+37. **Independent reviewer — findings fixed.** Reviewer found the navbar Get Started CTA remained white on its bright blue-to-teal gradient. The SmartAIHub desktop/mobile CTA now uses dark blue with white text while tenant CTA styling is preserved. Reviewer also identified that the first assertion did not open the mobile menu; coverage was expanded.
+38. **Independent follow-up review — clean.** Confirmed the test opens/scopes the mobile menu and checks both platform and tenant CTA classes on desktop/mobile. Platform palette is limited to SmartAIHub and custom tenant behavior remains intact. Focused tests pass 2 files / 26 tests; no further source findings.
+
+- Next proof: canonical build/deploy this exact candidate, rerun axe in Thai/English at each viewport, and inspect screenshots plus keyboard/mobile-menu behavior. Raw no-JS server SEO remains a separate pending backend/runtime item.

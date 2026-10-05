@@ -7,9 +7,5 @@ export const publicHomeTheme = defineTheme({
   extends: neutralTheme,
   tokens: {
     "--public-layout-wide": "82.5rem",
-    "--color-accent": "var(--primary)",
-    "--color-on-accent": "var(--primary-foreground)",
-    "--color-text-accent": "var(--primary)",
-    "--color-icon-accent": "var(--primary)",
   },
 });
