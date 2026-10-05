@@ -304,6 +304,12 @@ Do not assume that pushing a branch updates `/home/dev/projects/SmartSpecPro`.
 
 Deployment/build synchronization is a separate lifecycle.
 
+### Central canonical builds
+
+After the relevant parallel-session changes are integrated, build from the latest configured canonical ref, not from a session branch or worktree. Use `pnpm run build:canonical` in a checkout containing the current tool, or `$canonical-checkout-sync`'s installed `build-canonical-main.sh` entry point when the checkout may be stale. The builder loads its controller from canonical history, pins the fetched canonical SHA, serializes repository builds on the same host, records the exact source SHA and result, and marks the result stale if the canonical ref advances during the build. Cross-host scheduling uses the existing `worker_jobs` plus outbox control plane. A source lease proves source selection only; `BUILD_PASSED` requires the configured build command to exit successfully.
+
+After a passing build, fast-forward the invoking primary checkout only when it is clean and already on the configured canonical branch. Never overwrite or mix changes into a dirty/wrong-branch primary checkout. Report the blocked sync reason and preserve the checkout for explicit reconciliation; the build result remains tied to its isolated exact-SHA workspace.
+
 ### Skills are authoritative for workflow details
 
 Do not duplicate or reinvent the detailed finish/integration procedures in chat.

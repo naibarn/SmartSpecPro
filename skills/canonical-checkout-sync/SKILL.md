@@ -49,6 +49,35 @@ skills/canonical-checkout-sync/scripts/run-certified-command.sh \
 
 The runner checks the lease fence, expiry, workspace cleanliness, and exact source SHA immediately before execution. It holds an exclusive active lease, renews it during execution, and expires it when the command exits. A reclaimed lease has a higher fencing generation; stale lease holders cannot run or renew work.
 
+## Central build after parallel sessions
+
+When multiple sessions changed the repository, merge all intended work through the normal protected path first. Then start the build from the main workspace; the builder fetches the configured canonical ref and uses its latest tip, never the caller's branch or dirty files.
+
+For SmartSpecPro, the usual command is:
+
+```bash
+pnpm run build:canonical
+```
+
+To require specific merge commits to be included, repeat the revision option; the build fails before running if any required commit is not in the fetched canonical tip:
+
+```bash
+pnpm run build:canonical -- \
+  --required-integrated-revision <merge-sha-1> \
+  --required-integrated-revision <merge-sha-2>
+```
+
+From a stale session checkout that does not yet contain that package script, use the installed central entry point:
+
+```bash
+~/.codex/skills/canonical-checkout-sync/scripts/build-canonical-main.sh \
+  /home/dev/projects/SmartSpecPro
+```
+
+The central entry point loads its controller from the latest configured canonical revision, serializes builds for the repository, builds SmartSpecPro web in the isolated source workspace, and returns a result record with the exact source SHA. `BUILD_PASSED` means the configured build command passed for that SHA. `STALE_CANONICAL_ADVANCED` means another merge landed during the build; rerun to build the newer tip.
+
+After a passing build, the command fast-forwards the invoking checkout only when it is clean and already on the configured canonical branch. A dirty or feature-branch checkout is left untouched and reports `primary_workspace_sync` as blocked with the reason and a sample of dirty paths. Resolve/preserve that work, then run the command from a clean canonical checkout to make all integrated files visible there. The build output remains at the reported isolated workspace path.
+
 Concurrent operations for distinct repository/revision/purpose tuples use independent workspaces and leases. Requests for an already-active tuple are rejected. Do not run commands directly in the isolated workspace without the certified runner when the operation depends on the lease.
 
 ## Boundaries

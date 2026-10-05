@@ -252,6 +252,114 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(ran.stdout.strip(), self.revision)
         self.assertEqual(command("git", "-C", str(self.shared), "status", "--porcelain=v1", "--branch"), before)
 
+    def test_central_build_uses_latest_canonical_not_dirty_session_branch(self) -> None:
+        from canonical_source import build_canonical
+
+        before_status = command("git", "-C", str(self.shared), "status", "--porcelain=v1", "--branch")
+        before_branch = command("git", "-C", str(self.shared), "branch", "--show-current")
+        result = build_canonical(
+            self.shared,
+            command=[sys.executable, "-c", "import subprocess; print(subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip())"],
+            required_revisions=[self.revision],
+            build_target="fixture",
+            policy_path=self.policy,
+        )
+        self.assertEqual(result["status"], "BUILD_PASSED")
+        self.assertEqual(result["source_revision"], self.revision)
+        self.assertEqual(result["canonical_tip_after_build"], self.revision)
+        self.assertEqual(result["primary_workspace_sync"]["status"], "BLOCKED_DIRTY_WRONG_BRANCH")
+        self.assertEqual(command("git", "-C", str(self.shared), "status", "--porcelain=v1", "--branch"), before_status)
+        self.assertEqual(command("git", "-C", str(self.shared), "branch", "--show-current"), before_branch)
+        manifest = json.loads(Path(str(result["result_file"])).read_text(encoding="utf-8"))
+        self.assertEqual(manifest["source_revision"], self.revision)
+        self.assertEqual(manifest["status"], "BUILD_PASSED")
+
+    def test_central_build_marks_result_stale_if_canonical_advances_during_build(self) -> None:
+        from canonical_source import build_canonical
+
+        publish_new_tip = (
+            "from pathlib import Path; import subprocess; "
+            f"root={str(self.seed)!r}; "
+            "Path(root, 'app.txt').write_text('canonical v2\\n'); "
+            "subprocess.run(['git','-C',root,'add','app.txt'],check=True); "
+            "subprocess.run(['git','-C',root,'commit','-m','canonical v2'],check=True); "
+            "subprocess.run(['git','-C',root,'push','origin','trunk'],check=True)"
+        )
+        result = build_canonical(
+            self.shared,
+            command=[sys.executable, "-c", publish_new_tip],
+            build_target="fixture",
+            policy_path=self.policy,
+        )
+        self.assertEqual(result["status"], "STALE_CANONICAL_ADVANCED")
+        self.assertNotEqual(result["source_revision"], result["canonical_tip_after_build"])
+        self.assertEqual(result["primary_workspace_sync"]["status"], "SKIPPED_CANONICAL_ADVANCED")
+
+    def test_central_build_fast_forwards_clean_main_workspace_to_built_revision(self) -> None:
+        from canonical_source import build_canonical
+
+        main_workspace = self.root / "main-workspace"
+        command("git", "clone", "--branch", "trunk", str(self.remote), str(main_workspace))
+        policy = self.root / "main-workspace.toml"
+        policy.write_text(
+            "[repository]\n"
+            'repository_id = "fixture-repository"\n'
+            'remote = "origin"\n'
+            'canonical_ref = "refs/heads/trunk"\n'
+            f'source_root = "{self.source_root}"\n',
+            encoding="utf-8",
+        )
+        (self.seed / "app.txt").write_text("canonical v2\n", encoding="utf-8")
+        command("git", "-C", str(self.seed), "add", "app.txt")
+        command("git", "-C", str(self.seed), "commit", "-m", "canonical v2")
+        command("git", "-C", str(self.seed), "push", "origin", "trunk")
+        latest = command("git", "-C", str(self.seed), "rev-parse", "HEAD")
+
+        result = build_canonical(
+            main_workspace,
+            command=[sys.executable, "-c", "import subprocess; print(subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip())"],
+            build_target="fixture",
+            policy_path=policy,
+        )
+        self.assertEqual(result["status"], "BUILD_PASSED")
+        self.assertEqual(result["source_revision"], latest)
+        self.assertEqual(result["primary_workspace_sync"]["status"], "FAST_FORWARDED")
+        self.assertEqual(command("git", "-C", str(main_workspace), "rev-parse", "HEAD"), latest)
+        self.assertEqual((main_workspace / "app.txt").read_text(encoding="utf-8"), "canonical v2\n")
+
+    def test_installed_central_entrypoint_uses_builder_from_latest_canonical(self) -> None:
+        main_policy = self.seed / ".development-repository.toml"
+        main_policy.write_text(
+            "[repository]\n"
+            'repository_id = "fixture-repository"\n'
+            'remote = "origin"\n'
+            'canonical_ref = "refs/heads/trunk"\n'
+            f'source_root = "{self.source_root}"\n',
+            encoding="utf-8",
+        )
+        core_path = self.seed / "scripts/development-lifecycle/canonical_source.py"
+        core_path.parent.mkdir(parents=True)
+        shutil.copy2(SCRIPT, core_path)
+        web_builder = self.seed / "scripts/development-lifecycle/build_web.sh"
+        web_builder.write_text("#!/usr/bin/env bash\nset -euo pipefail\nprintf 'fixture build\\n'\n", encoding="utf-8")
+        command("git", "-C", str(self.seed), "add", ".development-repository.toml", "scripts/development-lifecycle")
+        command("git", "-C", str(self.seed), "commit", "-m", "publish canonical builder")
+        command("git", "-C", str(self.seed), "push", "origin", "trunk")
+        latest = command("git", "-C", str(self.seed), "rev-parse", "HEAD")
+        (self.shared / ".development-repository.toml").write_text(main_policy.read_text(encoding="utf-8"), encoding="utf-8")
+
+        wrapper = SCRIPT.parents[2] / "skills/canonical-checkout-sync/scripts/build-canonical-main.sh"
+        result = subprocess.run(
+            ["bash", str(wrapper), str(self.shared)],
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        build_result = json.loads(result.stdout)
+        self.assertEqual(build_result["source_revision"], latest)
+        self.assertEqual(build_result["status"], "BUILD_PASSED")
+        self.assertIn(f"builder_revision={latest}", result.stderr)
+
     def test_source_root_inside_shared_checkout_is_rejected(self) -> None:
         self.write_policy("fixture-repository", "origin", "refs/heads/trunk")
         self.policy.write_text(
