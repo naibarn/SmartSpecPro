@@ -470,5 +470,8 @@
   "gallery.profile.product_review.imageAlt": "อุปกรณ์พรีเมียมไร้แบรนด์ที่เตรียมสำหรับรีวิวสินค้า",
   "gallery.profile.software_review.description": "รีวิวที่ดูทั้งหน้าตา workflow ผลลัพธ์ ความเหมาะกับแพลตฟอร์ม ข้อจำกัด และบริบทของ plan",
   "gallery.profile.software_review.evidence": "ต้องมี source ก่อนร่างเรื่อง",
-  "gallery.profile.software_review.imageAlt": "workspace ซอฟต์แวร์นามธรรมที่เตรียมสำหรับรีวิวซอฟต์แวร์"
+  "gallery.profile.software_review.imageAlt": "workspace ซอฟต์แวร์นามธรรมที่เตรียมสำหรับรีวิวซอฟต์แวร์",
+  "tenantPage.unavailableTitle": "หน้านี้ยังไม่พร้อมใช้งานบนเว็บไซต์นี้",
+  "tenantPage.unavailableBody": "เจ้าของเว็บไซต์ยังไม่ได้เผยแพร่หน้านี้",
+  "tenantPage.homeLink": "กลับไปหน้าแรก"
 }

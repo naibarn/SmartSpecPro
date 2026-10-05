@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq } from "drizzle-orm";
+import type { TenantRequest } from "../_core/tenant";
 import { blogPosts, tenants, tenantPages } from "../../drizzle/schema";
 import { db } from "../db";
 import {
@@ -48,12 +49,8 @@ function resolveBaseUrl(_req: Request, tenantDomain?: string | null): string {
   return configuredPublicBaseUrl();
 }
 
-function pathFromTenantPage(pageKey: string, slug: string): string {
-  if (pageKey === "home") return "/";
-  if (pageKey.startsWith("docs-")) {
-    return `/docs/${slug}`;
-  }
-  return `/${slug}`;
+function pathFromTenantPage(pageKey: string, slug: string): string | null {
+  return tenantPublicPagePath({ pageKey, slug, title: "" });
 }
 
 function toXml(urls: SitemapUrl[]): string {
@@ -119,9 +116,9 @@ export async function buildSitemapUrls(req: Request): Promise<SitemapUrl[]> {
       .where(and(eq(tenantPages.tenantId, tenant.id), eq(tenantPages.isPublished, true)));
 
     for (const page of publishedPages) {
-      // Only advertise paths rendered by a public route.
-      if (page.pageKey !== "home" && !page.pageKey.startsWith("docs-")) continue;
       const path = pathFromTenantPage(page.pageKey, page.slug);
+      // Only advertise paths rendered by the tenant-public route boundary.
+      if (!path) continue;
       urls.push({
         loc: `${baseUrl}${path}`,
         lastmod: page.updatedAt?.toISOString?.() || page.createdAt?.toISOString?.(),
@@ -223,6 +220,104 @@ LLMs: ${baseUrl}/llms.txt
 `;
 }
 
+export function tenantRobotsTxt(baseUrl: string): string {
+  return `User-agent: *
+Allow: /
+
+Sitemap: ${baseUrl}/sitemap.xml
+LLMs: ${baseUrl}/llms.txt
+`;
+}
+
+export function privateRobotsTxt(): string {
+  return "User-agent: *\nDisallow: /\n";
+}
+
+function isSmartAIHubHost(host: string | null | undefined): boolean {
+  return normalizeHost(host)?.replace(/^www\./, "") === "smartaihub.app";
+}
+
+function resolvedTenant(req: Request) {
+  return (req as TenantRequest).tenant;
+}
+
+type TenantPublicPage = {
+  pageKey: string;
+  slug: string;
+  title: string;
+  metadata?: { description?: string } | null;
+};
+
+const tenantStaticPublicPaths: Record<string, string> = {
+  about: "/about",
+  blog: "/blog",
+  careers: "/careers",
+  changelog: "/changelog",
+  community: "/community",
+  contact: "/contact",
+  docs: "/docs",
+  features: "/features",
+  gallery: "/gallery",
+  help: "/help",
+  marketplace: "/marketplace",
+  pricing: "/pricing",
+  privacy: "/privacy",
+  resources: "/resources",
+  security: "/security",
+  status: "/status",
+  support: "/support",
+  terms: "/terms",
+};
+
+function tenantPublicPagePath(page: TenantPublicPage): string | null {
+  if (page.pageKey === "home") return "/";
+  if (tenantStaticPublicPaths[page.pageKey]) return tenantStaticPublicPaths[page.pageKey];
+  if (page.pageKey.startsWith("docs-")) return `/docs/${page.slug.replace(/^\/+/, "")}`;
+  for (const prefix of ["help-", "blog-", "marketplace-"]) {
+    if (page.pageKey.startsWith(prefix)) {
+      return `/${prefix.slice(0, -1)}/${page.pageKey.slice(prefix.length).replace(/\//g, "-")}`;
+    }
+  }
+  return null;
+}
+
+function markdownLine(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").trim().slice(0, 500);
+}
+
+function markdownLabel(value: string): string {
+  return markdownLine(value).replace(/[\\`*_{}[\]()#+.!|>]/g, "\\$&");
+}
+
+export function toTenantLlmsTxt(
+  baseUrl: string,
+  tenantName: string,
+  pages: TenantPublicPage[],
+): string {
+  const safeName = markdownLine(tenantName) || "Tenant site";
+  const lines = [
+    `# ${markdownLabel(safeName)}`,
+    "",
+    `> Public pages published by ${markdownLabel(safeName)}.`,
+    "",
+    "## Published pages",
+    "",
+  ];
+  const seen = new Set<string>();
+
+  for (const page of pages) {
+    const path = tenantPublicPagePath(page);
+    if (!path) continue;
+    const url = new URL(path, baseUrl);
+    if (url.origin !== new URL(baseUrl).origin || seen.has(url.toString())) continue;
+    seen.add(url.toString());
+    const description = markdownLabel(page.metadata?.description || "");
+    lines.push(`- [${markdownLabel(page.title)}](${url.toString()})${description ? `: ${description}` : ""}`);
+  }
+
+  return `${lines.join("\n").trim()}\n`;
+}
+
 export function registerPublicSitemapRoutes(app: Express): void {
   app.get("/sitemap.xml", async (req: Request, res: Response) => {
     try {
@@ -236,17 +331,51 @@ export function registerPublicSitemapRoutes(app: Express): void {
   });
 
   app.get("/robots.txt", (req: Request, res: Response) => {
-    const baseUrl = resolveBaseUrl(req);
-    res.type("text/plain").send(robotsTxt(baseUrl));
+    const tenant = resolvedTenant(req);
+    if (tenant) {
+      const baseUrl = resolveBaseUrl(req, tenant.primaryDomain || req.hostname);
+      res.type("text/plain").send(
+        isSmartAIHubHost(tenant.primaryDomain) ? robotsTxt(baseUrl) : tenantRobotsTxt(baseUrl),
+      );
+      return;
+    }
+    if (isSmartAIHubHost(req.hostname)) {
+      res.type("text/plain").send(robotsTxt(resolveBaseUrl(req)));
+      return;
+    }
+    res.type("text/plain").send(privateRobotsTxt());
   });
 
-  app.get("/llms.txt", (req: Request, res: Response) => {
-    const baseUrl = resolveBaseUrl(req);
-    res.type("text/markdown; charset=utf-8").send(toLlmsTxt(baseUrl));
-  });
+  const handleLlmsTxt = async (req: Request, res: Response, full: boolean) => {
+    const tenant = resolvedTenant(req);
+    if (tenant) {
+      const baseUrl = resolveBaseUrl(req, tenant.primaryDomain || req.hostname);
+      if (isSmartAIHubHost(tenant.primaryDomain)) {
+        res.type("text/markdown; charset=utf-8").send(toLlmsTxt(baseUrl, full));
+        return;
+      }
 
-  app.get("/llms-full.txt", (req: Request, res: Response) => {
-    const baseUrl = resolveBaseUrl(req);
-    res.type("text/markdown; charset=utf-8").send(toLlmsTxt(baseUrl, true));
-  });
+      try {
+        const dbInstance = await db.instance;
+        const pages = await dbInstance
+          .select()
+          .from(tenantPages)
+          .where(and(eq(tenantPages.tenantId, tenant.id), eq(tenantPages.isPublished, true)));
+        res.type("text/markdown; charset=utf-8").send(toTenantLlmsTxt(baseUrl, tenant.name, pages));
+      } catch (error) {
+        console.warn("Tenant LLM index lookup failed; returning the tenant name only:", error);
+        res.type("text/markdown; charset=utf-8").send(toTenantLlmsTxt(baseUrl, tenant.name, []));
+      }
+      return;
+    }
+
+    if (isSmartAIHubHost(req.hostname)) {
+      res.type("text/markdown; charset=utf-8").send(toLlmsTxt(resolveBaseUrl(req), full));
+      return;
+    }
+    res.status(404).type("text/plain").send("No public site is configured for this host.");
+  };
+
+  app.get("/llms.txt", (req: Request, res: Response) => void handleLlmsTxt(req, res, false));
+  app.get("/llms-full.txt", (req: Request, res: Response) => void handleLlmsTxt(req, res, true));
 }

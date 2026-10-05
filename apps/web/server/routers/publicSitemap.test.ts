@@ -10,7 +10,14 @@ vi.mock("../db", () => ({
   },
 }));
 
-import { buildSitemapUrls, robotsTxt, toLlmsTxt } from "./publicSitemap";
+import {
+  buildSitemapUrls,
+  privateRobotsTxt,
+  robotsTxt,
+  tenantRobotsTxt,
+  toLlmsTxt,
+  toTenantLlmsTxt,
+} from "./publicSitemap";
 import { tenantPages, tenants } from "../../drizzle/schema";
 
 function makeRequest() {
@@ -90,6 +97,33 @@ describe("public SEO discovery routes", () => {
       isPublished: true,
       createdAt: new Date("2026-01-01T00:00:00Z"),
       updatedAt: new Date("2026-01-02T00:00:00Z"),
+    }, {
+      id: 9,
+      tenantId: tenant.id,
+      pageKey: "features",
+      slug: "features",
+      title: "Features",
+      isPublished: true,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+    }, {
+      id: 10,
+      tenantId: tenant.id,
+      pageKey: "docs",
+      slug: "docs",
+      title: "Documentation",
+      isPublished: true,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+    }, {
+      id: 11,
+      tenantId: tenant.id,
+      pageKey: "blog",
+      slug: "blog",
+      title: "Blog",
+      isPublished: true,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
     }];
     let primaryDomainQuery = true;
     const dbInstance = {
@@ -120,7 +154,9 @@ describe("public SEO discovery routes", () => {
 
     expect(urls).toContainEqual(expect.objectContaining({ loc: "https://customer.example/" }));
     expect(urls.some((url) => url.loc.includes("about-us"))).toBe(false);
-    expect(urls.some((url) => url.loc.includes("/features"))).toBe(false);
+    expect(urls).toContainEqual(expect.objectContaining({ loc: "https://customer.example/features" }));
+    expect(urls).toContainEqual(expect.objectContaining({ loc: "https://customer.example/docs" }));
+    expect(urls).toContainEqual(expect.objectContaining({ loc: "https://customer.example/blog" }));
   });
 
   it("builds robots.txt with AI search access and training restrictions", () => {
@@ -149,5 +185,41 @@ describe("public SEO discovery routes", () => {
 
     expect(text).toContain("## Citation Guidance");
     expect(text).toContain("## AI Access Policy");
+  });
+
+  it("builds a tenant-only LLM index from that tenant's published routes", () => {
+    const text = toTenantLlmsTxt("https://customer.example", "Customer Site", [
+      {
+        pageKey: "home",
+        slug: "home",
+        title: "Customer home",
+        metadata: { description: "Tenant-owned homepage copy" },
+      },
+      {
+        pageKey: "features",
+        slug: "features",
+        title: "Customer features",
+        metadata: { description: "Features for this customer" },
+      },
+      {
+        pageKey: "secret-admin-page",
+        slug: "private-data",
+        title: "Should not be indexed",
+      },
+    ]);
+
+    expect(text).toContain("# Customer Site");
+    expect(text).toContain("https://customer.example/");
+    expect(text).toContain("https://customer.example/features");
+    expect(text).not.toContain("SmartAIHub");
+    expect(text).not.toContain("private-data");
+  });
+
+  it("keeps tenant and unrecognized-host crawler policies separate from SmartAIHub", () => {
+    const tenantRobots = tenantRobotsTxt("https://customer.example");
+    expect(tenantRobots).toContain("Sitemap: https://customer.example/sitemap.xml");
+    expect(tenantRobots).not.toContain("smartaihub.app");
+    expect(privateRobotsTxt()).toContain("Disallow: /");
+    expect(privateRobotsTxt()).not.toContain("smartaihub.app");
   });
 });

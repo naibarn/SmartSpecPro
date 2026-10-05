@@ -18,8 +18,38 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 
 ## Stop result
 
-- Clean rounds after the last material repair: 7 consecutive (Rounds 4–10).
+- Clean rounds after the first direct-route repair: 2 consecutive (Rounds 13–14). A later crawl-surface review found and repaired another related gap; see follow-up rounds below.
 - Material findings remaining in safe code scope: none found in these passes.
 - Blocked findings: public claim/asset rights, route/crawl/analytics/RUM and deployed-browser proof; durable artifact ownership/recovery/retention/reference closure; live Spec 224/256/catalog and provider certification; serialized repository-wide typecheck.
 - Stale gates: none for the exact focused code diff. Final docs-only edits require `git diff --check` before commit.
 - Stop reason: proceed with `CHECKPOINT_PROMOTED_PARTIAL` after integration; whole Specs 263/270 cannot be closed honestly until blocked external authorities and evidence are supplied.
+
+## Post-integration impact closure
+
+11. **Direct public URLs on tenant hosts — finding fixed.** Direct `/features`, `/pricing`, docs/help, resources, trust, blog, marketplace, gallery, and legal routes could still render SmartAIHub defaults when a tenant had no page. Added `TenantPublicRoute` around public content routes: verified platform host preserves existing page; custom host resolves an exact tenant-published page or renders a localized unavailable state. Safety/emergency public routes remain under their separate owner.
+12. **Tenant route canonical path — finding fixed.** Reusing `TenantHomePage` for a published non-home route would have emitted canonical `/` and shown the home emergency entry. Added route-specific canonical path and limited that entry to the tenant home. Added assertions in the route-boundary test.
+13. **Route integration and exact-scope verification — clean.** Fresh focused run: 7 files / 50 tests passed. Babel parser accepted `App.tsx` and changed TSX; locale JSON and whitespace checks passed. Route keys match the existing tenant page convention, including `docs-{slug}`.
+14. **Tenant/public contract review — clean.** The existing hook verifies returned `tenantId`, `pageKey`, and `isPublished`; the server public-page query filters exact current tenant. The wrapper leaves SmartAIHub-domain content untouched and sends unresolved custom content to a branded unavailable state; no new route or data API was introduced.
+
+- Current closure rounds after the direct-route and canonical repairs: two clean passes (13–14).
+- New direct-route repair still requires normal promotion from the task worktree; do not infer production/browser behavior from component tests.
+
+15. **Tenant crawler output — finding fixed.** Tenant domains still received the static SmartAIHub `llms.txt` and the platform base URL in `robots.txt`; custom pages published through the route boundary were also absent from tenant sitemaps. Added tenant-only LLM projection from exact tenant-published route keys, canonical tenant sitemap/LLM URLs, and a disallow-all crawler policy for unresolved hosts. Extended the sitemap projection only to public route keys served by `TenantPublicRoute`.
+16. **Crawler data and scope review — clean.** The tenant route handlers use the middleware-resolved tenant ID to query published pages; the renderer omits unsupported page keys and escapes titles/descriptions before Markdown output. Platform behavior remains on the verified SmartAIHub tenant/host; unknown hosts do not receive SmartAIHub LLM copy.
+17. **Fresh focused regression and source review — clean.** Eight changed-scope suites passed (58 tests), including tenant route/sitemap/robots/LLM behavior. Changed TSX/server syntax parsed, locale JSON parsed, and `git diff --check` passed. No schema, migration, feature flag, provider, or deployment path changed.
+
+- Latest material repair (tenant crawler output) has two consecutive clean review passes (16–17).
+- The full public browser/crawl/live production evidence remains separate; this checkpoint does not certify deployed host behavior.
+
+18. **Unpublished tenant noindex test — test harness repair.** Initial assertion could not find the mocked `Seo` metadata because React hoists `<meta>` elements into the document head. Replaced the mock output with an explicit test marker; no production-code change was needed for this test failure.
+19. **Noindex and tenant-crawl regressions — clean.** The route test confirms `noIndex`, canonical path without query, and tenant-specific page-key resolution. The eight-file focused run passed 58 tests, including tenant sitemap, tenant/unknown robots policies and tenant LLM projections.
+20. **Final impact review — clean.** App route wrappers cover supported public marketing/content/legal routes, retain SmartAIHub behavior on its verified domain, and leave emergency routes under their existing owner. Tenant pages are gated by the existing exact-tenant/published hook and sitemap admits only supported route keys. No safe in-scope MUST_DO_NOW code gap found.
+
+- Earlier review checkpoint: 20 targeted passes; latest code/test repair at that checkpoint had two clean rounds (19–20).
+- Remaining blockers are external authority and live/browser/production evidence documented in `lifecycle.md` and `progress.md`.
+
+21. **Tenant sitemap route-key closure — finding fixed.** Follow-up inspection found the static `docs` and `blog` page keys were accepted by `TenantPublicRoute` but missing from the sitemap route map. Added both keys and regression rows; unsupported keys remain excluded.
+22. **Focused route/crawler verification — clean.** Re-ran the eight changed-scope suites after the route-map repair: 58 tests passed. This covers exact tenant page route selection, noindex fallback, canonical path, robots/LLM tenant identity, and sitemap route keys.
+23. **Final source and handoff review — clean.** App and changed TSX/server files parse; locale JSON parses; `git diff --check` passes; no secret pattern or conflict marker found. No build, full typecheck, browser, production crawl, or deployment was run. The repair is a safe partial checkpoint for normal integration.
+
+- Total targeted review passes: 23; latest sitemap-key repair followed by two clean rounds (22–23).

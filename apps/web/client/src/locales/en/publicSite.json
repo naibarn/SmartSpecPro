@@ -470,5 +470,8 @@
   "gallery.profile.product_review.imageAlt": "Generic premium device prepared for a product review",
   "gallery.profile.software_review.description": "A practical review of interface, workflow, result, platform fit, limitations, and plan context.",
   "gallery.profile.software_review.evidence": "Sources required before drafting",
-  "gallery.profile.software_review.imageAlt": "Abstract software workspace prepared for a software review"
+  "gallery.profile.software_review.imageAlt": "Abstract software workspace prepared for a software review",
+  "tenantPage.unavailableTitle": "This page is not available on this site yet",
+  "tenantPage.unavailableBody": "The site owner has not published this page.",
+  "tenantPage.homeLink": "Return to the home page"
 }

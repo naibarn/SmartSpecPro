@@ -279,7 +279,15 @@ function TenantSection({
   );
 }
 
-export default function TenantHomePage({ page }: { page: TenantPageData }) {
+export default function TenantHomePage({
+  page,
+  canonicalPath = "/",
+  showEmergencyEntry = true,
+}: {
+  page: TenantPageData;
+  canonicalPath?: string;
+  showEmergencyEntry?: boolean;
+}) {
   const sections = page.sections?.length
     ? page.sections
     : page.content
@@ -310,13 +318,13 @@ export default function TenantHomePage({ page }: { page: TenantPageData }) {
         description={description}
         keywords={keywords}
         image={page.metadata?.ogImage}
-        canonicalPath="/"
+        canonicalPath={canonicalPath}
         fetchTenantSeo={false}
         useTenantDefaults={false}
       />
       <Navbar />
       <main>
-        <EmergencyPublicEntry variant="home" />
+        {showEmergencyEntry && <EmergencyPublicEntry variant="home" />}
         {sections.length ? (
           sections.map((section, index) => (
             <TenantSection
