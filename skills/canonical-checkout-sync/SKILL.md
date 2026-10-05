@@ -53,7 +53,7 @@ The runner checks the lease fence, expiry, workspace cleanliness, and exact sour
 
 When multiple sessions changed the repository, merge all intended work through the normal protected path first. Then start the build from the main workspace; the builder fetches the configured canonical ref and uses its latest tip, never the caller's branch or dirty files.
 
-For SmartSpecPro, the usual command is:
+Use the repository's configured central build command, for example:
 
 ```bash
 pnpm run build:canonical
@@ -71,10 +71,10 @@ From a stale session checkout that does not yet contain that package script, use
 
 ```bash
 ~/.codex/skills/canonical-checkout-sync/scripts/build-canonical-main.sh \
-  /home/dev/projects/SmartSpecPro
+  <repository-root>
 ```
 
-The central entry point loads its controller from the latest configured canonical revision, serializes builds for the repository, builds SmartSpecPro web in the isolated source workspace, and returns a result record with the exact source SHA. `BUILD_PASSED` means the configured build command passed for that SHA. `STALE_CANONICAL_ADVANCED` means another merge landed during the build; rerun to build the newer tip.
+The central entry point loads its controller from the latest configured canonical revision, serializes builds for the repository, invokes the repository's configured build target in the isolated source workspace, and returns a result record with the exact source SHA. `BUILD_PASSED` means the configured build command passed for that SHA. `STALE_CANONICAL_ADVANCED` means another merge landed during the build; rerun to build the newer tip.
 
 After a passing build, the command fast-forwards the invoking checkout only when it is clean and already on the configured canonical branch. A dirty or feature-branch checkout is left untouched and reports `primary_workspace_sync` as blocked with the reason and a sample of dirty paths. Resolve/preserve that work, then run the command from a clean canonical checkout to make all integrated files visible there. The build output remains at the reported isolated workspace path.
 

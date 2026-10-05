@@ -46,13 +46,21 @@ class CanonicalSourceTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def write_policy(self, repository_id: str, remote: str, canonical_ref: str) -> None:
+    def write_policy(
+        self,
+        repository_id: str,
+        remote: str,
+        canonical_ref: str,
+        build_target: str | None = None,
+    ) -> None:
+        build_target_line = f'build_target = "{build_target}"\n' if build_target else ""
         self.policy.write_text(
             "[repository]\n"
             f'repository_id = "{repository_id}"\n'
             f'remote = "{remote}"\n'
             f'canonical_ref = "{canonical_ref}"\n'
-            f'source_root = "{self.source_root}"\n',
+            f'source_root = "{self.source_root}"\n'
+            f"{build_target_line}",
             encoding="utf-8",
         )
 
@@ -273,6 +281,18 @@ class CanonicalSourceTests(unittest.TestCase):
         manifest = json.loads(Path(str(result["result_file"])).read_text(encoding="utf-8"))
         self.assertEqual(manifest["source_revision"], self.revision)
         self.assertEqual(manifest["status"], "BUILD_PASSED")
+
+    def test_central_build_uses_repository_policy_build_target(self) -> None:
+        from canonical_source import build_canonical
+
+        self.write_policy("fixture-repository", "origin", "refs/heads/trunk", "fixture-policy-target")
+        result = build_canonical(
+            self.shared,
+            command=[sys.executable, "-c", "print('build')"],
+            policy_path=self.policy,
+        )
+        self.assertEqual(result["status"], "BUILD_PASSED")
+        self.assertEqual(result["build_target"], "fixture-policy-target")
 
     def test_central_build_marks_result_stale_if_canonical_advances_during_build(self) -> None:
         from canonical_source import build_canonical

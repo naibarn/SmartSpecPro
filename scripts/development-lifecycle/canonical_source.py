@@ -313,15 +313,16 @@ def build_canonical(
     *,
     command: Sequence[str],
     required_revisions: Sequence[str] = (),
-    build_target: str = "smartspec-web",
+    build_target: str | None = None,
     policy_path: Path | None = None,
     lease_seconds: int = 900,
 ) -> dict[str, Any]:
     """Build only the fetched canonical tip, never the caller's branch/worktree."""
     repo = Path(git(repo, "rev-parse", "--show-toplevel")).resolve()
+    policy = load_policy(repo, policy_path)
+    build_target = build_target or str(policy.get("build_target", "web-build"))
     if not build_target.strip() or len(build_target) > 128:
         raise LifecycleError("BUILD_TARGET_INVALID")
-    policy = load_policy(repo, policy_path)
     repository_key = _hash(policy["repository_id"])[:20]
     lease_dir = Path(policy["source_root"]) / ".development-leases" / repository_key
     lease_dir.mkdir(parents=True, exist_ok=True)
@@ -444,7 +445,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     build.add_argument("--repository", required=True, type=Path)
     build.add_argument("--policy", type=Path)
     build.add_argument("--required-integrated-revision", action="append", default=[])
-    build.add_argument("--build-target", default="smartspec-web")
+    build.add_argument("--build-target")
     build.add_argument("--lease-seconds", type=int, default=900)
     build.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
