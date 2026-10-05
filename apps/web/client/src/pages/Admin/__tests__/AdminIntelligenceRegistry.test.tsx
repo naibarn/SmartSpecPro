@@ -138,6 +138,41 @@ describe("AdminIntelligenceRegistry", () => {
     ).toBeNull();
   });
 
+  it("delegates operational source approval to the Spec 260 review route with checklist evidence", async () => {
+    const operationalSource = {
+      id: "legacy-src-1", sourceRef: "th-rid-levels", displayName: "RID levels", sourceType: "official",
+      dataClassification: "general", canonicalOrigin: "https://example.gov.th", independenceGroup: "rid", jurisdictionRef: "TH",
+      status: "pending_review", createdAt: "2026-10-01T00:00:00.000Z",
+    };
+    const fetchMock = vi.fn(async (_url: string, options?: RequestInit) => ({
+      ok: true,
+      json: async () => options?.method === "PATCH" ? {} : { items: [operationalSource] },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminIntelligenceRegistry />);
+    fireEvent.click(await screen.findByRole("button", { name: "Review and approve" }));
+    for (const label of [
+      "Verify the HTTPS origin and data owner",
+      "Verify the schema and meaning of the data",
+      "Verify the update cadence and timestamps",
+      "Verify usage rights and redistribution terms",
+      "Verify attribution requirements",
+      "Verify permitted purpose and geographic scope",
+    ]) fireEvent.click(screen.getByRole("checkbox", { name: label }));
+    fireEvent.change(screen.getByLabelText("Approval rationale"), { target: { value: "Verified source documents" } });
+    fireEvent.click(screen.getByRole("button", { name: "Approve source" }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === "PATCH")).toBe(true));
+    const [reviewUrl, reviewOptions] = fetchMock.mock.calls.find(([, options]) => options?.method === "PATCH")!;
+    expect(reviewUrl).toBe("/api/operations/emergency/intelligence/sources/legacy-src-1");
+    expect(reviewOptions).toMatchObject({ method: "PATCH", credentials: "include" });
+    expect(JSON.parse(String(reviewOptions?.body))).toEqual({
+      status: "active",
+      reason: "Verified source documents [endpoint=verified, schema=verified, cadence=verified, rights=verified, attribution=verified, purpose=verified]",
+    });
+    expect(await screen.findByText("Source approved")).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
   it("keeps refresh available and retries load failures", () => {
     mocks.query = {
       data: [],
