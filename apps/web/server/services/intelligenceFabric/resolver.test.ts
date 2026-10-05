@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { resolveDataRequirement, type DataOffer, type DataRequirement } from "./resolver";
+import {
+  authorizeRetrievalProjection,
+  evaluateRetrievalCache,
+  resolveDataRequirement,
+  validateConnectorUrl,
+  type DataOffer,
+  type DataRequirement,
+} from "./resolver";
 
 const requirement: DataRequirement = {
   semanticType: "flood.depth",
@@ -17,7 +24,9 @@ function offer(overrides: Partial<DataOffer> = {}): DataOffer {
     geographyRefs: ["TH-10"],
     temporalCoverage: { from: "2026-09-01T00:00:00.000Z", to: "2026-10-01T00:00:00.000Z" },
     freshness: { observedAt: "2026-09-30T00:00:00.000Z", staleAfterSeconds: 172800 },
-    rights: { status: "granted", commercialUse: true, redistributable: true },
+    evidence: { revision: 3, contentHash: "a".repeat(64) },
+    rights: { status: "granted", commercialUse: true, redistributable: true, contentHydrationAllowed: true, policyVersion: "rights-r1", validUntil: "2026-10-01T00:10:00.000Z", retentionUntil: "2026-10-01T00:20:00.000Z" },
+    healthPolicyVersion: "rights-r1",
     acl: { allowed: true, authorizationScope: "PUBLIC" },
     estimatedCost: { kind: "known", credits: 0 },
     estimatedLatencyMs: 200,
@@ -28,6 +37,8 @@ function offer(overrides: Partial<DataOffer> = {}): DataOffer {
   };
   return {
     ...base,
+    rights: { ...base.rights, ...overrides.rights },
+    evidence: Object.prototype.hasOwnProperty.call(overrides, "evidence") ? overrides.evidence : base.evidence,
     sourceHealth: overrides.sourceHealth ?? {
       contractVersion: "spec266-source-health-v1",
       sourceId: base.sourceRef,
@@ -40,13 +51,23 @@ function offer(overrides: Partial<DataOffer> = {}): DataOffer {
   };
 }
 
+function options(overrides: Partial<Parameters<typeof resolveDataRequirement>[2]> = {}) {
+  return {
+    now: new Date("2026-10-01T00:00:00.000Z"),
+    authorizationScope: "PUBLIC" as const,
+    currentPolicyVersion: "rights-r1",
+    currentIndexGeneration: "generation-1",
+    ...overrides,
+  };
+}
+
 describe("resolveDataRequirement", () => {
   it("selects eligible offers by quality then known cost while keeping unknown cost distinct", () => {
     const result = resolveDataRequirement(requirement, [
       offer({ id: "unknown-cost", estimatedCost: { kind: "unknown" }, qualityScore: 0.8 }),
       offer({ id: "cheap", estimatedCost: { kind: "known", credits: 1 }, qualityScore: 0.8 }),
       offer({ id: "free", estimatedCost: { kind: "known", credits: 0 }, qualityScore: 0.8 }),
-    ], { now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC" });
+    ], options());
 
     expect(result.selected?.id).toBe("free");
     expect(result.eligible.map(item => item.id)).toEqual(["free", "cheap", "unknown-cost"]);
@@ -56,7 +77,7 @@ describe("resolveDataRequirement", () => {
   it("fails closed for ACL, rights, geography, semantics, stale and unhealthy offers", () => {
     const offers = [
       offer({ id: "acl", acl: { allowed: false, authorizationScope: "PUBLIC" } }),
-      offer({ id: "rights", rights: { status: "unknown", commercialUse: true, redistributable: true } }),
+      offer({ id: "rights", rights: { status: "unknown", commercialUse: true, redistributable: true, contentHydrationAllowed: false, policyVersion: "rights-r1" } }),
       offer({ id: "geo", geographyRefs: ["TH-11"] }),
       offer({ id: "semantic", semanticTypes: ["rainfall.total"] }),
       offer({ id: "stale", freshness: { observedAt: "2026-01-01T00:00:00.000Z", staleAfterSeconds: 60 } }),
@@ -68,9 +89,7 @@ describe("resolveDataRequirement", () => {
       } }),
     ];
 
-    const result = resolveDataRequirement(requirement, offers, {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC",
-    });
+    const result = resolveDataRequirement(requirement, offers, options());
     expect(result.satisfied).toBe(false);
     expect(result.selected).toBeUndefined();
     expect(result.unsatisfiedReason).toBe("NO_ELIGIBLE_OFFER");
@@ -80,33 +99,23 @@ describe("resolveDataRequirement", () => {
   });
 
   it("does not treat an omitted tenant as public authorization", () => {
-    const result = resolveDataRequirement(requirement, [offer()], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: undefined,
-    });
+    const result = resolveDataRequirement(requirement, [offer()], options({ authorizationScope: undefined }));
     expect(result.satisfied).toBe(false);
     expect(result.rejections[0]?.code).toBe("AUTHORIZATION_SCOPE_REQUIRED");
   });
 
   it("accepts only the matching tenant-owned offer and rejects another tenant's offer", () => {
     const tenantOffer = offer({ acl: { allowed: true, authorizationScope: "TENANT", tenantId: "tenant-a" } });
-    const own = resolveDataRequirement(requirement, [tenantOffer], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "TENANT", tenantId: "tenant-a",
-    });
-    const other = resolveDataRequirement(requirement, [tenantOffer], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "TENANT", tenantId: "tenant-b",
-    });
+    const own = resolveDataRequirement(requirement, [tenantOffer], options({ authorizationScope: "TENANT", tenantId: "tenant-a" }));
+    const other = resolveDataRequirement(requirement, [tenantOffer], options({ authorizationScope: "TENANT", tenantId: "tenant-b" }));
 
     expect(own).toMatchObject({ satisfied: true, selected: { id: "offer-1" } });
     expect(other).toMatchObject({ satisfied: false, rejections: [{ code: "AUTHORIZATION_SCOPE_MISMATCH" }] });
   });
 
   it("applies rights changes from the current offer snapshot and fails closed after revocation", () => {
-    const revoked = resolveDataRequirement(requirement, [offer({ rights: { status: "forbidden", commercialUse: true, redistributable: true } })], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC",
-    });
-    const unverified = resolveDataRequirement(requirement, [offer({ rights: { status: "unknown", commercialUse: true, redistributable: true } })], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC",
-    });
+    const revoked = resolveDataRequirement(requirement, [offer({ rights: { status: "forbidden", commercialUse: true, redistributable: true, contentHydrationAllowed: true, policyVersion: "rights-r1" } })], options());
+    const unverified = resolveDataRequirement(requirement, [offer({ rights: { status: "unknown", commercialUse: true, redistributable: true, contentHydrationAllowed: false, policyVersion: "rights-r1" } })], options());
 
     expect(revoked).toMatchObject({ satisfied: false, rejections: [{ code: "RIGHTS_FORBIDDEN" }] });
     expect(unverified).toMatchObject({ satisfied: false, rejections: [{ code: "RIGHTS_UNVERIFIED" }] });
@@ -114,9 +123,9 @@ describe("resolveDataRequirement", () => {
 
   it("honors explicit commercial, redistribution and budget requirements", () => {
     const result = resolveDataRequirement({ ...requirement, commercialUseRequired: true, redistributableRequired: true, maximumCostCredits: 2 }, [
-      offer({ id: "noncommercial", rights: { status: "granted", commercialUse: false, redistributable: true } }),
+      offer({ id: "noncommercial", rights: { status: "granted", commercialUse: false, redistributable: true, contentHydrationAllowed: false, policyVersion: "rights-r1" } }),
       offer({ id: "over-budget", estimatedCost: { kind: "known", credits: 3 } }),
-    ], { now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC" });
+    ], options());
     expect(result.satisfied).toBe(false);
     expect(result.rejections.map(item => item.code)).toEqual(expect.arrayContaining(["COMMERCIAL_USE_FORBIDDEN", "COST_LIMIT_EXCEEDED"]));
   });
@@ -126,7 +135,7 @@ describe("resolveDataRequirement", () => {
       offer({ id: "negative-cost", estimatedCost: { kind: "known", credits: -1 } }),
       offer({ id: "bad-quality", qualityScore: Number.POSITIVE_INFINITY }),
       offer({ id: "disallowed-placement", placement: "origin-only" }),
-    ], { now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC", allowedPlacements: ["cloudflare"] });
+    ], options({ allowedPlacements: ["cloudflare"] }));
     expect(result.eligible).toEqual([]);
     expect(result.rejections.map(item => item.code)).toEqual(expect.arrayContaining(["OFFER_INVALID", "PLACEMENT_UNAVAILABLE"]));
   });
@@ -135,7 +144,7 @@ describe("resolveDataRequirement", () => {
     const result = resolveDataRequirement({ semanticType: "flood.depth" }, [
       offer({ temporalCoverage: { from: "2026-10-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" } }),
       offer({ id: "noncanonical", temporalCoverage: { from: "2026-09-01", to: "2026-10-01T00:00:00.000Z" } }),
-    ], { now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC" });
+    ], options());
     expect(result.eligible).toEqual([]);
     expect(result.rejections).toEqual([{ offerId: "offer-1", code: "OFFER_INVALID" }, { offerId: "noncanonical", code: "OFFER_INVALID" }]);
   });
@@ -147,32 +156,24 @@ describe("resolveDataRequirement", () => {
       dimensions: { connectivity: "healthy", schema: "healthy", semantic: "healthy", freshness: "healthy", rights: "healthy", placement: "healthy", index: "degraded" },
     } });
     const discovery = offer({ mode: "discovery", sourceHealth: { ...query.sourceHealth, offerId: "discovery-offer" }, id: "discovery-offer" });
-    const queryResult = resolveDataRequirement(requirement, [query], { now: new Date("2026-10-01T00:01:00.000Z"), authorizationScope: "PUBLIC" });
-    const discoveryResult = resolveDataRequirement(requirement, [discovery], { now: new Date("2026-10-01T00:01:00.000Z"), authorizationScope: "PUBLIC" });
+    const queryResult = resolveDataRequirement(requirement, [query], options({ now: new Date("2026-10-01T00:01:00.000Z") }));
+    const discoveryResult = resolveDataRequirement(requirement, [discovery], options({ now: new Date("2026-10-01T00:01:00.000Z") }));
     expect(queryResult.eligible.map(item => item.id)).toEqual(["offer-1"]);
     expect(discoveryResult.rejections).toEqual([{ offerId: "discovery-offer", code: "SOURCE_INDEX_UNHEALTHY" }]);
   });
 
   it("reports malformed health separately from generic offer shape errors", () => {
     const missingHealth = { ...offer(), sourceHealth: undefined } as never;
-    const result = resolveDataRequirement(requirement, [missingHealth], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC",
-    });
+    const result = resolveDataRequirement(requirement, [missingHealth], options());
     expect(result.rejections).toEqual([{ offerId: "offer-1", code: "SOURCE_HEALTH_UNVERIFIED" }]);
   });
 
   it("rejects malformed or sparse DataRequirement values at the resolver boundary", () => {
-    expect(() => resolveDataRequirement({ ...requirement, minimumCoverage: 1.1 }, [offer()], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC",
-    })).toThrow("DATA_REQUIREMENT_INVALID");
-    expect(() => resolveDataRequirement({ ...requirement, temporal: { from: "2026-10-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" } }, [offer()], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC",
-    })).toThrow("DATA_REQUIREMENT_INVALID");
+    expect(() => resolveDataRequirement({ ...requirement, minimumCoverage: 1.1 }, [offer()], options())).toThrow("DATA_REQUIREMENT_INVALID");
+    expect(() => resolveDataRequirement({ ...requirement, temporal: { from: "2026-10-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" } }, [offer()], options())).toThrow("DATA_REQUIREMENT_INVALID");
     const sparseFields = new Array(2);
     sparseFields[0] = "depth";
-    expect(() => resolveDataRequirement({ ...requirement, requiredFields: sparseFields }, [], {
-      now: new Date("2026-10-01T00:00:00.000Z"), authorizationScope: "PUBLIC",
-    })).toThrow("DATA_REQUIREMENT_INVALID");
+    expect(() => resolveDataRequirement({ ...requirement, requiredFields: sparseFields }, [], options())).toThrow("DATA_REQUIREMENT_INVALID");
   });
 
   it("quarantines only the offer whose source health assessment reports schema drift", () => {
@@ -182,8 +183,74 @@ describe("resolveDataRequirement", () => {
       dimensions: { connectivity: "healthy", schema: "degraded", semantic: "healthy", freshness: "healthy", rights: "healthy", placement: "healthy", index: "healthy" },
     } });
     const healthy = offer({ id: "unrelated-dataset", datasetRef: "unrelated-dataset" });
-    const result = resolveDataRequirement(requirement, [drifted, healthy], { now: new Date("2026-10-01T00:01:00.000Z"), authorizationScope: "PUBLIC" });
+    const result = resolveDataRequirement(requirement, [drifted, healthy], options({ now: new Date("2026-10-01T00:01:00.000Z") }));
     expect(result.eligible.map(item => item.id)).toEqual(["unrelated-dataset"]);
     expect(result.rejections).toEqual([{ offerId: "dataset-drifted", code: "SOURCE_SCHEMA_DRIFT" }]);
+  });
+
+  it("requires an exact current policy version before ranking an offer", () => {
+    const mismatched = resolveDataRequirement(requirement, [offer({ healthPolicyVersion: "rights-r0" })], options());
+    const staleRights = resolveDataRequirement(requirement, [offer({ rights: { status: "granted", commercialUse: true, redistributable: true, contentHydrationAllowed: true, policyVersion: "rights-r0" } })], options());
+    expect(mismatched.rejections).toEqual([{ offerId: "offer-1", code: "POLICY_VERSION_MISMATCH" }]);
+    expect(staleRights.rejections).toEqual([{ offerId: "offer-1", code: "POLICY_VERSION_MISMATCH" }]);
+    const expiredRights = resolveDataRequirement(requirement, [offer({ rights: { ...offer().rights, validUntil: "2026-09-30T23:59:59.000Z" } })], options());
+    expect(expiredRights.rejections).toEqual([{ offerId: "offer-1", code: "RIGHTS_EXPIRED" }]);
+  });
+
+  it("reauthorizes vector candidates before hydration and keeps deterministic retrieval independent of index health", () => {
+    const indexed = offer({ mode: "discovery" });
+    const projection = {
+      offerId: indexed.id, sourceRef: indexed.sourceRef, datasetRef: indexed.datasetRef,
+      authorizationScope: "PUBLIC" as const, policyVersion: "rights-r1", indexGeneration: "generation-1",
+      indexedAt: "2026-10-01T00:00:00.000Z", evidenceRevision: 3, evidenceContentHash: "a".repeat(64), contentMode: "metadata" as const,
+    };
+    expect(authorizeRetrievalProjection(requirement, indexed, options(), projection)).toMatchObject({ ok: true, mode: "metadata" });
+    expect(authorizeRetrievalProjection(requirement, offer({ rights: { ...offer().rights, contentHydrationAllowed: false } }), options(), { ...projection, contentMode: "content" })).toMatchObject({ ok: false, code: "RIGHTS_FORBIDDEN" });
+    expect(authorizeRetrievalProjection(requirement, offer({ rights: { status: "forbidden", commercialUse: true, redistributable: true, contentHydrationAllowed: true, policyVersion: "rights-r1" } }), options(), projection)).toMatchObject({ ok: false, code: "RIGHTS_FORBIDDEN" });
+    const deterministic = offer({ sourceHealth: { ...offer().sourceHealth, dimensions: { ...offer().sourceHealth.dimensions, index: "degraded" } } });
+    expect(authorizeRetrievalProjection(requirement, deterministic, options(), { ...projection, contentMode: "content" })).toMatchObject({ ok: true, mode: "content" });
+  });
+
+  it("rejects stale or cross-tenant cache entries after current authorization", () => {
+    const cached = {
+      offerId: "offer-1", sourceRef: "source-1", datasetRef: "dataset-1", authorizationScope: "PUBLIC" as const,
+      policyVersion: "rights-r1", cachedAt: "2026-10-01T00:00:00.000Z", expiresAt: "2026-10-01T00:01:00.000Z",
+    };
+    expect(evaluateRetrievalCache(requirement, offer(), options({ now: new Date("2026-10-01T00:00:30.000Z") }), cached)).toMatchObject({ ok: true, ageSeconds: 30 });
+    expect(evaluateRetrievalCache(requirement, offer(), options({ now: new Date("2026-10-01T00:02:00.000Z") }), cached)).toMatchObject({ ok: false, code: "CACHE_EXPIRED" });
+    expect(evaluateRetrievalCache(requirement, offer(), options(), { ...cached, cachedAt: "2026-10-01T00:00:01.000Z" })).toMatchObject({ ok: false, code: "CACHE_INVALID" });
+    expect(evaluateRetrievalCache(requirement, offer({ rights: { status: "forbidden", commercialUse: true, redistributable: true, contentHydrationAllowed: true, policyVersion: "rights-r1" } }), options(), cached)).toMatchObject({ ok: false, code: "RIGHTS_FORBIDDEN" });
+  });
+
+  it("caps cache validity at the trusted freshness, health, rights, and retention bounds", () => {
+    const cached = {
+      offerId: "offer-1", sourceRef: "source-1", datasetRef: "dataset-1", authorizationScope: "PUBLIC" as const,
+      policyVersion: "rights-r1", cachedAt: "2026-10-01T00:00:00.000Z", expiresAt: "2026-10-01T00:10:01.000Z",
+    };
+    expect(evaluateRetrievalCache(requirement, offer(), options(), cached)).toMatchObject({ ok: false, code: "CACHE_INVALID" });
+    expect(evaluateRetrievalCache(requirement, offer({ rights: { status: "granted", commercialUse: true, redistributable: true, contentHydrationAllowed: true, policyVersion: "rights-r1", validUntil: "2026-10-01T00:10:00.000Z", retentionUntil: undefined } }), options(), { ...cached, expiresAt: "2026-10-01T00:01:00.000Z" })).toMatchObject({ ok: false, code: "CACHE_INVALID" });
+    expect(evaluateRetrievalCache(requirement, offer({ sourceHealth: { ...offer().sourceHealth, validUntil: "2026-10-01T00:00:45.000Z" } }), options(), { ...cached, expiresAt: "2026-10-01T00:01:00.000Z" })).toMatchObject({ ok: false, code: "CACHE_INVALID" });
+    expect(evaluateRetrievalCache(requirement, offer({ freshness: { observedAt: "2026-10-01T00:00:00.000Z", staleAfterSeconds: 30 } }), options({ now: new Date("2026-10-01T00:00:31.000Z") }), { ...cached, expiresAt: "2026-10-01T00:00:30.000Z" })).toMatchObject({ ok: false, code: "OFFER_STALE" });
+  });
+
+  it("hydrates only a projection bound to current generation and canonical evidence identity", () => {
+    const projection = {
+      offerId: "offer-1", sourceRef: "source-1", datasetRef: "dataset-1", authorizationScope: "PUBLIC" as const,
+      policyVersion: "rights-r1", indexGeneration: "generation-1", indexedAt: "2026-10-01T00:00:00.000Z",
+      evidenceRevision: 3, evidenceContentHash: "a".repeat(64), contentMode: "content" as const,
+    };
+    expect(authorizeRetrievalProjection(requirement, offer(), options(), projection)).toMatchObject({ ok: true });
+    expect(authorizeRetrievalProjection(requirement, offer(), options({ currentIndexGeneration: "generation-2" }), projection)).toMatchObject({ ok: false, code: "PROJECTION_SCOPE_MISMATCH" });
+    expect(authorizeRetrievalProjection(requirement, offer(), options(), { ...projection, evidenceRevision: 2 })).toMatchObject({ ok: false, code: "PROJECTION_SCOPE_MISMATCH" });
+    expect(authorizeRetrievalProjection(requirement, offer({ evidence: undefined }), options(), projection)).toMatchObject({ ok: false, code: "PROJECTION_SCOPE_MISMATCH" });
+  });
+
+  it("fails closed for connector URLs outside the HTTPS egress allowlist or carrying secrets", () => {
+    expect(validateConnectorUrl("https://api.example.com/v1/data", ["api.example.com"])).toMatchObject({ ok: true });
+    expect(validateConnectorUrl("http://api.example.com/v1/data", ["api.example.com"])).toMatchObject({ ok: false, code: "CONNECTOR_URL_FORBIDDEN" });
+    expect(validateConnectorUrl("https://127.0.0.1/admin", ["api.example.com"])).toMatchObject({ ok: false, code: "CONNECTOR_URL_FORBIDDEN" });
+    expect(validateConnectorUrl("https://localhost/admin", ["localhost"])).toMatchObject({ ok: false, code: "CONNECTOR_URL_FORBIDDEN" });
+    expect(validateConnectorUrl("https://[::1]/admin", ["api.example.com"])).toMatchObject({ ok: false, code: "CONNECTOR_URL_FORBIDDEN" });
+    expect(validateConnectorUrl("https://api.example.com/v1/data?access_token=secret", ["api.example.com"])).toMatchObject({ ok: false, code: "CONNECTOR_URL_FORBIDDEN" });
   });
 });

@@ -13,6 +13,8 @@ export interface EvidencePlanInput {
   readonly now: Date;
   readonly authorizationScope?: "PUBLIC" | "TENANT";
   readonly tenantId?: string;
+  /** Server-resolved policy revision used to reauthorize every planned offer. */
+  readonly currentPolicyVersion: string;
   readonly maxCostCredits?: number;
   readonly allowedPlacements?: readonly string[];
 }
@@ -31,6 +33,7 @@ export interface EvidencePlan {
 
 function validate(input: EvidencePlanInput): void {
   if (input.requirements.length > 100 || input.offers.length > 2_000 ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(input.currentPolicyVersion) ||
     (input.maxCostCredits !== undefined && (!Number.isFinite(input.maxCostCredits) || input.maxCostCredits < 0))) {
     throw new Error("EVIDENCE_PLAN_INVALID");
   }
@@ -61,6 +64,7 @@ export function buildEvidencePlan(input: EvidencePlanInput): EvidencePlan {
       authorizationScope: input.authorizationScope,
       tenantId: input.tenantId,
       allowedPlacements: input.allowedPlacements,
+      currentPolicyVersion: input.currentPolicyVersion,
     });
     const pricedEligible = resolution.eligible.filter(offer => offer.estimatedCost.kind !== "unknown");
     const affordable = pricedEligible.find(offer => {
