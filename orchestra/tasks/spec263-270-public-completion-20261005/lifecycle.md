@@ -5,8 +5,8 @@ task_id: spec263-270-public-completion-20261005
 goal: Close all safe repository-owned implementation gaps in Specs 263/270 and make external blockers explicit.
 scope: large
 risk: high
-phase: REVIEW
-resume_from: INTEGRATE
+phase: POST_INTEGRATION
+resume_from: EXTERNAL_AUTHORITY_AND_EVIDENCE
 state: implemented_but_blocked_external_authorities_and_evidence
 user_authorized: autonomous_safe_implementation_and_normal_main_integration
 build_requested: false
@@ -20,8 +20,8 @@ full_typecheck_requested_this_turn: false
 - VERIFY: COMPLETE for changed focused scope — final candidate run: 6 files / 47 tests passed; locale JSON parse and `git diff --check` pass.
 - DEBUG_FIX: COMPLETE — review exposed (a) `tenant=null` misclassified as SmartAIHub on unknown hosts, (b) unconfirmed reduced-motion state briefly permitting autoplay, (c) stale `navbar.workflows` translation contract, and (d) unguarded cross-tenant replay rows. Each was fixed and targeted regressions pass.
 - REVIEW: COMPLETE — 10 targeted passes recorded in `review-findings.md`; 7 consecutive clean passes after the three material findings were repaired. Latest code gate is fresh.
-- FINAL_VERIFY: BLOCKED — complete-spec acceptance needs external authorities and browser/live proof not present in this checkout. Safe partial implementation can and should be integrated.
-- INTEGRATE: IN_PROGRESS — pending final fast gate, task-scoped commit, normal non-force push, and reachability verification.
+- INTEGRATE: COMPLETE — `ec3e469ffff68ec7ee1a8299b8984e45063eddaa` is reachable from remote `origin/main` after a normal non-force fast-forward push.
+- FINAL_VERIFY: BLOCKED — complete-spec acceptance needs external authorities, full typecheck runner, browser/live proof, and production evidence not present in this checkout. Repository-owned safe checkpoint is integrated.
 
 ## Gap ledger
 - GAP-263-CLAIMS-ASSETS: BLOCKED / external authority — approved Spec 258 public claims, rights/provenance/withdrawal owner for Film assets; no safe code substitute. Resume when the source evidence is recorded.
@@ -35,4 +35,4 @@ full_typecheck_requested_this_turn: false
 - No unresolved safe in-scope MUST_DO_NOW code gap remains for this checkpoint.
 - Whole Specs 263 and 270 are not complete; external/authority and heavy proof gates remain open with owners/next actions in `progress.md`.
 - Do not claim browser, build, deployment, production, provider, or full-typecheck success.
-- Do not stop with this delta stranded on the task branch; integrate safe partial progress through the normal canonical path.
+- This implementation delta is not stranded; it is integrated at `ec3e469ffff68ec7ee1a8299b8984e45063eddaa`. Keep remaining requirements assigned to external authority/evidence owners and do not claim whole-spec completion.
