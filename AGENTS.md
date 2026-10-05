@@ -9,10 +9,11 @@
 - Do not remove or delete any functions, features, or UI capabilities unless explicitly requested by the user.
 - Use the package manager already used by this repo.
 - Do not add new dependencies unless necessary.
-- Do not run `npm run typecheck` anywhere in this repository because of RAM
-  constraints. Run the repository's TypeScript type-check command only when
-  the user explicitly requests it; this rule applies across all packages,
-  workflows, and agents.
+- Do not run `npm run typecheck` in a local/shared implementation session because
+  of RAM constraints. Repository-wide TypeScript checks may run in CI only after
+  the implementation SHA is integrated into `origin/main`, or locally when the
+  user explicitly requests it and resource admission allows it. Never make a
+  heavy typecheck a prerequisite for integrating a fast-gate-passing change.
 - If you discover issues directly related to the requested work, required
   verification, task-caused failing tests, data safety, security, or correctness,
   report and address them as part of the task.
@@ -169,41 +170,38 @@ When the user says "pordee", "พอดี", "ตอบสั้น", "สั้
 
 ## Parallel Codex Development Workflow
 
-This repository supports multiple Codex/Claude implementation sessions running in parallel through isolated Git worktrees.
+Implementation may run in parallel, but `origin/main` is the central source of truth. A completed task must pass the fast integration gate and be committed to `origin/main` immediately. Heavy verification is post-integration work and must never leave completed work stranded on a long-lived session branch.
 
 ### Core invariant
 
-Use:
+Use this delivery sequence:
 
-`1 session = 1 task/Spec = 1 worktree = 1 session branch`
+`implement → FAST INTEGRATION GATE → commit → integrate into origin/main → heavy verification/UAT → repair on main`
 
-Implementation sessions MUST NOT push or merge directly into `main`.
+Do not create or retain per-session branches as a substitute for integrating completed work. If concurrent isolation or repository branch protection requires a temporary branch/PR, merge it during the same task-completion lifecycle and remove the temporary branch only after confirming its commit is in `origin/main`.
 
-Only the designated Integration Controller may advance `origin/main` while parallel development is active.
+Serialize only the short promotion step so sessions cannot race `origin/main`; do not serialize implementation or wait for unrelated sessions. Any authorized task session may promote work using a normal non-force GitHub path. Never bypass required repository protection.
 
 ### Session completion
 
-When an implementation session is complete, use the repo Skill:
+When implementation is complete, use `$session-finish` to run the FAST INTEGRATION GATE and integrate into `origin/main` in the same lifecycle. Do not stop at a readiness marker or leave a completed change queued for a future controller run.
 
-`$session-finish`
+FAST INTEGRATION GATE:
 
-Do not replace this with an ad-hoc sequence of commit/push commands.
+- no syntax/compile error in the changed scope;
+- no unresolved merge conflict;
+- no damaged or unusable patch;
+- no accidental secret.
 
-The Skill owns:
+Commit and promote after this gate passes. Record the integrated commit SHA and confirm it is reachable from the updated `origin/main`.
 
-- scoped verification based on the actual change risk;
-- reconciliation with the latest `origin/main`;
-- commit/push of the session branch;
-- READY marker creation;
-- session handoff/completion state.
+Do not require full typecheck, full build, heavy tests, integration/UAT, provider/rights checks, or production verification before promotion unless a fast-gate finding shows the change would make the system unusable or unsafe to start. Run those checks after integration through CI, a dedicated runner, or a safe resource window.
 
-A session may finish as:
+Allowed completion states:
 
-- `READY_FOR_INTEGRATION`
-- `READY_FOR_INTEGRATION_WITH_BASELINE_ISSUES`
-- `READY_FOR_HEAVY_VERIFICATION`
+- `PROMOTED_TO_MAIN` — fast gate passed and the implementation commit is in `origin/main`; post-integration checks may still be pending.
 - `ALREADY_IN_MAIN`
-- `SESSION_BLOCKED`
+- `FAST_GATE_BLOCKED` — an explicit fast-gate failure prevents safe promotion; preserve the exact patch/commit durably and identify the owner and next action. Never report this as complete.
 
 ### Resource-safety rule
 
@@ -220,13 +218,13 @@ By default, do NOT run from ordinary implementation sessions:
 - broad dependency rebuild/install;
 - other known high-RAM/high-CPU verification.
 
-Use change-aware scoped verification instead.
+Use the fast gate before promotion. Run change-aware scoped and heavy verification after promotion, without making resource admission a reason to leave completed work outside `origin/main`.
 
 Examples:
 
 - UI/presentation-only change → targeted checks / relevant component tests / lightweight compile checks;
 - localized backend change → affected unit/integration tests;
-- high-risk schema/auth/security/dependency/platform change → mark heavy verification pending when a safe heavy-verification slot is required.
+- high-risk schema/auth/security/dependency/platform change → promote after the fast gate, then queue required heavy verification against the integrated SHA.
 
 A pre-existing failure on `origin/main` MUST NOT automatically block an unrelated session.
 
@@ -238,41 +236,36 @@ Distinguish:
 
 Do not consume enough shared RAM/CPU to interrupt other active sessions.
 
-### Heavy verification
+### Post-integration verification
 
-Heavy verification is a separate lifecycle from normal session completion.
+Heavy verification, full typecheck, integration/UAT, provider/rights checks, and production gates happen after the change is recorded in `origin/main`.
 
-Use:
-
-`READY_FOR_HEAVY_VERIFICATION`
-
-when a task requires expensive repository-wide verification that cannot safely run while other development sessions are active.
+Track each pending check against its integrated commit SHA with a durable owner/status/next action. A pending check must not erase, strand, or move the implementation back to a session branch. On failure, create a repair task against current `main`, then commit and promote the repair to `main` as soon as its FAST INTEGRATION GATE passes.
 
 Heavy checks should preferably run:
 
 1. on CI or a dedicated runner; or
 2. in a controlled quiet resource window.
 
-Do not wait for unrelated implementation sessions to finish merely to complete a low-risk session.
+Do not wait for unrelated sessions or an available shared-host resource slot before promoting a fast-gate-passing change.
 
 ### Integration
 
-Use the repo Skill:
+Use the repo Skill for promotion mechanics:
 
 `$integration-controller`
 
-only from a designated integration session.
+from any authorized task session when ready to promote. It must not defer completed work solely because a heavy check is pending.
 
-The Integration Controller must:
+The promotion flow must:
 
-- discover eligible session branches automatically;
-- preserve active/dirty worktrees;
-- integrate one branch at a time;
-- refresh `origin/main` before each integration;
-- use scoped verification for normal branches;
-- defer high-resource verification when no safe resource slot exists;
-- never force-push;
-- never perform destructive cleanup as part of integration.
+- refresh and reconcile with latest `origin/main` immediately before promotion;
+- integrate each completed fast-gate-passing task promptly;
+- preserve unrelated dirty work and never stage it accidentally;
+- run only the FAST INTEGRATION GATE before promotion;
+- record heavy checks as post-integration obligations against the main SHA;
+- use normal non-force GitHub promotion and honor required repository protection;
+- never remove another session's worktree or discard uncommitted changes as part of promotion.
 
 ### Worktree safety
 
@@ -294,7 +287,7 @@ Do not assume `DIRTY` means "merge it" or "discard it".
 
 ### Canonical source state
 
-`origin/main` is the canonical integrated Git baseline.
+`origin/main` is the canonical integrated Git baseline and the first durable landing point for completed implementation.
 
 A local checkout or worktree may legitimately be behind `origin/main`.
 

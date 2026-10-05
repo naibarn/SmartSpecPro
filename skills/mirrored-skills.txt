@@ -41,3 +41,5 @@ visual-diff
 web-design-engineer
 web-video-presentation
 visual-ui-enhancement
+session-finish
+integration-controller
