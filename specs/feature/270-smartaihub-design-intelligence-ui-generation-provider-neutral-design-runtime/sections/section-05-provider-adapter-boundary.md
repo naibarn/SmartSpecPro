@@ -39,6 +39,8 @@ Implement an optional, mocked, provider-neutral adapter boundary that is unavail
 - Focused tests cover default-off no-call behavior, policy/egress denial, server-owned scoped candidate lineage and rights, idempotent replay/conflict isolation, protocol/capability negotiation, typed provider failures, cancellation (including cancellation while queued before dispatch), timeout and unsafe results: `cd apps/web && npm test -- --run server/services/__tests__/designProviderAdapter.test.ts` — 1 file, 9 tests passed.
 - The adapter has no default provider implementation and no real credential binding or certification source. Therefore provider dispatch remains unavailable in product until G0 certification and wiring are approved.
 - The production `operationStore.runOnce` must provide atomic per-key execution and fingerprint conflict rejection. An in-flight caller's abort cancels the operation it owns; cancellation of another caller waiting on a shared operation is not modeled until an approved durable operation owner is selected.
+- Follow-up correction (2026-10-05): valid provider candidates now include the required canonical `schemaVersion: 1`. A missing component-catalog snapshot is rejected before policy lookup, negotiation, or provider generation, preventing avoidable egress/cost. Regression coverage is included in `designProviderAdapter.test.ts`.
+- Candidate focused verification for Specs 263/270 passed 14 files / 107 tests. The adapter still has no production provider, certification source, credential binding, or durable operation owner; provider dispatch remains default-off and this section remains partial.
 
 ## UI/UX Contract
 

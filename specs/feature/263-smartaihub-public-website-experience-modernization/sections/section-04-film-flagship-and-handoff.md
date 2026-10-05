@@ -97,6 +97,12 @@ State the final route decision, source of each claim/proof asset, auth handoff f
 
 Repository inventory found no supported public Film route and no rights-cleared public film proof asset/withdrawal owner. Existing private Film execution surfaces are outside this section. No new route or claim was invented. Use only the current approved destination after Product/Auth owners verify it; do not promote demo footage until Spec 258 claim and asset-rights evidence plus the Spec 270 public component foundation are available.
 
+### Follow-up implementation — supported product handoff mapped, 2026-10-05
+
+- Confirmed `/drama-series` is the existing authenticated Vertical Series product destination and the login return-url contract safely accepts the same-site route. The Home page now links to it without adding a fictional `/film` route.
+- The handoff/destination gap is closed for discoverability. A dedicated public Film narrative/proof module remains blocked on approved Spec 258 claims, asset rights/provenance, and the missing public-ready design catalog; no production Film behavior was changed.
+- Focused Home and auth-return-path tests pass. Browser signed-out/signed-in outcome and media fallback remain unverified.
+
 ## UI/UX Contract
 
 ### Target User / JTBD

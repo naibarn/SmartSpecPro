@@ -1,13 +1,13 @@
 # Spec 263 Public Truth Map
 
-Date: 2026-10-02
+Date: 2026-10-05 (repository follow-up)
 Evidence scope: repository route/content/crawl sources only; this is not external claim, legal, customer, or asset-rights certification.
 
 ## Route ownership and crawl inventory
 
 | Route or route family | Owner/source | Classification | Crawl/canonical | Claim/evidence state | Primary handoff |
 |---|---|---|---|---|---|
-| `/` | `apps/web/client/src/App.tsx`; `pages/Home.tsx`; `homeContent.ts` | Public home | Indexable, canonical `/`, prerendered | Product/capability/proof copy needs claim-by-claim verification; do not infer from internal code | Existing signup, features, gallery, marketplace and docs links |
+| `/` | `apps/web/client/src/App.tsx`; `client/src/pages/Home.tsx`; `shared/publicHomeContent.ts`; `components/publicUi/index.ts` (`PublicHomeExperience`) | Public home | Indexable, canonical `/`, prerendered | Bilingual outcome copy plus a factual text-first Vertical Series entry; imagery and performance/outcome claims remain gated on rights/source evidence | `/signup`, `/features`, and `/login?returnUrl=%2Fdrama-series` |
 | `/pricing` | `App.tsx`; pricing page | Public | Indexable; metadata owner to verify | Prices/credits unverified by this repository audit | Existing signup/plan CTA |
 | `/features`, `/about`, `/changelog`, `/careers`, `/community`, `/support`, `/resources`, `/status`, `/security`, `/contact` | `App.tsx`; public page components | Public | Indexable route candidates; sitemap/prerender coverage varies | Capability, trust, uptime, security and customer claims need authoritative evidence; otherwise omit | Existing public CTAs/contact |
 | `/docs/**`, `/blog/**` | `App.tsx`; docs/blog sources | Public content | Indexable only for published public content; route-specific metadata owner | Published copy needs a source review; no legacy engine promotion | Existing docs/blog links |
@@ -44,9 +44,16 @@ Router evidence: `apps/web/client/src/App.tsx:625-649`; retirement guard: `apps/
 
 ## CTA, privacy and analytics
 
-- Existing homepage destinations include `/signup`, `/gallery`, `/features`, `/marketplace`, and `/docs#...`; keep only destinations verified by `App.tsx` and public route owners.
+- Existing homepage destinations include `/signup`, `/features`, `/docs`, and `/contact`; the Vertical Series entry uses the same-site login return path `/login?returnUrl=%2Fdrama-series` to reach the existing authenticated `/drama-series` product route.
 - The repository audit did not establish a complete allow-list implementation for signup intent or prove analytics payload minimization. Treat both as open verification items; never forward arbitrary query values, prompts, tenant ids, internal task ids, signed media URLs, or provider credentials.
 - Public route snapshot/prerender is live through `apps/web/server/_core/vite.ts:182-204` and `:240-257`; it must not serialize authenticated state.
+
+## 2026-10-05 follow-up
+
+- The old tool-directory fallback copy was replaced with a bilingual outcome-led description and a prominent Vertical Series product entry; all public actions use verified local routes.
+- `/drama-series` remains private/authenticated. This is product discoverability, not a new public Film route or public film-capability proof.
+- Multi-tenant public pages remain exact-tenant scoped in the server query and client payload/cache checks. A `tenantId: null` legacy/global row is not reused across domains.
+- Browser/production crawl, legal/asset rights, route-by-route canonical review, analytics consent/payload proof, and RUM remain open evidence obligations.
 
 ## Baseline and tests
 

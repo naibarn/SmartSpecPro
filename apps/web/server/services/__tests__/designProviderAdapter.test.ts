@@ -119,6 +119,7 @@ describe("optional design provider adapter", () => {
     });
     const candidate = await makeAdapter({ provider: { negotiate: async () => ({ apiVersion: "2026-01", capabilities: ["design-screen"] }), generate } }).generate(request, actor);
     expect(candidate).toMatchObject({
+      schemaVersion: 1,
       tenantId: actor.tenantId,
       projectId: actor.projectId,
       ownerId: actor.userId,
@@ -229,5 +230,19 @@ describe("optional design provider adapter", () => {
     await expect(makeAdapter().generate({ ...request, tenantId: "other" }, actor)).rejects.toMatchObject({ code: "POLICY_DENIED" });
     await expect(makeAdapter({ provider: { negotiate: async () => ({ apiVersion: "2026-01", capabilities: ["design-screen"] }), generate: async () => ({ html: "<script>alert(1)</script>" }) } }).generate(request, actor))
       .rejects.toMatchObject({ code: "RESULT_INVALID" });
+  });
+
+  it("fails closed before policy or provider calls when the catalog snapshot is missing", async () => {
+    const readPolicy = vi.fn(async () => policy);
+    const negotiate = vi.fn(async () => ({ apiVersion: "2026-01", capabilities: ["design-screen"] }));
+    const generate = vi.fn(async () => ({ screen: "settings" }));
+    const adapter = makeAdapter({ readPolicy, provider: { negotiate, generate } });
+
+    await expect(adapter.generate({ ...request, componentCatalogSnapshotId: undefined }, actor))
+      .rejects.toMatchObject({ code: "POLICY_DENIED" });
+
+    expect(readPolicy).not.toHaveBeenCalled();
+    expect(negotiate).not.toHaveBeenCalled();
+    expect(generate).not.toHaveBeenCalled();
   });
 });

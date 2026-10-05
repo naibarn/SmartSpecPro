@@ -1,9 +1,9 @@
 {
   "plugin_root": "/home/dev/.codex/skills/deep-implement",
-  "sections_dir": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro/specs/feature/263-smartaihub-public-website-experience-modernization/sections",
-  "target_dir": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro",
-  "state_dir": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro/specs/feature/263-smartaihub-public-website-experience-modernization/implementation",
-  "git_root": "/home/dev/.codex/worktrees/spec263-270-implementation/SmartSpecPro",
+  "sections_dir": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005/specs/feature/263-smartaihub-public-website-experience-modernization/sections",
+  "target_dir": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005",
+  "state_dir": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005/specs/feature/263-smartaihub-public-website-experience-modernization/implementation",
+  "git_root": "/home/dev/.codex/worktrees/spec263-270-public-completion-20261005",
   "commit_style": "simple",
   "test_command": "cd apps/web && npm test -- --run",
   "sections": [
@@ -16,8 +16,8 @@
   "sections_state": {
     "section-01-public-inventory-and-truth": { "status": "partial", "reason": "Route families and crawl exclusions inventoried; complete per-route canonical/indexability and external evidence owners remain open." },
     "section-02-shell-content-and-retired-claims": { "status": "partial", "reason": "Retired and unsupported SEO claims cleaned with focused regressions; shell interaction, localization, consent and browser criteria remain unverified." },
-    "section-03-homepage-experience": { "status": "blocked", "reason": "No public-ready design artifact/wrapper, approved claims, or rights-cleared proof assets; Spec 270 Section 06 is blocked." },
-    "section-04-film-flagship-and-handoff": { "status": "blocked", "reason": "No supported public Film route, approved Spec 258 claim, or rights-cleared film proof asset." },
+    "section-03-homepage-experience": { "status": "partial", "reason": "Implemented a bilingual outcome-led homepage and immediate text-first vertical-series entry through installed Astryx components. High-fidelity product media and some public claims remain gated on rights/provenance and approved Spec 258 evidence; responsive/browser proof is pending." },
+    "section-04-film-flagship-and-handoff": { "status": "partial", "reason": "Homepage now links through the existing safe auth return flow to authenticated /drama-series; no new route was invented. Dedicated public Film surface, approved Spec 258 claim, and rights-cleared proof asset remain externally gated." },
     "section-05-seo-accessibility-and-proof": { "status": "partial", "reason": "Crawl/copy regression coverage exists; browser, analytics, canonical, accessibility and production crawl proof remain open." }
   },
   "pre_commit": {

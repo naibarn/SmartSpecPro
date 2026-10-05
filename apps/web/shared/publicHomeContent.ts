@@ -1,30 +1,28 @@
 export const PUBLIC_HOME_SEO = {
   en: {
-    title: "SmartAIHub | Create with AI",
-    h1: "Start with the work you want to create",
+    title: "SmartAIHub | From idea to your next creation",
+    h1: "Turn one idea into work you can keep building",
     description:
-      "Explore SmartAIHub tools for chat, media creation, and presentations, with guides and support when you need them.",
+      "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
     keywords: [
       "SmartAIHub",
       "AI creation tools",
       "media creation",
-      "presentations",
-      "documentation",
-      "support",
+      "vertical series",
+      "chat",
     ],
   },
   th: {
-    title: "SmartAIHub | สร้างสรรค์ผลงานด้วย AI",
-    h1: "เริ่มจากงานที่คุณอยากสร้าง",
+    title: "SmartAIHub | จากไอเดียสู่ผลงานชิ้นต่อไป",
+    h1: "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
     description:
-      "สำรวจเครื่องมือของ SmartAIHub สำหรับแชต สร้างสื่อ และงานนำเสนอ พร้อมคู่มือและช่องทางช่วยเหลือ",
+      "เริ่มจากงานที่อยากทำ แล้วสำรวจพื้นที่ทำงานของ SmartAIHub สำหรับแชต สร้างสื่อ และซีรีส์แนวตั้ง",
     keywords: [
       "SmartAIHub",
-      "เครื่องมือ AI",
+      "เครื่องมือสร้างสรรค์ด้วย AI",
       "สร้างสื่อ",
-      "งานนำเสนอ",
-      "เอกสาร",
-      "ติดต่อ",
+      "ซีรีส์แนวตั้ง",
+      "แชต",
     ],
   },
 } as const;

@@ -84,6 +84,13 @@ export function createDesignProviderAdapter(input: {
         parsedRequest.data.projectId !== actor.projectId || parsedRequest.data.requestedBy !== actor.userId) {
         throw new DesignProviderAdapterError("POLICY_DENIED");
       }
+      // Provider candidates must be tied to an immutable catalog snapshot. The
+      // request schema keeps this optional for native draft creation, but an
+      // external provider must fail closed before it can reach any authority or
+      // provider boundary.
+      if (!parsedRequest.data.componentCatalogSnapshotId) {
+        throw new DesignProviderAdapterError("POLICY_DENIED");
+      }
       if (!isDesignProviderEnabled(input.flags, "stitch")) {
         throw new DesignProviderAdapterError("PROVIDER_DISABLED");
       }
@@ -195,6 +202,7 @@ export function createDesignProviderAdapter(input: {
             const digestInput = { payload: providerPayload, systemSnapshot, provenance };
             const digest = `sha256:${createHash("sha256").update(canonicalDesignDigestInput(digestInput)).digest("hex")}`;
             const candidate = designArtifactVersionSchema.safeParse({
+              schemaVersion: 1,
               artifactId,
               version: 1,
               digest,
