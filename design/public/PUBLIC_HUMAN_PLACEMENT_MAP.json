@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "package_version": "1.1.0",
+  "package_version": "1.2.0",
   "placements": [
     {
       "asset_id": "public-home-human-editorial",
@@ -12,7 +12,33 @@
       "visible_disclosure_ref": "homePublic.humanImageDisclosure (en/th)",
       "fallback_ref": "homePublic.humanImageFallback (en/th)",
       "crop_rule": "AspectRatio 3:2 cover; keep face and storyboard in frame; product flow remains visible if the image fails.",
-      "acceptance": "candidate; production proof must name deployed SHA"
+      "acceptance": "candidate; production proof must name deployed SHA",
+      "responsive_srcset": [
+        {
+          "path": "apps/web/client/public/images/public-home-human-editorial-480.webp",
+          "width": 480,
+          "height": 320,
+          "sha256": "2fadb9e7d5a0dc1cc80ad9434079f5784287de23b77cbe0da9d0bc5772b4b0d5"
+        },
+        {
+          "path": "apps/web/client/public/images/public-home-human-editorial-768.webp",
+          "width": 768,
+          "height": 512,
+          "sha256": "975e2fa6c0c45f8e838bc96f8c43a9eb5ebc8d2941ae7300776eef4b003bcf7f"
+        },
+        {
+          "path": "apps/web/client/public/images/public-home-human-editorial.webp",
+          "width": 1536,
+          "height": 1024,
+          "sha256": "f04a88583ee31bd517ea83f7befa46b014056edf7f6344c178e5ea48ccd694c5"
+        }
+      ],
+      "responsive_sizes": "(max-width: 45.99rem) calc(100vw - 4rem), (max-width: 80rem) calc((100vw - 6rem) / 2), 38.25rem",
+      "focal_point_metadata": {
+        "desktop": "3:2 frame, centered on the person and storyboard; no crop from source aspect ratio.",
+        "tablet": "3:2 frame, preserve face and storyboard within center-safe area; no crop.",
+        "mobile": "3:2 frame, maintain both person and storyboard; no crop. Product flow remains immediately below."
+      }
     }
   ],
   "decision": "Human context supports the people-first story; the immediately adjacent code-rendered flow remains the product evidence. Both languages disclose synthetic origin and non-endorsement."

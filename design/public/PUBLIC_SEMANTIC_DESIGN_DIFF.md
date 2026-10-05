@@ -17,7 +17,7 @@
 
 ## Limits
 
-This is a source-to-source semantic summary, not an approval against a Spec 270 native design artifact. Candidate screenshots use a local Vite server with API responses mocked. No real Film output, signed-in product capture, customer evidence, human imagery, production crawl, or deployed-source proof is included.
+This is a source-to-source semantic summary, not an approval against a Spec 270 native design artifact. Candidate screenshots use a local Vite server with API responses mocked. No real Film output, signed-in product capture, customer evidence, production crawl, or deployed-source proof is implied by the generated image.
 
 
 ## 2026-10-06 — Human + Product Evidence candidate

@@ -137,6 +137,8 @@ function HumanProductEvidencePanel({ copy }: { copy: PublicHomeExperienceCopy })
         <AspectRatio ratio={3 / 2} fit="cover">
           <img
             src="/images/public-home-human-editorial.webp"
+            srcSet="/images/public-home-human-editorial-480.webp 480w, /images/public-home-human-editorial-768.webp 768w, /images/public-home-human-editorial.webp 1536w"
+            sizes="(max-width: 45.99rem) calc(100vw - 4rem), (max-width: 80rem) calc((100vw - 6rem) / 2), 38.25rem"
             alt={copy.humanImageAlt}
             fetchPriority="high"
             decoding="async"

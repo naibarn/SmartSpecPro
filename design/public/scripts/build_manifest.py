@@ -6,10 +6,19 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = ROOT.parents[1]
 OUTPUT = ROOT / "PUBLIC_DESIGN_PACKAGE.json"
+PUBLIC_DERIVATIVES = [
+    PROJECT_ROOT / "apps/web/client/public/images/public-home-human-editorial-480.webp",
+    PROJECT_ROOT / "apps/web/client/public/images/public-home-human-editorial-768.webp",
+    PROJECT_ROOT / "apps/web/client/public/images/public-home-human-editorial.webp",
+]
 PACKAGE_FILES = sorted(
-    path for path in ROOT.rglob("*")
-    if path.is_file() and path != OUTPUT and "__pycache__" not in path.parts
+    [
+        path for path in ROOT.rglob("*")
+        if path.is_file() and path != OUTPUT and "__pycache__" not in path.parts
+    ] + PUBLIC_DERIVATIVES,
+    key=lambda path: path.relative_to(PROJECT_ROOT).as_posix(),
 )
 AUTHORITIES = [
     Path("specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"),
@@ -21,7 +30,8 @@ AUTHORITIES = [
 files = []
 for path in PACKAGE_FILES:
     content = path.read_bytes()
-    files.append({"path": path.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(content).hexdigest()})
+    relative_path = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path.relative_to(PROJECT_ROOT)
+    files.append({"path": relative_path.as_posix(), "sha256": hashlib.sha256(content).hexdigest()})
 
 authority_files = []
 for relative_path in AUTHORITIES:
@@ -33,10 +43,10 @@ for relative_path in AUTHORITIES:
 canonical = json.dumps(files, ensure_ascii=False, separators=(",", ":")).encode()
 manifest = {
     "package": "smartaihub-public-web",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "aligned_with": "Spec 270 R1.4",
     "experience_authority": "Spec 263 revision 263.8",
-    "artifact_status": "repository-owned public UI candidate v1.1.0; awaits Spec 270 native artifact/catalog authority",
+    "artifact_status": "repository-owned public UI candidate v1.2.0; awaits Spec 270 native artifact/catalog authority",
     "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
     "package_digest": hashlib.sha256(canonical).hexdigest(),
     "files": files,

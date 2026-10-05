@@ -1,12 +1,24 @@
 {
   "package": "smartaihub-public-web",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "aligned_with": "Spec 270 R1.4",
   "experience_authority": "Spec 263 revision 263.8",
-  "artifact_status": "repository-owned public UI candidate v1.1.0; awaits Spec 270 native artifact/catalog authority",
+  "artifact_status": "repository-owned public UI candidate v1.2.0; awaits Spec 270 native artifact/catalog authority",
   "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
-  "package_digest": "a633ea25c9725267cda5f11d206bb36758cfa59ddb47de7cbe834885c2339567",
+  "package_digest": "f33bdb9b14e7730d98598ec507158fc3b4ef8d3c2cbd54e6635c56cb9c82333c",
   "files": [
+    {
+      "path": "apps/web/client/public/images/public-home-human-editorial-480.webp",
+      "sha256": "2fadb9e7d5a0dc1cc80ad9434079f5784287de23b77cbe0da9d0bc5772b4b0d5"
+    },
+    {
+      "path": "apps/web/client/public/images/public-home-human-editorial-768.webp",
+      "sha256": "975e2fa6c0c45f8e838bc96f8c43a9eb5ebc8d2941ae7300776eef4b003bcf7f"
+    },
+    {
+      "path": "apps/web/client/public/images/public-home-human-editorial.webp",
+      "sha256": "f04a88583ee31bd517ea83f7befa46b014056edf7f6344c178e5ea48ccd694c5"
+    },
     {
       "path": "PUBLIC_ANTI_PATTERNS.md",
       "sha256": "df85b0ded79e9abd71bebfa04062254107a7eab3c8c319eaeff2396e7672dc4d"
@@ -17,7 +29,7 @@
     },
     {
       "path": "PUBLIC_COMPONENT_REGISTRY.json",
-      "sha256": "6a0c700e4e011a2ce778581b63a2b29cf14ba539424372be94ef9fb952f8d5fb"
+      "sha256": "cfa889d66da683e2ef0c1d1512005bf7b1a5d6701d91b67505d347851d75ff7c"
     },
     {
       "path": "PUBLIC_CONTENT_RULES.md",
@@ -25,19 +37,19 @@
     },
     {
       "path": "PUBLIC_DESIGN_DECISION_LOG.md",
-      "sha256": "7172cf4d582bc3a7866b3bc0c3c9ad8e9dca54aa2db6b296fdfe3287aa9cdd39"
+      "sha256": "7c8fde05092f926c18a03accd2cbd39088497ecb00f04fad4e6e410286a38ad1"
     },
     {
       "path": "PUBLIC_HUMAN_ART_DIRECTION.md",
-      "sha256": "fcaaac19fc0c2940e379c214c591f5fe3db2dec248d71dd3e1a63a1489ade878"
+      "sha256": "80c3e06afcc752d4504bd50c4838afa1ac40279c40408bc52c7dc8a6dd957a75"
     },
     {
       "path": "PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json",
-      "sha256": "74488baf0e1d6eee2da451bcd3cf5f11f9676042dff4c32b7324f161aa67d291"
+      "sha256": "3365aed7be7cc5542de163c6f5f2782e72d44d5ab20d2f44296a6f87ac9737a5"
     },
     {
       "path": "PUBLIC_HUMAN_ASSET_REGISTRY.json",
-      "sha256": "751b722e5f785e68fab17dfc788dae41721180f52db2b7be25a6412ae684c162"
+      "sha256": "a208d5e10cdd99f3681ef5eacbbc587753be8e55da270b1e090db0fbf6497cdb"
     },
     {
       "path": "PUBLIC_HUMAN_EXPERIMENT_GUARDRAILS.md",
@@ -45,23 +57,23 @@
     },
     {
       "path": "PUBLIC_HUMAN_IMAGERY_RULES.md",
-      "sha256": "cfb545c3f16a91325c7d32875826061152278d8fa1a221fcb91707fd8acac98a"
+      "sha256": "8f6b7583a0eec5ea02681ca35b11b635757e98be900f33ce45b8fd79514bb304"
     },
     {
       "path": "PUBLIC_HUMAN_PLACEMENT_MAP.json",
-      "sha256": "905d8e264256dcedfbf77267e182c7e2758f7ea0e9bef996cbc2c1044a6553d8"
+      "sha256": "b0a7f331dfe63181a8ef93020c8b4ed5a6ed65f934cc3a741222c28f3ee256b5"
     },
     {
       "path": "PUBLIC_HUMAN_WITHDRAWAL_RUNBOOK.md",
-      "sha256": "e0c807450743cd609937192e673783a1242140859ce817c5ff90ad4d2fc458d6"
+      "sha256": "bc543b97f119dafd0b6cfff2578af866f745002ac568b17facf0672ebd800a17"
     },
     {
       "path": "PUBLIC_PATTERN_REGISTRY.json",
-      "sha256": "5dd7873134d44fd97da86cbd54ab5795e5caae3fd5eaa6e6a9babcdf80e5b3bb"
+      "sha256": "081828d565dc81f0fc58a83c15f496d0b9e573109deaf0e65b6870ca34e31c65"
     },
     {
       "path": "PUBLIC_SEMANTIC_DESIGN_DIFF.md",
-      "sha256": "3fb8ecb9ac7380cd816687fa0278f33ce2867fa68dc55579ff6b66b9c404ed64"
+      "sha256": "ee6d9a40ca89716e7aca7b444e24ca66337d434fcacc0094e9256bb85e24d9cf"
     },
     {
       "path": "PUBLIC_SPEC270_INTEGRATION_RECONCILIATION.md",
@@ -85,7 +97,7 @@
     },
     {
       "path": "SMARTAIHUB_PUBLIC_DESIGN.md",
-      "sha256": "3df9d02c0bc7db2628b354c98b579b37f169b7f9286e60c2eb25e1fb67fabfee"
+      "sha256": "2151034faf095000bace629ca4fa6e4a9aa861c8806d5537b4844f1cb548fd67"
     },
     {
       "path": "assets/public-home-human-editorial-source.png",
@@ -109,7 +121,7 @@
     },
     {
       "path": "scripts/build_manifest.py",
-      "sha256": "a19c7c995cafa9f50876a9d1589521a35d7b50e48e32a698122938f2c9c0c7e9"
+      "sha256": "bd16bbff82f914df9612ae1d0f9d028a4b96106eb7d2159f6cd96b4b54a39cd4"
     }
   ],
   "source_authorities": [
@@ -127,7 +139,7 @@
     },
     {
       "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json",
-      "sha256": "8db45fce7a99093d26b37e801e5818050f71d33ebbafff9d65ce9552e78b0ee0"
+      "sha256": "dbd8a619a4cca211228f1eebc53db9a0434791aca96b49d50bfcc65cfa7a4abb"
     }
   ]
 }
