@@ -1,10 +1,42 @@
 {
   "package": "smartaihub-public-web",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "patterns": [
-    { "id": "outcome-hero", "component": "PublicHomeExperience", "intent": "explain idea-to-work outcome and route to a supported next action", "responsive": "two columns wide, stacked narrow", "evidence": "Spec 263 §37; implemented Home" },
-    { "id": "flagship-proof", "component": "PublicHomeExperience", "intent": "show Vertical Series as one complex-work example", "guardrail": "no unsupported Film promise; use existing authenticated handoff", "evidence": "Spec 258 route and feature source" },
-    { "id": "capability-discovery", "component": "PublicHomeExperience", "intent": "link to features, gallery and docs", "guardrail": "gallery is live user content, not curated endorsement", "evidence": "registered public routes" },
-    { "id": "trust-and-help", "component": "PublicHomeExperience", "intent": "offer documentation and contact paths", "guardrail": "make no unverified security or service-level claims", "evidence": "registered routes" }
+    {
+      "id": "outcome-hero",
+      "component": "PublicHomeExperience",
+      "intent": "explain idea-to-work outcome and route to a supported next action",
+      "responsive": "two columns wide, stacked narrow",
+      "evidence": "Spec 263 §37; implemented Home"
+    },
+    {
+      "id": "flagship-proof",
+      "component": "PublicHomeExperience",
+      "intent": "show Vertical Series as one complex-work example",
+      "guardrail": "no unsupported Film promise; use existing authenticated handoff",
+      "evidence": "Spec 258 route and feature source"
+    },
+    {
+      "id": "capability-discovery",
+      "component": "PublicHomeExperience",
+      "intent": "link to features, gallery and docs",
+      "guardrail": "gallery is live user content, not curated endorsement",
+      "evidence": "registered public routes"
+    },
+    {
+      "id": "trust-and-help",
+      "component": "PublicHomeExperience",
+      "intent": "offer documentation and contact paths",
+      "guardrail": "make no unverified security or service-level claims",
+      "evidence": "registered routes"
+    },
+    {
+      "id": "human-product-evidence",
+      "component": "HumanProductEvidencePanel",
+      "intent": "pair people-centered creative context with a code-rendered product flow in the same hero sequence",
+      "responsive": "right-side media/product stack wide; below copy/actions when narrow",
+      "guardrail": "generated context is disclosed; no customer/employee/product proof is implied",
+      "evidence": "Spec 263 §5.6 and §5.11; generated asset manifest and browser evidence"
+    }
   ]
 }

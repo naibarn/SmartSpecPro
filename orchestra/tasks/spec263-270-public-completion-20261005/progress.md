@@ -1,5 +1,12 @@
 # Progress
 
+## Latest closeout state — 2026-10-06
+- Canonical and deployed static frontend source: `0d9fed07e0b20820d02cdf9cb074a662f411e0b5`; exact-SHA canonical build/publish passed. Production proof: `evidence/browser-production-0d9fed07/`.
+- Home/Features light and saved-dark matrices pass 24/24 each; 9 public route requests render 200 with one H1. Gallery image check requires a corrected lazy-load harness; the initial `!complete` check is not a valid broken-image verdict.
+- Raw/no-JS SEO remains a confirmed production FAIL. Root cause is uncommitted route-prerender code in the active, dirty service checkout; canonical main has a repair, but the service source is not canonical. Primary checkout has 170 dirty paths and is 4 ahead / 139 behind; production DB migration journal is at 365 while canonical source includes 383–388. Backend exact-SHA rollout is unsafe until the runtime/DB owner resolves compatibility. No source overlay, migration, or restart performed.
+- Do not restart the static frontend or repeat a static build to try to fix raw SEO. Static build does not update the Express backend. Remediation belongs to the backend release lane.
+- Overall remains `PARTIAL_INTEGRATED — STATIC FRONTEND DEPLOYED — ACCEPTANCE OPEN`; detailed owners/statuses are in `acceptance-status.md`.
+
 ## Active closeout continuation — Spec 263.8 (2026-10-05 to 2026-10-06)
 - Stage: `PRODUCTION CHECKPOINT DEPLOYED / ACCESSIBILITY REPAIR CANDIDATE`. Current canonical source is `a7108aeb9fc05a7baa2d6b14e7bfa40f675a0514` (also deployed); the EmergencyPublicEntry color inheritance repair remains an unintegrated candidate based on that SHA. The primary shared checkout contains unrelated dirty changes and remains untouched. Older browser evidence is valid only for its explicitly named SHA.
 - Orchestra classification: `large` scope / `high` risk (multi-route tenant-aware public surface + production deploy); route = current Spec 263 section closeout, not new spec. SocratiCode unavailable; targeted shell discovery fallback recorded in `plan.md`.

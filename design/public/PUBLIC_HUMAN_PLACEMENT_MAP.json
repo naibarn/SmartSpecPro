@@ -1,6 +1,19 @@
 {
   "schema_version": 1,
-  "package_version": "1.0.0",
-  "placements": [],
-  "decision": "No human imagery appears in the homepage package. Product-flow cards are code-rendered explanatory UI and carry an explicit concept-illustration disclosure."
+  "package_version": "1.1.0",
+  "placements": [
+    {
+      "asset_id": "public-home-human-editorial",
+      "route": "/",
+      "component": "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx:HumanProductEvidencePanel",
+      "placement": "right side of desktop hero; stacked below copy/actions on tablet/mobile",
+      "paired_evidence": "Code-rendered ProductFlowPanel within the same hero sequence",
+      "alt_ref": "homePublic.humanImageAlt (en/th)",
+      "visible_disclosure_ref": "homePublic.humanImageDisclosure (en/th)",
+      "fallback_ref": "homePublic.humanImageFallback (en/th)",
+      "crop_rule": "AspectRatio 3:2 cover; keep face and storyboard in frame; product flow remains visible if the image fails.",
+      "acceptance": "candidate; production proof must name deployed SHA"
+    }
+  ],
+  "decision": "Human context supports the people-first story; the immediately adjacent code-rendered flow remains the product evidence. Both languages disclose synthetic origin and non-endorsement."
 }

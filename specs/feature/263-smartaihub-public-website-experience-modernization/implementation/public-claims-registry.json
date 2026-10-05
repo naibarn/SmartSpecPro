@@ -10,7 +10,7 @@
     "apps/web/client/src/App.tsx",
     "apps/web/client/src/lib/authRedirects.ts"
   ],
-  "generated_at": "2026-10-05",
+  "generated_at": "2026-10-06",
   "claims": [
     {
       "claim_id": "home.brand.identity",
@@ -36,7 +36,7 @@
       "copy_ref": "publicSite.homePublic.title (en/th)",
       "authority": "Repository localization source only; outcome-led editorial copy",
       "implementation_ref": "apps/web/client/src/pages/Home.tsx:92; apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
-      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:12; apps/web/client/src/locales/th/publicSite.json:12",
+      "evidence_ref": "apps/web/client/src/locales/en/publicSite.json:12; apps/web/client/src/locales/th/publicSite.json:12; design/public/PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json",
       "owner": "Public content/editorial owner (not recorded in repository)",
       "allowed_routes": [
         "/"
@@ -44,11 +44,14 @@
       "cta_destination": null,
       "signed_in_behavior": "same public copy",
       "signed_out_behavior": "same public copy",
-      "media_ids": [],
+      "media_ids": [
+        "public-home-human-editorial"
+      ],
       "indexability": "platform public home only",
       "freshness": "repository revision; no external approval timestamp recorded",
       "acceptance_status": "ILLUSTRATIVE_NON_NORMATIVE",
-      "disposition": "retain_as_outcome_language; do_not_treat_as_customer_or_performance_proof"
+      "disposition": "retain_as_outcome_language; do_not_treat_as_customer_or_performance_proof",
+      "media_classification": "AI-generated editorial context; not product proof or endorsement"
     },
     {
       "claim_id": "home.discovery.chat-media-vertical-series",

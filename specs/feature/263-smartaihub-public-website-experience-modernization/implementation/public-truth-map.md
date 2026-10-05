@@ -1,5 +1,9 @@
 # Spec 263 Public Truth Map
 
+## Latest media and design delta — 2026-10-06
+
+The Home candidate now includes `public-home-human-editorial`, an AI-generated editorial context image paired with the code-rendered product flow in the hero. It is not a product screenshot, Film output, customer result, or endorsement. Bilingual alt text and visible synthetic/non-endorsement disclosure are rendered; load failure retains the product flow and shows localized recovery copy. Original source, prompt, source/derivative hashes, user authorization, terms reference, placement, and withdrawal path are recorded in `design/public/PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json` and the public media governance inventory. This update supersedes the prior paragraph below that said the candidate had no active human media. Rights record cites output ownership terms but is not an independent legal opinion. The package remains a repo-owned candidate pending native Spec 270 artifact authority.
+
 Date: 2026-10-05 (repository follow-up)
 Evidence scope: repository route/content/crawl sources only; this is not external claim, legal, customer, or asset-rights certification.
 

@@ -3,6 +3,7 @@
  * Public page compositions import primitives only through this module.
  */
 export { Button } from "@astryxdesign/core/Button";
+export { AspectRatio } from "@astryxdesign/core/AspectRatio";
 export { Card } from "@astryxdesign/core/Card";
 export { Grid } from "@astryxdesign/core/Grid";
 export { Heading } from "@astryxdesign/core/Heading";

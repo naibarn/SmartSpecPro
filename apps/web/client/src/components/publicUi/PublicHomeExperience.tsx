@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link as RouterLink } from "wouter";
 import {
   ArrowRight,
@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
+  AspectRatio,
   Button,
   Card,
   Grid,
@@ -42,6 +43,9 @@ export type PublicHomeExperienceCopy = {
   seriesValueTwo: string;
   seriesFlowFootnote: string;
   illustrationDisclosure: string;
+  humanImageAlt: string;
+  humanImageDisclosure: string;
+  humanImageFallback: string;
   primaryCta: string;
   secondaryCta: string;
   trust: string;
@@ -124,6 +128,36 @@ function ProductFlowPanel({
   );
 }
 
+function HumanProductEvidencePanel({ copy }: { copy: PublicHomeExperienceCopy }) {
+  const [imageAvailable, setImageAvailable] = useState(true);
+
+  return (
+    <VStack gap={3}>
+      {imageAvailable ? (
+        <AspectRatio ratio={3 / 2} fit="cover">
+          <img
+            src="/images/public-home-human-editorial.webp"
+            alt={copy.humanImageAlt}
+            fetchPriority="high"
+            decoding="async"
+            onError={() => setImageAvailable(false)}
+          />
+        </AspectRatio>
+      ) : (
+        <Section variant="muted" padding={4}>
+          <Text type="supporting" color="secondary">
+            {copy.humanImageFallback}
+          </Text>
+        </Section>
+      )}
+      <Text type="supporting" color="secondary">
+        {copy.humanImageDisclosure}
+      </Text>
+      <ProductFlowPanel copy={copy} />
+    </VStack>
+  );
+}
+
 /** SmartAIHub-owned public page pattern; Astryx remains an internal implementation detail. */
 export function PublicHomeExperience({
   copy,
@@ -194,7 +228,7 @@ export function PublicHomeExperience({
               </Text>
             </VStack>
 
-            <ProductFlowPanel copy={copy} />
+            <HumanProductEvidencePanel copy={copy} />
           </Grid>
         </Section>
 

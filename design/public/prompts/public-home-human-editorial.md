@@ -1,0 +1,7 @@
+# Public homepage editorial image generation brief
+
+Generated 2026-10-06 with Codex native image generation (tool output reference `exec-23b867e3-191d-44d4-af50-72fda1bc1908`). The exact tool model version was not exposed by the generation result.
+
+> Create a premium editorial photograph for a Thai AI creative-workspace website hero, landscape 3:2 composition. Show an anonymous adult Southeast Asian creative professional in their early 30s, candid side profile, thoughtfully reviewing a storyboard at a modern desk in a warm daylight studio. Include a laptop and printed storyboard panels as contextual props, but all screens and panels must be abstract and unreadable, with no recognizable logos, product UI, text, watermark, customer testimonial cues, or brand marks. Human-centered, authentic documentary style, calm confident mood, restrained palette with warm cream, charcoal, and subtle cyan accents. Composition should leave negative space on the right for an adjacent code-rendered product evidence panel; subject placed left of center. This is illustrative editorial context, not a real SmartAIHub customer, employee, or creator. No extra hands or distorted facial features.
+
+The image is illustrative and is not evidence of SmartAIHub product operation, customer use, identity, or endorsement. The image source and WebP derivative hashes are recorded in `PUBLIC_HUMAN_ASSET_PRODUCTION_MANIFEST.json`.

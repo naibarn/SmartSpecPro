@@ -14,7 +14,7 @@
     "apps/web/client/src/components/Footer.tsx",
     "apps/web/client/src/components/Seo.tsx"
   ],
-  "repository_revision": "3fe45a3c9155115804c58e23e42a84e41e09cd5e",
+  "repository_revision": "0d9fed07e0b20820d02cdf9cb074a662f411e0b5 (asset addition is a candidate delta)",
   "policy": {
     "platform_marketing_use_requires": [
       "recorded source or generator",
@@ -237,6 +237,27 @@
       "fallback": "No implicit fallback. Code-rendered content is used on homepage/features/docs; metadata emits no image absent explicit route or tenant configuration.",
       "acceptance_status": "NOT_RENDERED_BY_CANDIDATE_PLATFORM_MARKETING_SOURCE; RIGHTS_UNVERIFIED",
       "candidate_disposition": "Removed from SmartAIHub marketing UI or implicit fallback. File retained because stored tenant/content references may exist; do not reactivate as platform marketing without complete provenance."
+    },
+    {
+      "asset_id": "public-home-human-editorial",
+      "public_path": "/images/public-home-human-editorial.webp",
+      "local_path": "apps/web/client/public/images/public-home-human-editorial.webp",
+      "sha256": "f04a88583ee31bd517ea83f7befa46b014056edf7f6344c178e5ea48ccd694c5",
+      "source_sha256": "80b28fe28903c3465e764ed0b7eddbf550abdca369c76f49c59be44332ecd1c6",
+      "media_type": "image/webp",
+      "classification": "ai_generated_editorial_context",
+      "active_usage": [
+        "Home hero, paired with the code-rendered ProductFlowPanel"
+      ],
+      "provenance": "Generated with Codex native image generation on 2026-10-06; source PNG and exact prompt retained under design/public/assets and design/public/prompts; tool output reference recorded in the production manifest. No external image reference was supplied.",
+      "owner": "SmartAIHub Public Experience owner; user authorized this illustrative use in the closeout instruction dated 2026-10-06.",
+      "rights_or_license_evidence": "OpenAI Terms of Use output ownership clause linked in the human asset production manifest; only as between user and OpenAI and to the extent permitted by applicable law. No independent legal opinion claimed.",
+      "synthetic_status": "AI-generated adult depiction; not an identified person and not a customer, employee, expert, creator endorsement, or testimonial.",
+      "permitted_public_use": "SmartAIHub public homepage illustrative editorial context only.",
+      "fallback": "Localized fallback text appears and the code-rendered product flow remains.",
+      "withdrawal_owner": "SmartAIHub Public Experience owner",
+      "withdrawal_path": "Remove Home reference and public derivative, canonical rebuild/republish; use recorded rollback snapshot if withdrawal follows deployment.",
+      "acceptance_status": "USER_AUTHORIZED_GENERATED_EDITORIAL_CANDIDATE; VISUAL_REVIEWED; NOT_PRODUCT_OR_CUSTOMER_PROOF"
     }
   ],
   "declared_but_not_rendered_disposition": "All are exported by apps/web/client/src/pages/homeContent.ts:36-46 but are not consumed by current Home.tsx/PublicHomeExperience.tsx. Provenance, rights, owner, caption and withdrawal path are unrecorded; do not reactivate them in platform marketing without a complete record.",
@@ -278,8 +299,8 @@
   },
   "gaps": [
     "Dynamic tenant and UGC media routes remain intentionally outside platform asset approval; route wrappers do not establish marketing reuse rights.",
-    "No public platform Film proof asset with verified provenance was found. Do not label any listed illustration as Film proof.",
-    "Rights/provenance and withdrawal authority for the unreferenced static files remain undocumented; files are preserved for stored-content compatibility and excluded from SmartAIHub marketing UI."
+    "Rights/provenance and withdrawal authority for the unreferenced static files remain undocumented; files are preserved for stored-content compatibility and excluded from SmartAIHub marketing UI.",
+    "Generated homepage editorial asset has recorded source, prompt, derivative hash, user authorization, disclosure, and withdrawal path; it is not Film or product proof. Film proof/rights remain absent."
   ],
   "validation": {
     "command": "node -e \"JSON.parse(require('node:fs').readFileSync('specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-media-governance-inventory.json','utf8')); console.log('valid JSON')\"",
