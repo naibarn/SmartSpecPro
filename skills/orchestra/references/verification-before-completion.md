@@ -3,6 +3,11 @@
 Do not claim a task is complete without fresh verification evidence from the
 current worktree.
 
+For requirement-driven work, maintain the requirement ledger and evidence
+pointer defined in `autonomous-completion-contract.md`. A loop-budget, queue,
+resource, or missing-tool status is not a pass and is not a terminal blocker
+when another safe verification path or independent WorkUnit is available.
+
 ## Completion Evidence
 
 At least one fresh verification signal is required before final summary:

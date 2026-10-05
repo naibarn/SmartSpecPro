@@ -69,6 +69,7 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/verification-before-completion.md` | Always before final summary and after every implementation wave |
 | `references/typecheck-resource-policy.md` | Whenever TypeScript checks, full-repo checks, OOM, timeout, or session-loss risk is in scope |
 | `references/completion-loop.md` | Always for non-trivial implementation, debugging, review/repair, or skill-system work |
+| `references/autonomous-completion-contract.md` | Always for outcome ownership, blocker, requirement-ledger, wait/resume, or completion decisions |
 | `references/gap-closure-before-final.md` | Always before final summary after implementation, debugging, review, repair, or skill-system work |
 | `references/review-convergence.md` | Before final summary for medium+ scope/risk, after any review findings, or after any fix caused by review/gate feedback |
 | `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
@@ -205,18 +206,20 @@ When Orchestra runs inside a code repository, use targeted shell discovery:
 
 ## STOP Conditions
 
-Orchestra halts and waits for user input when any of these conditions occur. Do not auto-proceed.
+Orchestra pauses only the affected path when an evidenced true external,
+product-authority, destructive-recovery, or critical-security blocker remains.
+Use the recovery path for other failures and keep independent WorkUnits moving.
 
 | Condition | Action |
 |-----------|--------|
 | A destructive reset/archive is required before planning can continue | Create a timestamped backup/dump first and continue automatically. STOP only if no reliable backup can be produced or the operation would still cause irreversible external loss |
-| Product intent remains ambiguous after codebase/spec analysis | Present the ambiguity clearly, ask only for the product decision, STOP |
+| Product intent remains ambiguous after codebase/spec analysis | Check specs/current behavior and safe alternatives first; ask only if distinct outcomes remain genuinely undecidable |
 | `/orchestra resume` after an automatic deep-* chain AND expected artifact paths are still missing | Reconstruct from the earliest incomplete safe stage automatically. STOP only if recovery would require destructive reset, accepted-risk security bypass, or ambiguous product intent |
-| Quality gate fails after 3 retry attempts (Step 6) | Record a lifecycle gap and backtrack through `completion-loop.md`; STOP only as a typed blocked state when safe recovery is impossible or a loop limit is reached |
-| CRITICAL security findings found (Step 6) | Present each finding, STOP — cannot auto-proceed |
-| Circular dependency detected in wave plan (Step 3) | Report cycle with affected task names, STOP until resolved |
-| A wave returns rate-limit / 429 / overload errors, or agents stall | Halt dispatch, preserve partials, report per `references/rate-limit-safety.md`, STOP - do not blind-retry |
-| Conflict unresolvable between two agents or two valid product-direction options | Present both options with a direct user prompt, STOP |
+| Quality gate fails after 3 retry attempts (Step 6) | Record root cause, change strategy, isolate unrelated baseline failures, and continue independent work; stop only the path proven to be a true blocker |
+| CRITICAL security findings found (Step 6) | Record `TRUE_BLOCKER` and security evidence; stop the affected path while continuing independent safe WorkUnits |
+| Circular dependency detected in wave plan (Step 3) | Re-plan prerequisites or split independent WorkUnits; stop only if the outcome itself is genuinely cyclic and cannot be decomposed |
+| A wave returns rate-limit / 429 / overload errors, or agents stall | Halt that dispatch, preserve partials, and continue conductor-owned or independent work per `references/rate-limit-safety.md`; do not blind-retry |
+| Conflict unresolvable between two agents or two valid product-direction options | Resolve using authoritative spec/current contracts; ask only when materially different outcomes remain undecidable |
 
 ---
 
@@ -278,6 +281,16 @@ Read `references/task-analysis.md`.
 Main Codex is the conductor and stays accountable for intent, scope, risk, proof,
 integration, and the final report. Sub-agents are bounded helpers; they do not own the
 critical path or replace conductor judgment.
+
+### Outcome Ownership
+
+For any user request to implement, finish, close, or complete an outcome, apply
+`references/autonomous-completion-contract.md`. Derive completion from the
+authoritative requirements and evidence, not the task list or a review-round
+count. A blocker triggers its challenge/recovery loop; it is terminal only
+after all safe closure paths are assessed and rejected with evidence. Keep
+independent ready work moving while a dependency waits. `CHECKPOINT_PROMOTED_PARTIAL`
+always resumes the open closure loop.
 
 Default behavior:
 - Use direct conductor edits for `trivial`, obvious `small`, and implementation-ready
@@ -472,7 +485,7 @@ For every pair of agents that will run in parallel, define and write to `orchest
 - Later waves depend on earlier wave outputs
 - Append the complete wave plan to `orchestra/plan.md` (below the Step 1 classification)
 
-**Circular dependency check:** Before finalizing, verify no pending tasks form a cycle. If all pending tasks are blocked by each other with no ready tasks — STOP (see STOP Conditions section above).
+**Circular dependency check:** Before finalizing, verify no pending tasks form a cycle. If the plan has a cycle, re-derive prerequisites, split units, and continue any independent work. Pause only if the authoritative outcome itself is contradictory and no decomposition or substitute is valid.
 
 ---
 
@@ -700,8 +713,8 @@ After all 3 complete, orchestra dispatches `ssp-security-review` as aggregator w
 | Verdict | Condition | Action |
 |---------|-----------|--------|
 | PASS (green) | 0 CRITICAL + 0 HIGH | Continue |
-| CONDITIONAL | 0 CRITICAL + N HIGH | Require user approval UNLESS decision-mode is `auto_by_default`. If auto-approved: display "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header in final summary AND log to `orchestra/decisions.md` with timestamp |
-| FAIL | N CRITICAL | Blocked. User must resolve each or explicitly mark as accepted risk. STOP. |
+| CONDITIONAL | 0 CRITICAL + N HIGH | Repair, reduce, substitute, or isolate each HIGH finding automatically. If accepting residual HIGH risk is the only closure path, require explicit human risk authority regardless of decision mode. |
+| FAIL | N CRITICAL | Mark `TRUE_BLOCKER` for the affected path with evidence; continue unrelated safe WorkUnits. The conductor cannot accept critical security risk on the user's behalf. |
 
 ---
 
@@ -931,7 +944,7 @@ Print the final summary:
 - Security gate verdict (if triggered)
 - Review convergence rounds run and stop reason
 - Gap closure verdict: must-do-now fixed, should-offer-next, safely deferred, or blocked
-- Auto-approved decisions (with "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header if any HIGH findings were auto-approved)
+- Security risk accepted by a human, if any, with the recorded authority; `auto_by_default` never accepts HIGH/CRITICAL risk
 - Post-completion review verdict (CLEAN or summary of findings addressed/deferred)
 - Remaining items in `orchestra/backlog.md` (if any)
 

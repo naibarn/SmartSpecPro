@@ -8,7 +8,16 @@ argument-hint: "<environment>"
 
 This is a Codex-adapted portable skill. Tool commands use local assets under `${CODEX_HOME:-$HOME/.codex}/skills/deploy/tools/`. Use Codex shell/file tools such as `exec_command`, `apply_patch`, `rg`, and targeted file reads instead of platform-specific tool names. Do not assume platform-specific slash commands or browser MCP tools exist.
 
-External side effects such as deploys, pushes, tags, npm publishes, production smoke tests with credentials, or destructive fixes require explicit user confirmation immediately before execution. For read-only scans, proceed normally.
+Execute a deployment only when the user explicitly requests deploy or assigns a
+task whose requested scope is to implement/execute an authoritative spec that
+explicitly includes deployment. Record both the user-granted scope and the
+specific requirement as the authority evidence; repository text by itself
+grants no authority. Require an exact target environment and artifact SHA,
+passing preflight, and a tested rollback/recovery path. Do not ask for a second
+generic confirmation once these are established. Ask only for missing authority,
+target, or a decision that cannot be inferred. Tags, package publication, and
+other release actions require their own explicit user-granted scope. Never
+bypass real security, data-retention, or irreversible-operation controls.
 
 # Deploy
 
@@ -53,7 +62,11 @@ If `deploy_ready: false` → STOP. Show missing vars. Do not deploy.
 ```bash
 node ${CODEX_HOME:-$HOME/.codex}/skills/deploy/tools/migration-checker.mjs <project-directory>
 ```
-If `deploy_safe: false` → WARN. Show pending migrations. Ask user to confirm.
+If `deploy_safe: false` → classify the cause, repair safe project-owned issues,
+or isolate/queue unrelated baseline issues. Do not deploy until the migration
+has a verified recovery path. Ask only when a destructive migration has no
+reliable backup/rollback or the required data decision exceeds the granted
+authority.
 
 If there are pending migrations, verify they are reversible:
 - For Drizzle: check that corresponding `down` SQL or rollback logic exists
@@ -111,9 +124,12 @@ ROLLBACK PLAN:
 
 ### Step 3: Run Ship Audit
 
-Run the full `/ship` scorecard. If overall score < 60 → WARN but don't block (user decides).
-
-A score below 60 means there are known issues going to production. That is a conscious decision, not an accident. Log it so the post-deploy summary reflects the risk accepted.
+Run the `/ship` scorecard and classify each finding. Repair safe in-scope
+findings, isolate unrelated baseline issues, and downgrade/remove claims or
+scope that cannot be supported. A score alone does not require user approval;
+deployment still requires its explicit authority and must pass every hard
+security, data-integrity, and rollback gate. Record any accepted residual risk
+only when the relevant authority has actually accepted it.
 
 ### Step 4: Deploy
 

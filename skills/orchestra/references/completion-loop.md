@@ -94,7 +94,20 @@ stale_gates: [<gate>, ...]
 status: OPEN | IN_PROGRESS | FIXED | VERIFIED | DEFERRED | BLOCKED
 resume_from: <stage>
 residual_risk: <none or concise risk>
+root_cause: <cause, distinct from symptom>
+decision_class: FIX_NOW | VERIFY_NOW | REPLAN | SUBSTITUTE | DEFER_INDEPENDENT | BASELINE_UNRELATED | TRUE_BLOCKER
+attempted_strategies: [<strategy and outcome>, ...]
+prohibited_retries: [<strategy that produced no delta>, ...]
+waiting_predicate: <machine-checkable predicate or none>
+reactivation_predicate: <machine-checkable predicate or none>
+progress_delta: <requirements/evidence/verification/checkpoint change>
 ```
+
+Before assigning `BLOCKED`, run the complete challenge sequence in
+`autonomous-completion-contract.md`. A blocker alone cannot close a lifecycle
+stage. A true blocker must state why direct repair, substitution, reduction,
+isolation, evidence generation, recovery, alternative execution, policy repair,
+and independent work are unavailable. `BLOCKED` is reserved for that result.
 
 Do not put an open `MUST_FIX`, `MUST_DO_NOW`, or `VERIFY_ONLY` gap only in
 `backlog.md`. Backlog is a pointer after the lifecycle row exists, never a
@@ -151,10 +164,14 @@ verification:
 7. Repeat until the completion invariants pass or a typed stop condition occurs.
 
 If a gate reaches its retry limit, that is a recovery event, not a successful
-stage exit. Create a gap and continue through the recovery algorithm. Only a
-loop-policy limit, missing external state, product decision, destructive risk,
-critical security finding, or unresolved user-required blocker may stop the
-loop; the stop record must retain open gaps, `resume_from`, and residual risk.
+stage exit. Classify the failure and change strategy; never repeat the same
+repair blindly. When the same blocker appears twice, run the full blocker
+challenge and list at least two alternatives where feasible. Three repeats
+without measurable delta become `STALLED_STRATEGY`, prohibit the ineffective
+strategy, and require root-cause/architecture/policy review. Only a typed true
+external/security/product-authority blocker may stop the affected path; ready
+independent work continues. A loop budget limit creates a resumable wait with
+the next ready action, never a false task-complete state.
 
 ## No-skip completion rule
 

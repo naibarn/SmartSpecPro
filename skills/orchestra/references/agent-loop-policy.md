@@ -101,7 +101,9 @@ cycle do not each count as separate iterations.
 Stop successfully only when all requested policy stop conditions are true:
 
 - `success_criteria_met`: the user objective and accepted scope are implemented
-  or explicitly deferred with rationale
+  and every applicable requirement is `PASS` or has an authority-approved
+  `NOT_APPLICABLE` disposition. Deferral keeps the outcome open and resumable;
+  it does not satisfy success.
 - `tests_passed`: fresh relevant tests/typecheck/lint/gates passed after the last
   code or skill-doc change, or a skipped gate is recorded with residual risk
 - `lifecycle_converged`: all mandatory stages in `completion-loop.md` are closed,
@@ -109,24 +111,35 @@ Stop successfully only when all requested policy stop conditions are true:
 - `no_open_blockers`: no `MUST_FIX`, `MUST_DO_NOW`, missing evidence, stale gate,
   unresolved contract violation, or blocked stage remains
 
-Stop blocked with a concrete `stop_reason` when any of these occurs:
+Record a resumable wait and continue independent ready WorkUnits when a bounded
+loop resource is exhausted. A loop limit is not itself a user-authority
+blocker. Reconcile canonical state and preserve the exact next action before
+yielding the current execution context.
 
-- `loop_policy_iteration_limit`
-- `loop_policy_tool_call_limit`
-- `loop_policy_cost_limit_risk`
-- `loop_policy_dispatch_wave_limit`
-- `loop_policy_subagent_limit`
-- `loop_policy_context_limit`
-- `loop_policy_repair_limit`
-- `data_first_debug_evidence_missing`
-- `blocking_gate_failed`
+Use these continuation outcomes when a bounded operational condition occurs:
+
+- `loop_policy_iteration_limit` (checkpoint and resume; not terminal)
+- `loop_policy_tool_call_limit` (checkpoint and resume; not terminal)
+- `loop_policy_cost_limit_risk` (queue costly verification and continue safe work)
+- `loop_policy_dispatch_wave_limit` (replan inline/sequentially where authorized)
+- `loop_policy_subagent_limit` (continue conductor-owned independent work)
+- `loop_policy_context_limit` (write actionable continuation state and resume)
+- `loop_policy_repair_limit` (change strategy and recover; not terminal by itself)
+- `data_first_debug_evidence_missing` (classify `VERIFY_NOW` when evidence is obtainable)
+- `blocking_gate_failed` (debug, repair, or isolate baseline failure)
 - `user_decision_required`
 - `external_dependency_unavailable`
 
-When a stop condition occurs before lifecycle convergence, preserve the open gap
-rows and `resume_from` stage in `orchestra/lifecycle.md`. A loop-policy limit is
-a blocked stop, not permission to skip remaining lifecycle stages or report
-success.
+Record a continuation checkpoint, queue or replan, and continue ready
+independent work. A path becomes terminal only when its gap is classified
+`TRUE_BLOCKER` and the challenge evidence meets
+`autonomous-completion-contract.md`.
+
+If execution must yield before lifecycle convergence, preserve open gaps,
+attempted/prohibited strategies, waiting/reactivation predicates, and the next
+ready WorkUnit in `orchestra/lifecycle.md`. This is a continuation checkpoint,
+not task completion. A repeated blocker follows the `STALLED_STRATEGY` rule in
+`autonomous-completion-contract.md`.
 
 The final summary must report the stop reason.
 
@@ -170,8 +183,8 @@ If a sub-agent appears stuck or does not return:
 - first record the elapsed wait and timeout status in `orchestra/progress.md`
 - mark `subagent_timeout_or_missing_result`
 - switch to direct inline recovery only if scope and risk permit it
-- otherwise stop with `loop_policy_subagent_limit` or
-  `external_dependency_unavailable`
+- otherwise checkpoint as `WAITING_CAPABILITY`/`WAITING_EXTERNAL` with a
+  reactivation predicate, and continue any independent ready WorkUnit
 
 ## Debug And Repair Guard
 

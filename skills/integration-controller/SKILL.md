@@ -63,3 +63,6 @@ Report:
 - worktrees/temporary refs safe to clean and any that must remain.
 
 Controller completion requires that every discovered valuable delta is either integrated (partial or complete), already present in the configured canonical ref, or explicitly preserved as `FAST_GATE_BLOCKED` with a durable recovery location and named next action. A parent task may remain open after partial canonicalization. Never require a readiness marker for visibility, never report pending validation as completion, and never allow an uncanonicalized valuable delta to disappear from inventory.
+
+After canonicalizing partial progress, return to the open requirement ledger and
+the next ready WorkUnit. Integration is not task closure.

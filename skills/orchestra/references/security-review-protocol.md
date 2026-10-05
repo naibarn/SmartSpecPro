@@ -134,8 +134,8 @@ policy, write `orchestra/risk_register.md`, and return a standard Result Report 
 | Verdict | Action |
 |---------|--------|
 | `PASS` | Continue to final summary |
-| `CONDITIONAL` | In `ask_every_choice` / `smart_auto` modes: pause, display findings to user, request approval. In `auto_by_default` mode: apply auto-approve logging (see below) and continue. |
-| `FAIL` | STOP. Present CRITICAL findings to user. Cannot proceed until user resolves or explicitly marks as accepted risk with written acknowledgment. |
+| `CONDITIONAL` | Repair, reduce, substitute, or isolate HIGH findings automatically where safe. If accepted residual HIGH risk is the only viable closure, require explicit human risk authority regardless of decision mode. Continue unrelated safe WorkUnits. |
+| `FAIL` | Mark the affected path `TRUE_BLOCKER`, preserve CRITICAL evidence, and continue unrelated safe WorkUnits. The conductor cannot accept critical risk on the user's behalf. |
 
 ---
 
@@ -144,40 +144,19 @@ policy, write `orchestra/risk_register.md`, and return a standard Result Report 
 | CRITICAL count | HIGH count | Verdict | Action |
 |---------------|------------|---------|--------|
 | 0 | 0 | PASS (green) | Continue to final summary |
-| 0 | 1 or more | CONDITIONAL | User approval required (auto-approved in `auto_by_default` mode) |
-| 1 or more | any | FAIL | Blocked — user must resolve |
+| 0 | 1 or more | CONDITIONAL | Auto-remediate or contain; human authority is required only to accept residual risk |
+| 1 or more | any | FAIL | Critical security stop for affected path; no risk acceptance by the conductor |
 
 MEDIUM and LOW findings are documented in `orchestra/risk_register.md` but do not affect
 the verdict.
 
 ---
 
-## Auto-Approve Logging Requirement
-
-When `auto_by_default` mode is active and the verdict is CONDITIONAL, the conductor **MUST**:
-
-**1. Log to `orchestra/decisions.md`:**
-
-```
-[YYYY-MM-DDTHH:MM:SSZ] AUTO-APPROVED HIGH SECURITY FINDINGS
-Session: [task description]
-Findings: [N] HIGH severity findings
-Details:
-  - HIGH | IDOR | apps/web/server/routers/user.ts:42 | getUserById missing tenantId filter
-  - HIGH | IDOR | apps/web/server/routers/billing.ts:88 | createSubscription missing tenantId
-Rationale: auto_by_default mode active
-```
-
-**2. Include a prominent top-level warning in the final summary:**
-
-```
-⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS
-[N] HIGH severity security findings were auto-approved because decision mode is auto_by_default.
-Review orchestra/risk_register.md for details.
-```
-
-This warning must appear in the final summary regardless of how many waves were completed
-or how many other items appear in the summary. It must not be buried in a subsection.
+Never auto-approve accepted HIGH or CRITICAL security risk based on
+`auto_by_default`. Record auto-repairs and containment decisions as normal
+work. If residual risk cannot be removed or isolated, identify the exact human
+security authority required and keep that path blocked while independent work
+continues.
 
 ---
 

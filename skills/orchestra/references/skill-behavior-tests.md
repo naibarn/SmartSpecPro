@@ -105,6 +105,16 @@ Level 2 behavioral validation:
   sub-agent fanout limits, and final stop reasons
 - lifecycle scenarios require `completion-loop.md`, a durable gap ledger, stale-gate
   invalidation, earliest-stage backtracking, and a typed resume pointer
+- all 20 autonomous completion scenarios pass the deterministic lifecycle decision kernel
+- recoverable asset/claim/provider/evidence/policy gaps choose substitution, downgrade,
+  verification, or repair rather than terminal blocking
+- resource waits and unrelated dirty work preserve state while ready independent work continues
+- true external/security/product-authority blockers are distinguished from code, baseline,
+  resource, tool, and policy failures
+- the third repeated no-delta blocker changes strategy to `STALLED_STRATEGY` and prohibits
+  the failed approach from blind retry
+- requirement completion, production acceptance, partial integration, and resume remain
+  distinct lifecycle states
 - generated `.claude/agents/ssp-*` definitions match portable source content
 
 Level 3 live validation:
@@ -114,3 +124,7 @@ Level 3 live validation:
 The skill pack requires Level 1 and a lightweight Level 2 classifier in
 `skills/audit-skills.sh`. Level 3 remains optional because it depends on the active agent
 runtime.
+
+Lifecycle policy decisions have an executable Level 2 regression suite at
+`skills/orchestra/tests/test_lifecycle_policy.py`; run it with
+`python3 -m unittest discover -s skills/orchestra/tests -v`.

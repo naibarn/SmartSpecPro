@@ -45,3 +45,7 @@ visual-diff
 visual-ui-enhancement
 web-design-engineer
 web-video-presentation
+development-lifecycle
+session-finish
+integration-controller
+canonical-checkout-sync

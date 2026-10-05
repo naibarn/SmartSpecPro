@@ -50,6 +50,9 @@ Next improvement signals:
   repeated_failure_pattern: <none | pattern>
   context_pressure: low | medium | high
   suggested_policy_change: <none | concise change>
+  generalized_lesson: <reusable rule, no Spec/project identifier>
+  recurrence_count: <number of similar patterns observed>
+  policy_or_tool_root_cause: <none | path/symbol and evidence>
 ```
 
 ## When To Append
@@ -62,6 +65,9 @@ Next improvement signals:
 - A quality gate passed only after repair.
 - The conductor skipped a useful verification because of time, missing env, or
   unavailable external state.
+- A recurring orchestration failure exposed a reusable policy/tooling lesson;
+  record a project-neutral condition/action rule and how the next run should
+  recognize and avoid the same dead end.
 
 ## Rules
 
