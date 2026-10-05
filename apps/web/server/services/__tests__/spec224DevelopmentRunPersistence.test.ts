@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildDevelopmentRun } from "../spec224DevelopmentRunContracts";
+import { createDevelopmentWorkUnit } from "../developmentLifecycleContracts";
 import {
   createDevelopmentRunService,
   createPersistedDevelopmentRun,
@@ -105,6 +106,86 @@ function memoryAdapter(
 }
 
 describe("Spec 224 durable DevelopmentRun persistence", () => {
+  it("persists partial canonical work and implementation completion on the existing run owner", async () => {
+    const adapter = memoryAdapter();
+    const service = createDevelopmentRunService(adapter);
+    const unit = createDevelopmentWorkUnit({
+      workId: "work-bug-42",
+      projectId: "project-atlas",
+      repositoryId: "repo-atlas",
+      source: { type: "bug", ref: "issue:42" },
+      objective: "Fix the retry regression",
+      ownership: { actor: "42", session: "session-a", harness: "codex" },
+      canonicalTarget: { kind: "git", locator: "refs/heads/trunk" },
+      baseRevision: "a".repeat(40),
+    });
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-canonical-checkpoint",
+      workspaceId: "workspace:canonical-checkpoint",
+      workUnit: unit,
+    });
+    await service.initialize({
+      run,
+      eventIdempotencyKey: "run-created:canonical-checkpoint",
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+    });
+    const checkpoint = {
+      canonicalRevision: "b".repeat(40),
+      completedScope: ["retry-policy"],
+      remainingScope: ["recovery-test"],
+      pendingValidation: [{ checkType: "focused-test", revision: "b".repeat(40) }],
+      nextAction: "Add the recovery test",
+      nextOwner: "dev-8",
+      handoffRef: "git:handoff-42",
+      resumeFrom: "recovery-test",
+    };
+    const saved = await service.recordCanonicalCheckpoint({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: 0,
+      idempotencyKey: "canonical-checkpoint:retry-42",
+      checkpoint,
+    });
+    expect(saved.run.workUnit?.progress).toMatchObject({
+      state: "PARTIAL_INTEGRATED",
+      canonicalRevision: "b".repeat(40),
+      remainingScope: ["recovery-test"],
+    });
+    expect(saved.event?.type).toBe("CANONICAL_CHECKPOINT_RECORDED");
+    const replay = await service.recordCanonicalCheckpoint({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: 0,
+      idempotencyKey: "canonical-checkpoint:retry-42",
+      checkpoint,
+    });
+    expect(replay.accepted).toBe(false);
+
+    const completed = await service.recordImplementationCompletion({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 1,
+      expectedFencingVersion: 0,
+      idempotencyKey: "implementation-complete:retry-42",
+      completion: {
+        canonicalRevision: "c".repeat(40),
+        completedScope: ["retry-policy", "recovery-test"],
+        pendingValidation: [{ checkType: "full-suite", revision: "c".repeat(40), state: "NOT_RUN" }],
+      },
+    });
+    expect(completed.run.workUnit?.progress.state).toBe("IMPLEMENTATION_COMPLETE");
+    expect(completed.run.workUnit?.validation.pending[0]?.revision).toBe("c".repeat(40));
+    const persisted = await adapter.read();
+    expect(persisted?.run.workUnit?.progress.canonicalRevision).toBe("c".repeat(40));
+    expect(persisted?.events.map(event => event.type)).toContain("IMPLEMENTATION_COMPLETE_RECORDED");
+  });
+
   it("persists resource verification events without consuming a phase transition", async () => {
     const adapter = memoryAdapter();
     const service = createDevelopmentRunService(adapter);

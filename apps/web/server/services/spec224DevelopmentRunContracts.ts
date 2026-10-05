@@ -9,6 +9,10 @@ import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { createJobControlPlane } from "./jobControlPlane";
 import type { JobRef } from "./jobControlPlaneTypes";
 import type { JobExecutorRegistry } from "./jobExecutorRegistry";
+import {
+  parseDevelopmentWorkUnit,
+  type DevelopmentWorkUnit,
+} from "./developmentLifecycleContracts";
 
 export const SPEC_224_RUN_CONTRACT_VERSION = "spec-224-v1" as const;
 
@@ -57,6 +61,8 @@ export type DevelopmentRun = {
   eventSequence: number;
   eventIdempotencyKeys: string[];
   events: DevelopmentEvent[];
+  /** Generic durable work/handoff projection; execution authority remains worker_jobs. */
+  workUnit?: DevelopmentWorkUnit;
   metadata?: Record<string, unknown>;
 };
 
@@ -72,6 +78,8 @@ export type DevelopmentEventType =
   | "DEFERRED_TEST_OBLIGATION_INVALIDATED"
   | "VERIFICATION_ADMISSION"
   | "VERIFICATION_OUTCOME"
+  | "CANONICAL_CHECKPOINT_RECORDED"
+  | "IMPLEMENTATION_COMPLETE_RECORDED"
   | "RUN_PAUSED"
   | "RUN_RESUMED"
   | "RUN_CANCELLED"
@@ -257,6 +265,7 @@ export function buildDevelopmentRun(input: {
   contextPackHash: string;
   workspaceId: string;
   workPackageId?: string;
+  workUnit?: DevelopmentWorkUnit;
   maxPhaseAttempts?: number;
   metadata?: Record<string, unknown>;
 }): DevelopmentRun {
@@ -299,6 +308,7 @@ export function buildDevelopmentRun(input: {
     eventIdempotencyKeys: [],
     events: [],
     ...(input.metadata ? { metadata: structuredClone(input.metadata) } : {}),
+    ...(input.workUnit ? { workUnit: parseDevelopmentWorkUnit(input.workUnit) } : {}),
   };
 }
 
