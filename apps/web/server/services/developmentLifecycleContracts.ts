@@ -56,6 +56,7 @@ export type DevelopmentWorkUnit = {
   repositoryId: string;
   source: { type: DevelopmentSourceType; ref: string };
   objective: string;
+  /** Origin/execution metadata only; session and harness never identify durable work. */
   ownership: { actor: string; session: string; harness: string };
   canonicalTarget: { kind: CanonicalTargetKind; locator: string };
   baseRevision: string;
@@ -564,6 +565,21 @@ export function registerDevelopmentDependencyWait(
     },
     updatedAt: now,
   };
+}
+
+export function registerDevelopmentDependencyWaits(
+  workUnit: DevelopmentWorkUnit,
+  dependencies: DevelopmentDependencyContract[],
+  immediatelyRunnableScope: string[],
+  now = new Date().toISOString()
+): DevelopmentWorkUnit {
+  if (!dependencies.length || dependencies.length > 128) {
+    throw new DevelopmentLifecycleContractError("DEPENDENCIES_INVALID");
+  }
+  return dependencies.reduce(
+    (current, dependency) => registerDevelopmentDependencyWait(current, dependency, immediatelyRunnableScope, now),
+    parseDevelopmentWorkUnit(workUnit),
+  );
 }
 
 function stateForDependencyType(type: DevelopmentDependencyContract["requirement"]["type"]): DevelopmentWorkState {

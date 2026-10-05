@@ -7,6 +7,7 @@ import {
   type DevelopmentDependencyContract,
   recordCanonicalCheckpoint,
   registerDevelopmentDependencyWait,
+  registerDevelopmentDependencyWaits,
   reconcileDevelopmentResume,
   repairMissingDevelopmentDependencyWatchers,
 } from "../developmentLifecycleContracts";
@@ -262,6 +263,25 @@ describe("project-agnostic development lifecycle contract", () => {
     });
     expect(bothSatisfied.progress.state).toBe("WORKING");
     expect(bothSatisfied.progress.immediatelyRunnableScope).toEqual(["add-client", "publish-api"]);
+  });
+
+  it("registers multiple durable dependencies before releasing the executor", () => {
+    const second = {
+      ...apiDependency(["publish-api"]),
+      dependencyId: "dep-schema-v2",
+      requirement: { type: "schema" as const, locator: "catalog-schema", minimumRevision: "revision:2" },
+      satisfaction: { predicateId: "catalog-schema-v2", evidenceSource: "worker_job_events" },
+      wake: { resumeWorkId: "work-bug-42", resumeFrom: "publish-api", eventTypes: ["DEVELOPMENT_EVIDENCE"] },
+    };
+    const waiting = registerDevelopmentDependencyWaits(
+      checkpoint(),
+      [apiDependency(["publish-api"]), second],
+      [],
+      "2026-10-05T00:01:00.000Z",
+    );
+    expect(waiting.progress.state).toBe("WAITING_DEPENDENCY");
+    expect(waiting.dependencies.map(item => item.dependencyId)).toEqual(["dep-api-v3", "dep-schema-v2"]);
+    expect(waiting.progress.immediatelyRunnableScope).toEqual([]);
   });
 
   it("repairs a missing watcher without losing its predicate or resume point", () => {

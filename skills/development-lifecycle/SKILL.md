@@ -36,7 +36,7 @@ Wait on a verifiable predicate, not a person, session, branch, or spec identifie
 
 Before waiting, minimize the dependency: check the immediate next step, independent work, existing equivalent canonical output, alternate capability/provider/route, and safe checkpoint opportunities. Continue independent scopes while waiting.
 
-A `WAITING_*` state is valid only with a durable dependency identity, satisfaction predicate, evidence source, registered watcher, polling/reconciliation fallback, resume point, next action, and continuation owner. Timeouts do not become terminal by themselves. On evidence, re-evaluate the predicate against its authority, record durable evidence, and enqueue an idempotent continuation through the existing job/outbox control plane. Lost notifications are repaired by periodic reconciliation. The original executor is not required to remain alive. Invalid evidence or invalidated requirements must not resume work.
+A `WAITING_*` state is valid only with a durable dependency identity, satisfaction predicate, evidence source, registered predicate adapter, watcher, polling/reconciliation fallback, resume point, next action, and continuation owner. If no adapter can verify evidence and recheck its authority, keep the work runnable through another route or mark the wait unavailable; do not register a blind wait. Timeouts do not become terminal by themselves. On evidence, re-evaluate the predicate against its authority, record durable evidence, and enqueue an idempotent continuation through the existing job/outbox control plane. Lost notifications are repaired by periodic reconciliation. The original executor is not required to remain alive. Invalid evidence or invalidated requirements must not resume work.
 
 ## Verification and status
 

@@ -28,6 +28,15 @@ export function classifyWaitingExternal(
   const { operationKey, runStatus, resumeAfter, now } = evidence;
   const isStoryboardPause = operationKey.startsWith(STORYBOARD_PAUSE_PREFIX);
 
+  if (operationKey.startsWith("development-dependency:")) {
+    return {
+      action: "wait",
+      reasonCode: "development_dependency_unsatisfied",
+      explanation: "The dependency predicate is non-terminal; keep its durable work handoff available for event or reconciliation evidence.",
+      operatorReviewRequired: false,
+    };
+  }
+
   if (isStoryboardPause) {
     if (runStatus === "cancel_requested") {
       return {

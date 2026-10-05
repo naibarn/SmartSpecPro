@@ -7,16 +7,24 @@ import { db, getDb } from "../db";
 import {
   appendJobEvent,
   createCanonicalJobInTransaction,
+  createJobControlPlane,
   type JobControlPlane,
 } from "./jobControlPlane";
 import type { JobDefinition, JobRef } from "./jobControlPlaneTypes";
+import type { LeaseContext } from "./jobControlPlaneTypes";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import type { JobExecutorRegistry } from "./jobExecutorRegistry";
 import { buildSpec224FullVerificationJobDefinition } from "./spec224VerificationJob";
+import { getDevelopmentLifecyclePredicate } from "./developmentLifecyclePredicateRegistry";
 import {
   recordCanonicalCheckpoint as applyCanonicalCheckpoint,
+  applyDevelopmentDependencyEvidence,
   completeDevelopmentWorkUnit,
+  repairMissingDevelopmentDependencyWatchers,
+  registerDevelopmentDependencyWaits as applyDependencyWaits,
   type CanonicalCheckpointInput,
+  type DevelopmentDependencyContract,
+  type DevelopmentDependencyEvidence,
 } from "./developmentLifecycleContracts";
 import {
   assertFinalVerifyReady,
@@ -244,6 +252,11 @@ function eventIdFor(runId: string, idempotencyKey: string): string {
   return `event-${digest}`;
 }
 
+function developmentDependencyOperationKey(runId: string): string {
+  const digest = createHash("sha256").update(runId, "utf8").digest("hex").slice(0, 48);
+  return `development-dependency:${digest}`;
+}
+
 function durableEventKey(runId: string, idempotencyKey: string): string {
   const raw = `spec224:${runId}:${idempotencyKey}`;
   if (raw.length <= 200) return raw;
@@ -378,8 +391,57 @@ export function createDevelopmentRunService(
       | { state: "ADMITTED"; requiredMemoryMiB: number }
       | { state: "QUEUED_RESOURCE"; reason: string; requiredMemoryMiB: number }
     >;
+    releaseDependencyWait?: (input: {
+      lease: LeaseContext;
+      tenantId: string;
+      actorId: number;
+      operationKey: string;
+      metadata: Record<string, unknown>;
+    }) => Promise<void>;
+    resumeDependencyWait?: (input: {
+      jobId: string;
+      tenantId: string;
+      actorId: number;
+      operationKey: string;
+      resumeKey: string;
+    }) => Promise<boolean>;
+    hasDependencyPredicate?: (predicateId: string) => boolean;
   } = {}
 ) {
+  const hasDependencyPredicate = options.hasDependencyPredicate ?? ((predicateId: string) =>
+    getDevelopmentLifecyclePredicate(predicateId) !== null
+  );
+  const releaseDependencyWait = options.releaseDependencyWait ?? (async input => {
+    const controlPlane = createJobControlPlane();
+    const snapshot = await controlPlane.getJobSnapshot(input.lease.jobId, {
+      tenantId: input.tenantId,
+      requestedByUserId: input.actorId,
+    });
+    const existingWait = (snapshot?.progress as { externalWait?: { operationKey?: unknown } } | undefined)?.externalWait;
+    if (snapshot?.status === "waiting_external" && existingWait?.operationKey === input.operationKey) return;
+    if (snapshot?.status !== "running") return;
+    await controlPlane.waitForExternal(input.lease, {
+      operationKey: input.operationKey,
+      resumeAfter: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      metadata: input.metadata,
+    });
+  });
+  const resumeDependencyWait = options.resumeDependencyWait ?? (async input => {
+    const controlPlane = createJobControlPlane();
+    const snapshot = await controlPlane.getJobSnapshot(input.jobId, {
+      tenantId: input.tenantId,
+      requestedByUserId: input.actorId,
+    });
+    const existingWait = (snapshot?.progress as { externalWait?: { operationKey?: unknown } } | undefined)?.externalWait;
+    if (snapshot?.status !== "waiting_external" || existingWait?.operationKey !== input.operationKey) return false;
+    return controlPlane.resumeExternal(
+      input.jobId,
+      "development-lifecycle-reconciler",
+      "postgres-pull",
+      undefined,
+      input.resumeKey,
+    );
+  });
   return {
     async get(input: {
       runId: string;
@@ -544,6 +606,210 @@ export function createDevelopmentRunService(
           revision: record.revision + 1,
           events: [...record.events, recorded.event],
         };
+        await tx.save(next, record.revision, scope);
+        await tx.appendEvent(recorded.event, scope);
+        return { accepted: true, run: nextRun, event: recorded.event, revision: next.revision };
+      });
+    },
+
+    /** Persist a project-neutral dependency wait on the existing DevelopmentRun owner. */
+    async registerDependencyWait(input: {
+      lease: LeaseContext;
+      runId: string;
+      tenantId: string;
+      actorId: number;
+      expectedRevision: number;
+      expectedFencingVersion: number;
+      idempotencyKey: string;
+      dependency: DevelopmentDependencyContract;
+      additionalDependencies?: DevelopmentDependencyContract[];
+      immediatelyRunnableScope: string[];
+      occurredAt?: string;
+    }): Promise<DevelopmentRunCommandResult> {
+      const scope = scopeFor(input);
+      if (!input.idempotencyKey.trim() || input.idempotencyKey.length < 16 || input.idempotencyKey.length > 160) {
+        throw new Error("RUN_IDEMPOTENCY_KEY_INVALID");
+      }
+      for (const dependency of [input.dependency, ...(input.additionalDependencies ?? [])]) {
+        if (!hasDependencyPredicate(dependency.satisfaction.predicateId)) {
+          throw new Error("DEVELOPMENT_PREDICATE_UNAVAILABLE");
+        }
+      }
+      const requestDigest = createHash("sha256").update(JSON.stringify({
+        dependencies: [input.dependency, ...(input.additionalDependencies ?? [])],
+        immediatelyRunnableScope: input.immediatelyRunnableScope,
+      }), "utf8").digest("hex");
+      const result = await adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        const duplicate = await tx.findEvent(input.runId, input.idempotencyKey, scope);
+        if (duplicate) {
+          if (duplicate.type !== "DEPENDENCY_WAIT_REGISTERED" || duplicate.payload.requestDigest !== requestDigest) {
+            throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          }
+          return { accepted: false, run: record.run, event: duplicate, revision: record.revision };
+        }
+        if (record.revision !== input.expectedRevision) throw new Error("RUN_PROJECTION_STALE");
+        if (record.run.fencingVersion !== input.expectedFencingVersion) throw new Error("RUN_FENCE_STALE");
+        if (!record.run.workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
+        const dependencies = [input.dependency, ...(input.additionalDependencies ?? [])];
+        const workUnit = applyDependencyWaits(
+          record.run.workUnit,
+          dependencies,
+          input.immediatelyRunnableScope,
+          input.occurredAt,
+        );
+        const recorded = recordDevelopmentEvent(record.run, {
+          eventId: eventIdFor(input.runId, input.idempotencyKey),
+          idempotencyKey: input.idempotencyKey,
+          type: "DEPENDENCY_WAIT_REGISTERED",
+          payload: {
+            workId: workUnit.workId,
+            dependencyIds: dependencies.map(item => item.dependencyId),
+            projectId: input.dependency.projectId,
+            requirements: dependencies.map(item => ({ dependencyId: item.dependencyId, requirement: item.requirement, wake: item.wake, blockedScope: item.blockedScope })),
+            immediatelyRunnableScope: workUnit.progress.immediatelyRunnableScope,
+            requestDigest,
+          },
+          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+        });
+        if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const nextRun: DevelopmentRun = { ...recorded.run, workUnit };
+        const next: DevelopmentRunStoreRecord = { run: nextRun, revision: record.revision + 1, events: [...record.events, recorded.event] };
+        await tx.save(next, record.revision, scope);
+        await tx.appendEvent(recorded.event, scope);
+        return { accepted: true, run: nextRun, event: recorded.event, revision: next.revision };
+      });
+      if (result.run.workUnit?.progress.immediatelyRunnableScope.length === 0) {
+        if (!result.run.workerJobId || input.lease.jobId !== result.run.workerJobId) {
+          throw new Error("DEPENDENCY_WAIT_JOB_MISMATCH");
+        }
+        await releaseDependencyWait({
+          lease: input.lease,
+          tenantId: input.tenantId,
+          actorId: input.actorId,
+          operationKey: developmentDependencyOperationKey(input.runId),
+          metadata: {
+            developmentLifecycle: {
+              runId: input.runId,
+              workId: result.run.workUnit.workId,
+              dependencyIds: [input.dependency, ...(input.additionalDependencies ?? [])].map(item => item.dependencyId),
+            },
+          },
+        });
+      }
+      return result;
+    },
+
+    /** Apply durable predicate evidence through CAS/fencing on the existing run and job-event log. */
+    async recordDependencyEvidence(input: {
+      runId: string;
+      tenantId: string;
+      actorId: number;
+      expectedRevision: number;
+      expectedFencingVersion: number;
+      idempotencyKey: string;
+      dependencyId: string;
+      evidence: DevelopmentDependencyEvidence;
+      occurredAt?: string;
+    }): Promise<DevelopmentRunCommandResult> {
+      const scope = scopeFor(input);
+      if (!input.idempotencyKey.trim() || input.idempotencyKey.length < 16 || input.idempotencyKey.length > 160) {
+        throw new Error("RUN_IDEMPOTENCY_KEY_INVALID");
+      }
+      const requestDigest = createHash("sha256").update(JSON.stringify({
+        dependencyId: input.dependencyId,
+        evidence: input.evidence,
+      }), "utf8").digest("hex");
+      const result = await adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        const duplicate = await tx.findEvent(input.runId, input.idempotencyKey, scope);
+        if (duplicate) {
+          if (duplicate.type !== "DEPENDENCY_EVIDENCE_APPLIED" || duplicate.payload.requestDigest !== requestDigest) {
+            throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          }
+          return { accepted: false, run: record.run, event: duplicate, revision: record.revision };
+        }
+        if (record.revision !== input.expectedRevision) throw new Error("RUN_PROJECTION_STALE");
+        if (record.run.fencingVersion !== input.expectedFencingVersion) throw new Error("RUN_FENCE_STALE");
+        if (!record.run.workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
+        const workUnit = applyDevelopmentDependencyEvidence(
+          record.run.workUnit,
+          input.dependencyId,
+          input.evidence,
+          input.occurredAt,
+        );
+        const recorded = recordDevelopmentEvent(record.run, {
+          eventId: eventIdFor(input.runId, input.idempotencyKey),
+          idempotencyKey: input.idempotencyKey,
+          type: "DEPENDENCY_EVIDENCE_APPLIED",
+          payload: {
+            workId: workUnit.workId,
+            dependencyId: input.dependencyId,
+            evidenceRef: input.evidence.reference,
+            progressState: workUnit.progress.state,
+            immediatelyRunnableScope: workUnit.progress.immediatelyRunnableScope,
+            requestDigest,
+          },
+          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+        });
+        if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const nextRun: DevelopmentRun = { ...recorded.run, workUnit };
+        const next: DevelopmentRunStoreRecord = { run: nextRun, revision: record.revision + 1, events: [...record.events, recorded.event] };
+        await tx.save(next, record.revision, scope);
+        await tx.appendEvent(recorded.event, scope);
+        return { accepted: true, run: nextRun, event: recorded.event, revision: next.revision };
+      });
+      const workUnit = result.run.workUnit;
+      if (workUnit && workUnit.progress.immediatelyRunnableScope.length > 0 && result.run.workerJobId) {
+        await resumeDependencyWait({
+          jobId: result.run.workerJobId,
+          tenantId: input.tenantId,
+          actorId: input.actorId,
+          operationKey: developmentDependencyOperationKey(input.runId),
+          resumeKey: `development-dependency:${createHash("sha256").update(`${input.dependencyId}:${input.evidence.reference}`, "utf8").digest("hex")}`,
+        });
+      }
+      return result;
+    },
+
+    async repairDependencyWatchers(input: {
+      runId: string;
+      tenantId: string;
+      actorId: number;
+      expectedRevision: number;
+      expectedFencingVersion: number;
+      idempotencyKey: string;
+      occurredAt?: string;
+    }): Promise<DevelopmentRunCommandResult> {
+      const scope = scopeFor(input);
+      return adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        const duplicate = await tx.findEvent(input.runId, input.idempotencyKey, scope);
+        if (duplicate) {
+          if (duplicate.type !== "DEPENDENCY_WATCHERS_REPAIRED") throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          return { accepted: false, run: record.run, event: duplicate, revision: record.revision };
+        }
+        if (record.revision !== input.expectedRevision) throw new Error("RUN_PROJECTION_STALE");
+        if (record.run.fencingVersion !== input.expectedFencingVersion) throw new Error("RUN_FENCE_STALE");
+        if (!record.run.workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
+        const workUnit = repairMissingDevelopmentDependencyWatchers(record.run.workUnit, input.occurredAt);
+        const repairedDependencyIds = workUnit.dependencies
+          .filter((item, index) => record.run.workUnit?.dependencies[index]?.watcher.status === "MISSING" && item.state === "UNSATISFIED")
+          .map(item => item.dependencyId);
+        if (!repairedDependencyIds.length) return { accepted: false, run: record.run, event: null, revision: record.revision };
+        const recorded = recordDevelopmentEvent(record.run, {
+          eventId: eventIdFor(input.runId, input.idempotencyKey),
+          idempotencyKey: input.idempotencyKey,
+          type: "DEPENDENCY_WATCHERS_REPAIRED",
+          payload: { workId: workUnit.workId, dependencyIds: repairedDependencyIds },
+          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+        });
+        if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const nextRun: DevelopmentRun = { ...recorded.run, workUnit };
+        const next: DevelopmentRunStoreRecord = { run: nextRun, revision: record.revision + 1, events: [...record.events, recorded.event] };
         await tx.save(next, record.revision, scope);
         await tx.appendEvent(recorded.event, scope);
         return { accepted: true, run: nextRun, event: recorded.event, revision: next.revision };
@@ -1056,7 +1322,7 @@ type WorkerJobRow = {
 
 function projectionFromRun(
   run: DevelopmentRun,
-  projectionVersion = 0
+  projectionVersion = 0,
 ): Record<string, unknown> {
   return {
     ...projectionRun(run),
@@ -1161,13 +1427,19 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
           )
             return null;
           const events = await loadEvents(row.id);
+          const genericLifecycle = row.progressJson.developmentLifecycle;
+          const genericWorkUnit = genericLifecycle && typeof genericLifecycle === "object" && !Array.isArray(genericLifecycle)
+            ? (genericLifecycle as Record<string, unknown>).workUnit
+            : undefined;
           const run = {
             ...(projection as DevelopmentRun),
+            ...(genericWorkUnit ? { workUnit: genericWorkUnit as DevelopmentRun["workUnit"] } : {}),
             events,
             eventIdempotencyKeys: events.map(event => event.idempotencyKey),
           } as DevelopmentRun;
           const revision = Number(
-            (projection as Record<string, unknown>).projectionVersion ?? 0
+            (projection as Record<string, unknown>).projectionVersion ??
+            (genericLifecycle as Record<string, unknown> | undefined)?.projectionVersion ?? 0
           );
           return {
             run,
@@ -1202,6 +1474,16 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
               throw new Error("RUN_PROJECTION_STALE");
             const progress = {
               ...row.progressJson,
+              ...(next.run.workUnit ? {
+                // Canonical generic WorkUnit plus atomic Spec 224 compatibility projection below.
+                developmentLifecycle: {
+                  schemaVersion: "development-lifecycle.work-unit.v1",
+                  projectionVersion: next.revision,
+                  runId: next.run.runId,
+                  fencingVersion: next.run.fencingVersion,
+                  workUnit: next.run.workUnit,
+                },
+              } : {}),
               spec224: projectionFromRun(next.run, next.revision),
             };
             await query
