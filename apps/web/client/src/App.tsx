@@ -40,7 +40,7 @@ import "@/themes/matcha/matcha.css";
 import "@/themes/stone/stone.css";
 import "@/themes/y2k/y2k.css";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { TenantProvider } from "./contexts/TenantContext";
+import { TenantProvider, useTenant } from "./contexts/TenantContext";
 import { I18nextProvider } from "react-i18next";
 import { i18n } from "@/i18n";
 import { useNamespacePreloader } from "@/i18n/useNamespacePreloader";
@@ -62,6 +62,11 @@ import { resolveAstryxColorTokens } from "@/lib/astryxThemeCompatibility";
 import { getCanonicalWorkerJobsPath } from "@/lib/workerJobsRoute";
 import { isRetiredRoute } from "@/lib/retiredRouteGuard";
 import { SPEC260_PAGE_ROUTES } from "@smartspec/shared/src/emergencyRouteManifest";
+import { isSmartAIHubPublicSite } from "@/lib/publicSiteTenant";
+import {
+  applyPublicThemeBoundary,
+  isSmartAIHubLightOnlyPublicPath,
+} from "@/lib/publicTheme";
 
 function AstryxWouterLink({
   href,
@@ -1496,6 +1501,7 @@ function App() {
                 <LinkProvider component={AstryxWouterLink}>
                   <AuthProvider>
                     <TenantProvider>
+                      <PublicThemePreferenceBoundary />
                       <TooltipProvider>
                         <ConfirmProvider>
                           <Toaster />
@@ -1518,6 +1524,20 @@ function App() {
       </HelmetProvider>
     </ErrorBoundary>
   );
+}
+
+function PublicThemePreferenceBoundary() {
+  const [location] = useLocation();
+  const { tenant } = useTenant();
+  const { theme } = useAppTheme();
+  const platformPublicLightOnly =
+    isSmartAIHubPublicSite(tenant) && isSmartAIHubLightOnlyPublicPath(location);
+
+  useLayoutEffect(() => {
+    applyPublicThemeBoundary(document.documentElement, theme, platformPublicLightOnly);
+  }, [platformPublicLightOnly, theme]);
+
+  return null;
 }
 
 export default App;

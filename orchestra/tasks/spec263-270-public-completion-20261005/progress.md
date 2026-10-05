@@ -153,3 +153,16 @@
 - Current candidate again awaits normal integration and exact-SHA canonical build/deploy; whole-spec status remains `PARTIAL_INTEGRATED — PRODUCTION CHECKPOINT DEPLOYED — ACCEPTANCE OPEN`.
 
 - Latest repair candidate now includes the independent dark-mode cascade fix: explicit `dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100` on the global FeedbackButton overrides the Astryx outline `dark:bg-transparent`; test asserts both color-scheme contracts. Reviewer round 44 is clean, tenant styling is untouched. The 4b axe failure remains the current deployed truth until this candidate integrates/builds/deploys and is rescanned.
+
+
+## Public theme boundary repair — 2026-10-06
+- A real dark preference (`localStorage.theme=dark` before app initialization) exposed 22 failing axe case groups across 24 public Home/Features × viewport × locale scans; screenshots are not accepted from the prior forced `.dark` probe. This is a public theme-policy gap, since Spec 263 §5.4 permits shipping one public theme but forbids a partially broken alternate.
+- Candidate marks SmartAIHub marketing routes light-only and suppresses `.dark` while those routes render. The persisted dark preference remains untouched; route boundary restores the dark class outside platform marketing paths. Custom tenant and disaster routes are excluded. Direct route predicate tests pass for public/private/custom emergency paths.
+- Candidate regression run: 5 focused suites / 53 tests passed; changed App/ThemeContext/theme/feedback components parse; `git diff --check` passed. Browser proof must show the public experience stays light with a stored dark preference and the private app restores dark; candidate not yet integrated.
+
+## Theme boundary repair follow-up — 2026-10-06
+- Independent review found a duplicate `useLayoutEffect` import in the candidate before integration. Removed the duplicate and extracted the DOM reconciliation into `applyPublicThemeBoundary` so automated tests cover the root dataset/class transition, not only path classification.
+- Added route coverage for `/privacy` and `/terms`. Public marketing/legal routes set the light-only marker and remove the dark class; leaving those routes restores the persisted dark theme. Custom tenant routes continue to receive the user's selected theme.
+- Focused verification on the current candidate: 5 relevant suites / 58 tests passed. Esbuild parsed the changed App, theme context, helper, and test; dark-matrix harness syntax and `git diff --check` passed.
+- A separate pre-existing `publicSiteTenant.test.ts` case fails under the configured jsdom origin (`localhost` is deliberately accepted by `isSmartAIHubPublicSite`). It is a test-environment assumption mismatch and outside this theme patch; the suite is excluded from the passing count.
+- This is candidate-only evidence. The public theme row remains FAIL on deployed `7fd54fba...` until the candidate is integrated, canonically built/deployed, and the stored-dark-preference browser matrix plus private-route restoration pass on production.
