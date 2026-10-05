@@ -56,6 +56,7 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, str]:
             "remote": str(values["remote"]).strip(),
             "canonical_ref": str(values["canonical_ref"]).strip(),
             "source_root": str(values["source_root"]).strip(),
+            "build_target": str(values.get("build_target", "web-build")).strip(),
         }
     except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as exc:
         raise LifecycleError(f"REPOSITORY_POLICY_INVALID: {path}: {exc}") from exc
