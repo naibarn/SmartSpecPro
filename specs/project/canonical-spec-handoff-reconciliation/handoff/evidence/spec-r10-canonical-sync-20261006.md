@@ -35,3 +35,10 @@
 - `python3 -m tools.spec_handoff validate --all`: PASS; complete inventory walk, no missing Handoffs, no invalid manifests, and generated status/index equality.
 - No application build or runtime behavior was changed or claimed by this specification import.
 - Repository-wide duplicate-ID authority review, allocator/alias design, and canonical Handoff migration remain open.
+
+## Integration evidence
+
+- PR [#76](https://github.com/naibarn/SmartSpecPro/pull/76) merged at `2026-10-06T09:36:21Z` into `refs/heads/main` as `5a389545896d9152f23749d3fc1710d6c80f3a43`.
+- Source implementation commit `8e3a449d3172cadd34a2239741537a229f17c88c` is an ancestor of that merge commit. The clean local `main` checkout was fast-forwarded to the same SHA and matched `origin/main`.
+- Canonical Handoff integration fields for Specs 288, 289, 293, 294, and 295 now reference the exact integration SHA and timestamp above. Their Handoff evidence remains distinct from implementation verification or production acceptance.
+- Post-integration `python3 -m tools.spec_handoff index --check`: PASS; 463 indexed records, 307 canonical Specs, no drift. `python3 -m tools.spec_handoff validate --all`: PASS; complete walk, no missing Handoffs or invalid manifests.

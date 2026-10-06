@@ -46,7 +46,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
     "expected_spec_digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298"
   },
   "continuation": {
@@ -96,7 +96,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298",
@@ -120,10 +120,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
+    "integrated": true,
+    "integrated_at": "2026-10-06T09:36:21Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -207,7 +207,7 @@
     "unresolved": 488
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T09:28:58.211822Z",
+  "updated_at": "2026-10-06T09:37:09.853422Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

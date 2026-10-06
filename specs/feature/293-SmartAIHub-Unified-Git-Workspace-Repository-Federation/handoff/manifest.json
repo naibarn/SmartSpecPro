@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
     "expected_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
+    "integrated": true,
+    "integrated_at": "2026-10-06T09:36:21Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -182,7 +182,7 @@
     "unresolved": 228
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T09:28:58.193296Z",
+  "updated_at": "2026-10-06T09:37:09.849266Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
