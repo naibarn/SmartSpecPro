@@ -29,14 +29,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "b0d1a9dbfaa81edfe433ab6ef14239d65615a471",
+    "expected_canonical_sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
     "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: candidate Specs are present only as untracked files in the primary checkout; after upload, validate and integrate them, refresh dynamic inventory, validate handoffs, regenerate global views, rerun scenarios 8, 9, 10, 11, 19, and 20, then resume bulk reconciliation.",
     "next_ready_workunit": null,
     "reactivation_predicate": "Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref",
-    "resume_point": "HANDOFF_FRAMEWORK_READY at ad560a5d05b498f2f1881cb96daac526c7588827; framework follow-up b0d1a9dbfaa81edfe433ab6ef14239d65615a471 is integrated. Preserve the unresolved candidate identity overlaps in pre-recovery-candidate-audit-b0d1a9db.md; hold bulk reconciliation until the resume predicate is true.",
+    "resume_point": "HANDOFF_FRAMEWORK_READY at ad560a5d05b498f2f1881cb96daac526c7588827; latest framework follow-up 3e47dab0d59acd274d3e5d897813ca0f6d5d8513 improves YAML title and revision metadata parsing. Preserve unresolved candidate ID overlaps in pre-recovery evidence and hold bulk reconciliation until the resume predicate is true.",
     "waiting_predicate": "Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref"
   },
   "continuation_assessment": {
@@ -86,7 +86,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -111,9 +111,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b0d1a9dbfaa81edfe433ab6ef14239d65615a471",
+    "canonical_sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513",
     "integrated": true,
-    "integrated_at": "2026-10-06T02:42:07Z"
+    "integrated_at": "2026-10-06T02:47:35Z"
   },
   "lifecycle": {
     "current_state": "WAITING_DEPENDENCY",
@@ -128,6 +128,11 @@
         "kind": "FRAMEWORK_FOLLOWUP_AND_CANDIDATE_OBSERVATION",
         "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-candidate-audit-b0d1a9db.md",
         "sha": "b0d1a9dbfaa81edfe433ab6ef14239d65615a471"
+      },
+      {
+        "kind": "FRAMEWORK_METADATA_PARSER_FOLLOWUP",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/framework-followup-3e47dab0.md",
+        "sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513"
       }
     ],
     "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -146,6 +151,11 @@
           "kind": "FRAMEWORK_FOLLOWUP_AND_CANDIDATE_OBSERVATION",
           "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/pre-recovery-candidate-audit-b0d1a9db.md",
           "sha": "b0d1a9dbfaa81edfe433ab6ef14239d65615a471"
+        },
+        {
+          "kind": "FRAMEWORK_METADATA_PARSER_FOLLOWUP",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/framework-followup-3e47dab0.md",
+          "sha": "3e47dab0d59acd274d3e5d897813ca0f6d5d8513"
         }
       ],
       "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -220,7 +230,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T02:42:59.316085Z",
+  "updated_at": "2026-10-06T02:48:04.993456Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
