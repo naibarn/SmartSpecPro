@@ -46,7 +46,16 @@ def _read_spec(path: Path) -> tuple[str | None, str | None, str | None, str | No
     if not text.strip():
         return None, digest, None, "EMPTY_SPEC"
     title = None
-    for line in text.splitlines()[:80]:
+    lines = text.splitlines()
+    if lines and lines[0].strip() == "---":
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            frontmatter_title = re.match(r"^title\s*:\s*(.*?)\s*$", line, re.I)
+            if frontmatter_title:
+                title = frontmatter_title.group(1).strip().strip("\"'") or None
+                break
+    for line in lines[:80] if title is None else ():
         heading = re.match(r"^\s*#\s+(.+?)\s*#*\s*$", line)
         if heading:
             title = heading.group(1).strip()
