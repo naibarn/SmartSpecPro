@@ -575,7 +575,14 @@ describe("verticalDramaEpisodes scene visual state mutations", () => {
     const episode = makeEpisode(plan);
     mockDb.select.mockReturnValueOnce(selectChain([episode]));
     const tx = {
-      select: vi.fn(() => selectChain([{ startFramePlan: plan }])),
+      select: vi
+        .fn()
+        .mockReturnValueOnce(selectChain([{ startFramePlan: plan }]))
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 10, characterKey: "child", parentCharacterId: null },
+          ])
+        ),
       update: vi.fn(() => updateChain([])),
     };
     mockDb.transaction.mockImplementationOnce(
@@ -620,7 +627,19 @@ describe("verticalDramaEpisodes scene visual state mutations", () => {
     mockDb.select.mockReturnValueOnce(selectChain([episode]));
     const update = updateChain([{ startFramePlan: savedPlan }]);
     const tx = {
-      select: vi.fn(() => selectChain([{ startFramePlan: plan }])),
+      select: vi
+        .fn()
+        .mockReturnValueOnce(selectChain([{ startFramePlan: plan }]))
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 10, characterKey: "child", parentCharacterId: null },
+            {
+              id: 11,
+              characterKey: "child-gray-shirt",
+              parentCharacterId: 10,
+            },
+          ])
+        ),
       update: vi.fn(() => update),
     };
     mockDb.transaction.mockImplementationOnce(
@@ -633,7 +652,7 @@ describe("verticalDramaEpisodes scene visual state mutations", () => {
         seriesId: "3",
         episodeId: "11",
         shotNumber: 1,
-        overrides: { child: "เด็กใส่เสื้อสีเทา" },
+        overrides: { "child-gray-shirt": "เด็กใส่เสื้อสีเทา" },
       },
     });
 

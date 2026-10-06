@@ -59,6 +59,109 @@ export function normalizeVerticalDramaCharacterDescriptionOverrides(
   return normalized;
 }
 
+export type VerticalDramaCharacterRefIdentity = {
+  characterKey: string;
+  characterId: string;
+  parentCharacterId?: string;
+};
+
+/** Map a dialogue variant to its base cast key when only the base character
+ * is physically present in the shot. Unknown refs are preserved so callers
+ * can surface a useful validation error instead of silently hiding them. */
+export function resolveVerticalDramaCharacterDescriptionKeys(args: {
+  dialogueCharacterKeys: readonly string[];
+  requiredCharacterRefs: readonly string[];
+  characters: readonly VerticalDramaCharacterRefIdentity[];
+}): string[] {
+  const required = new Set(args.requiredCharacterRefs.map(key => key.trim()));
+  const keyById = new Map(
+    args.characters.map(character => [
+      character.characterId,
+      character.characterKey,
+    ])
+  );
+  const characterByKey = new Map(
+    args.characters.map(character => [character.characterKey, character])
+  );
+  const resolved = new Set<string>();
+  for (const rawKey of args.dialogueCharacterKeys) {
+    const key = rawKey.trim();
+    if (!key) continue;
+    if (required.has(key)) {
+      resolved.add(key);
+      continue;
+    }
+    const character = characterByKey.get(key);
+    const parentKey = character?.parentCharacterId
+      ? keyById.get(character.parentCharacterId)
+      : undefined;
+    resolved.add(parentKey && required.has(parentKey) ? parentKey : key);
+  }
+  return [...resolved];
+}
+
+/** Canonicalize variant-keyed form data to a base cast key when that base
+ * character is present in the frame. This keeps writes correct even if an
+ * older browser still submits the variant key. */
+export function canonicalizeVerticalDramaCharacterDescriptionOverrideKeys(
+  overrides: VerticalDramaCharacterDescriptionOverrides,
+  requiredCharacterRefs: readonly string[],
+  characters: readonly VerticalDramaCharacterRefIdentity[]
+): VerticalDramaCharacterDescriptionOverrides {
+  const required = new Set(requiredCharacterRefs.map(key => key.trim()));
+  const keyById = new Map(
+    characters.map(character => [character.characterId, character.characterKey])
+  );
+  const characterByKey = new Map(
+    characters.map(character => [character.characterKey, character])
+  );
+  const result: VerticalDramaCharacterDescriptionOverrides = {};
+  for (const [rawKey, description] of Object.entries(overrides)) {
+    const key = rawKey.trim();
+    if (required.has(key)) {
+      result[key] = description;
+      continue;
+    }
+    const character = characterByKey.get(key);
+    const parentKey = character?.parentCharacterId
+      ? keyById.get(character.parentCharacterId)
+      : undefined;
+    if (
+      parentKey &&
+      required.has(parentKey) &&
+      !Object.hasOwn(result, parentKey)
+    ) {
+      result[parentKey] = description;
+    } else {
+      result[key] = description;
+    }
+  }
+  return result;
+}
+
+/** Add variant speaker aliases for prompt generation while keeping persisted
+ * overrides scoped to the physical frame's base cast refs. */
+export function addVerticalDramaVariantCharacterDescriptionAliases(
+  overrides: VerticalDramaCharacterDescriptionOverrides,
+  characters: readonly VerticalDramaCharacterRefIdentity[]
+): VerticalDramaCharacterDescriptionOverrides {
+  const result = { ...overrides };
+  const keyById = new Map(
+    characters.map(character => [character.characterId, character.characterKey])
+  );
+  for (const character of characters) {
+    if (
+      !character.parentCharacterId ||
+      Object.hasOwn(result, character.characterKey)
+    )
+      continue;
+    const parentKey = keyById.get(character.parentCharacterId);
+    const description = parentKey ? result[parentKey] : undefined;
+    if (description) result[character.characterKey] = description;
+  }
+  return result;
+}
+
 export type VerticalDramaVerifiedCastPosition = {
   characterKey: string;
   name: string;

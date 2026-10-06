@@ -69,6 +69,7 @@ import {
   swapShotCharacterRefKey,
 } from "@/lib/shotCharacterLooks";
 import {
+  resolveVerticalDramaCharacterDescriptionKeys,
   normalizeVerticalDramaCharacterDescriptionOverrides,
   VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH,
   validateVerticalDramaCastPositionLock,
@@ -4381,7 +4382,17 @@ export function VerticalDramaStoryboardPanel({
                 if (match) keys.add(match[0]);
               }
             }
-            return Array.from(keys);
+            return resolveVerticalDramaCharacterDescriptionKeys({
+              dialogueCharacterKeys: Array.from(keys),
+              requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
+              characters: Object.entries(characterPortraits).map(
+                ([characterKey, portrait]) => ({
+                  characterKey,
+                  characterId: portrait.characterId,
+                  parentCharacterId: portrait.parentCharacterId,
+                })
+              ),
+            });
           })();
           // A shot with no clip generated yet renders exactly one "empty"
           // slot (`undefined`), matching the previous single-`clip` behavior
