@@ -38,21 +38,6 @@
       "confidence": "LOW",
       "declared_claim_count": 0,
       "next_action": "Map each security requirement to current implementation and regression tests; assess current exposure and retain unresolved status where exact coverage or fresh verification is missing.",
-      "path": "specs/security/20260211",
-      "priority": "R0_SECURITY",
-      "record_key": "canonical:specs/security/20260211",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": null
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 0,
-      "next_action": "Map each security requirement to current implementation and regression tests; assess current exposure and retain unresolved status where exact coverage or fresh verification is missing.",
       "path": "specs/security/20260212",
       "priority": "R0_SECURITY",
       "record_key": "canonical:specs/security/20260212",
@@ -4728,6 +4713,15 @@
       "rationale": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "spec_id": "038"
+    },
+    {
+      "confidence": "MEDIUM",
+      "decision": "VALIDATION_ONLY",
+      "path": "specs/security/20260211",
+      "priority": "P2",
+      "rationale": "Complete focused editor insertion verification and rerun the normalized external URL case with deterministic DNS fixtures; then reassess requirement-level acceptance.",
+      "record_key": "canonical:specs/security/20260211",
+      "spec_id": null
     }
   ],
   "schema_version": 1

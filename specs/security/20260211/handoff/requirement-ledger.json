@@ -1,160 +1,206 @@
 {
-  "generation": 2,
+  "generation": 10,
   "reconciliation_version": 2,
   "requirements": [
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L60"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L60",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/libraryUrlPolicy.ts",
+        "apps/web/server/_core/index.ts",
+        "apps/web/client/src/components/library/DocumentPreviewPanel.tsx",
+        "apps/web/client/src/components/media/LibrarySearchPanel.tsx",
+        "apps/web/client/src/components/editor/TiptapMarkdownBridge.ts"
+      ],
+      "implementation_status": "PRESENT",
+      "next_action": "The tested preview, Markdown bridge, and thumbnail paths work; the DNS-limited normalized source case and exact editor insertion remain unresolved.",
       "requirement_digest": "b0224ee3bb1bffb407db5989327795aa6f6378107a68c969ae7513441a6687ee",
       "requirement_id": "REQ-716ABD462B56",
       "requirement_text": "- External image URLs continue to work in:",
       "source_spec_digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "#passed_focus:external HTTPS source and image proxy policy",
+        "#passed_focus:document image/video preview classification and rendering",
+        "#passed_focus:Markdown image parsing and serialization",
+        "#passed_focus:media library external image thumbnails"
+      ],
+      "verification_method": "Focused Vitest regression tests at exact canonical main SHA 6b2314d9681280b9d4e0329c4cad9c1d71ce4406"
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L61"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L61",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/library/DocumentPreviewPanel.tsx",
+        "apps/web/client/src/lib/documentManagementUi.ts"
+      ],
+      "implementation_status": "PRESENT",
+      "next_action": "External document image preview tests passed at the cited canonical SHA.",
       "requirement_digest": "b9a2835dcff0de98173c48605a845c96d00080cc7fa0654f966be70cc5667dfd",
       "requirement_id": "REQ-EBB62D70DA6D",
       "requirement_text": "- Document Management preview",
       "source_spec_digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "#passed_focus:document image/video preview classification and rendering"
+      ],
+      "verification_method": "Focused Vitest regression tests at exact canonical main SHA 6b2314d9681280b9d4e0329c4cad9c1d71ce4406"
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L62"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L62",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "apps/web/client/src/components/editor/TiptapMarkdownBridge.ts"
+      ],
+      "implementation_status": "PRESENT",
+      "next_action": "Parser and serializer work; editor insertion/render interaction still needs focused coverage.",
       "requirement_digest": "e176be5db78421cfa6848f38483a4cab709d3179c7e401f7025101f747305c1b",
       "requirement_id": "REQ-165894D8FE94",
       "requirement_text": "- Markdown editor image insertion/render",
       "source_spec_digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "apps/web/client/src/components/editor/TiptapMarkdownBridge.test.ts:parses image markdown into image node with src and alt",
+        "apps/web/client/src/components/editor/TiptapMarkdownBridge.test.ts:serializes an image node to markdown image syntax"
+      ],
+      "verification_method": "Focused Vitest regression tests at exact canonical main SHA 6b2314d9681280b9d4e0329c4cad9c1d71ce4406"
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L63"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L63",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/media/LibrarySearchPanel.ts"
+      ],
+      "implementation_status": "PRESENT",
+      "next_action": "External media thumbnails render in the library search view.",
       "requirement_digest": "c1d498d1a4d8658aa60861423e593ed11bebafc27831565a2e528681d5124949",
       "requirement_id": "REQ-8B6C46523B88",
       "requirement_text": "- Media/library search thumbnail usage",
       "source_spec_digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "#passed_focus:media library external image thumbnails"
+      ],
+      "verification_method": "Focused Vitest regression tests at exact canonical main SHA 6b2314d9681280b9d4e0329c4cad9c1d71ce4406"
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L64"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L64",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/services/libraryUrlPolicy.ts",
+        "apps/web/server/services/uploadContentSafety.ts",
+        "apps/web/server/services/libraryService.ts"
+      ],
+      "implementation_status": "PRESENT",
+      "next_action": "Dedicated unsafe scheme, upload handling, and targeted source/thumbnail rejection tests passed.",
       "requirement_digest": "933d1e5f712de47d694697639a38f0cc0c6b1d18d8a28e629e342c476eff1c47",
       "requirement_id": "REQ-FC8427931F5D",
       "requirement_text": "- Unsafe schemes and active-content vectors are blocked by policy.",
       "source_spec_digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "#passed_focus:blocked unsafe URL schemes and active-content upload handling",
+        "apps/web/server/services/libraryService.test.ts:rejects unsafe sourceUrl with deterministic validation error",
+        "apps/web/server/services/libraryService.test.ts:rejects unsafe thumbnailUrl updates before DB write"
+      ],
+      "verification_method": "Focused Vitest regression tests at exact canonical main SHA 6b2314d9681280b9d4e0329c4cad9c1d71ce4406"
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L65"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L65",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/routers/libraryOps.ts",
+        "apps/web/server/services/libraryOpsService.ts"
+      ],
+      "implementation_status": "PRESENT",
+      "next_action": "Tenant-scoped Ops tests passed; missing tenant context is denied in allowlist mode.",
       "requirement_digest": "ebfc362feaf154f5fb76cf5216fa03f69554c61fe7bc5313604243ae7fb5a384",
       "requirement_id": "REQ-A35B7691CE6F",
       "requirement_text": "- No cross-tenant ops side effects in tenant-admin mode.",
       "source_spec_digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "#passed_focus:tenant-scoped library Ops behavior",
+        "apps/web/server/services/securityRegressionReleaseGate.test.ts:prevents cross-tenant callback reprocess under tenant-scoped repo"
+      ],
+      "verification_method": "Focused Vitest regression tests at exact canonical main SHA 6b2314d9681280b9d4e0329c4cad9c1d71ce4406"
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L66"
       ],
       "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260211/spec.md#L66",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "apps/web/server/services/securityRegressionReleaseGate.test.ts",
+        "apps/web/server/services/libraryUrlPolicy.ts",
+        "apps/web/server/services/uploadContentSafety.ts"
+      ],
+      "implementation_status": "PRESENT",
+      "next_action": "Dedicated security regression tests passed, but the broader libraryService suite has mock/DNS failures, so suite-wide acceptance is not claimed.",
       "requirement_digest": "2ff96c6fdcb8d074e89491a34fa50c089751f727ade2f4d323598d36b0ef48eb",
       "requirement_id": "REQ-4A9C3CE1319F",
       "requirement_text": "- Security tests added and passing for both positive (allowed) and negative (blocked) cases.",
       "source_spec_digest": "b34db11e9ba244dc46588ae93601cf5c2983a3b554382c6f62831b1f6151d3cc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/security/20260211/handoff/evidence/focused-security-verification-6b2314d.json",
+        "apps/web/server/services/securityRegressionReleaseGate.test.ts"
+      ],
+      "verification_method": "Focused Vitest regression tests at exact canonical main SHA 6b2314d9681280b9d4e0329c4cad9c1d71ce4406"
     }
   ],
   "schema_version": 1,

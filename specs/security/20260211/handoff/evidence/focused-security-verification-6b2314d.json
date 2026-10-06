@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-10-06T02:01:06Z",
+  "canonical_ref": "refs/heads/main",
+  "canonical_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
+  "scope": "Focused verification for Security Hardening Spec 2026-02-11; no application files changed.",
+  "commands": [
+    {
+      "command": "JWT_SECRET=<ephemeral test-only value> pnpm -C apps/web exec vitest run server/services/securityRegressionReleaseGate.test.ts server/services/libraryUrlPolicy.test.ts server/services/imageProxySafety.test.ts server/services/uploadContentSafety.test.ts server/services/libraryFeatureFlags.test.ts server/services/libraryService.test.ts server/routers/libraryOps.test.ts client/src/lib/securityCompatibility.test.ts client/src/components/editor/TiptapMarkdownBridge.test.ts client/src/components/library/DocumentPreviewPanel.test.tsx client/src/components/media/LibrarySearchPanel.test.ts",
+      "result": "PARTIAL",
+      "passed": 131,
+      "failed": 11,
+      "skipped": 3,
+      "todo": 37,
+      "notes": "10 of 11 files passed. The libraryService suite has 11 failures; failures are predominantly stale DB mock contracts. Its normalized external URL case fails because DNS resolution returned no records for cdn.example.com."
+    },
+    {
+      "command": "JWT_SECRET=<ephemeral test-only value> pnpm -C apps/web exec vitest run server/services/libraryService.test.ts -t 'normalized sourceUrl|unsafe sourceUrl|unsafe thumbnailUrl'",
+      "result": "PARTIAL",
+      "passed": 2,
+      "failed": 1,
+      "skipped": 73,
+      "notes": "Unsafe sourceUrl and thumbnailUrl rejection cases passed. The normalized external URL case is blocked by DNS resolution returning no records for cdn.example.com."
+    }
+  ],
+  "passed_focus": [
+    "external HTTPS source and image proxy policy",
+    "document image/video preview classification and rendering",
+    "Markdown image parsing and serialization",
+    "media library external image thumbnails",
+    "blocked unsafe URL schemes and active-content upload handling",
+    "missing-tenant deny behavior in allowlist mode",
+    "tenant-scoped library Ops behavior"
+  ],
+  "limitations": [
+    "The CDN DNS failure is an environment limitation for this test run; no result was converted into PASS.",
+    "The libraryService suite contains unrelated DB mock contract failures; the targeted URL rejection tests were also run independently.",
+    "No deployment or production acceptance evidence was checked."
+  ]
+}

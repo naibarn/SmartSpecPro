@@ -28,3 +28,11 @@ These are finding-driven reviews. Passing framework checks do not mean repositor
 - Re-run skill/runtime synchronization and the full migration audit on the final integrated SHA.
 
 Framework validation for this candidate: 50 focused tests passed; `compileall`, `index --check`, and `validate --all` passed. This is a partial checkpoint, not migration completion.
+
+## Follow-up review at canonical SHA `6b2314d9681280b9d4e0329c4cad9c1d71ce4406`
+
+- Source-reference counting now deduplicates identical file/line mentions while retaining ambiguity when multiple records share an ID. A dedicated duplicate-ID regression test passes; full reconcile rerun kept all 294 generations and summary fields stable.
+- Security Spec `specs/security/20260211` was reviewed against current URL policy, upload handling, library Ops, and focused tests. It is now `ACTIVE_CANONICAL` / `VALIDATION_ONLY` at MEDIUM confidence; 4 requirements PASS, 1 is PARTIAL, 2 are VALIDATION_PENDING. It is not completion eligible.
+- Its focused test evidence records 131 passing, 11 failing, 3 skipped, and 37 todo in the 11-file slice; the dedicated 10-file security slice passed, and two unsafe URL tests passed in isolation. The normalized external URL case is blocked by DNS resolution for `cdn.example.com`; this is not claimed as a code pass. The broader library service suite also has mock-contract failures.
+- The other dated Security Spec (`20260212`) remains R0 and unclassified. Its requested full TypeScript check is not run in this shared implementation session; use a dedicated runner or CI after reviewing its exact current acceptance evidence.
+- Updated reconciliation review queue: R0 data integrity 2, R0 security 1, R1 identity conflicts 36, R1 runtime references 35, R2 test references 11, R3 relationship claims 7, R4 status claims 166, R5 without direct evidence 62 (320 remaining records).
