@@ -47,10 +47,9 @@ stop_reason: partial implementation checkpoint
 
 ## Current handoff
 
-- PR #93 merged normally as `392b41dbaadcee6bfb4497735d451db8b553aef7`; implementation commit `b85542829abe4d119f7e31afc04d1cb5d1947a67` is reachable from `origin/main`.
-- `/home/dev/projects/SmartSpecPro` was fast-forwarded to `main` at `392b41dbaadcee6bfb4497735d451db8b553aef7`; resolver confirmed SHA parity before the Handoff metadata follow-up edits.
+- PR #93 merged as `392b41dbaadcee6bfb4497735d451db8b553aef7`; PR #95 merged as `a6c67a6cd888b64d7822a22e736e9ca3cd845527`. The registered `/home/dev/projects/SmartSpecPro` workspace remains on the clean task branch and is behind current `origin/main`; local `main` is checked out in a separate `/tmp` worktree, which must remain untouched.
 - The shared Spec Handoff writer reconciled SPEC-293/294/295, regenerated global status/index views, recorded the exact integrated SHA and `PARTIAL_INTEGRATED`, and queued P0-WU-3. Validation passed.
 - P0-WU-3 now binds convergence and retirement receipt fields, repository/project/task identity, receipt IDs, Git SHAs, clean state, ownership state, and timestamps to Spec 224 Final Verify. CLI and lifecycle skill instructions pass the run ID; receipts remain structured evidence without cryptographic signatures or external artifact-source authentication.
 - Focused Spec-224 verification passed 13/13; full two-file run passed 25 tests and retains one unrelated resource-event idempotency failure (`RUN_IDEMPOTENCY_CONFLICT`, before completion logic). Handoff validation/index and 82 framework tests pass; workspace authority/lifecycle Python tests pass 22; skill audit passes 330.
 - P0-WU-4 must execute remaining race and 30-case behavioral coverage. Mission Control UI, distributed cross-host authority, production convergence, and race/stress tests remain unimplemented or unproven.
-- Handoff metadata and WU-3 follow-up branch: `codex/p0-workspace-authority-handoff-20261007`; its commit/PR are pending.
+- Post-merge resolver verification exposed that a clean canonical user workspace on an integrated non-canonical branch could not fast-forward while `main` was checked out elsewhere. A focused fix and regression test are now in progress on `codex/p0-workspace-authority-handoff-20261007`.

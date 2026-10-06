@@ -741,17 +741,19 @@ def converge_canonical_workspace(
             return {"status": "BLOCKED_UNPUSHED_INTENDED_WORK", "workspace_sha": facts["head_sha"], "canonical_sha": tip, "commit_classification": classification, "recovery_bundle": bundle}
         if facts["branch"] != branch:
             other = _branch_in_other_worktree(target_root, branch, target_root)
-            if other:
-                return {"status": "BLOCKED_CANONICAL_BRANCH_IN_USE", "canonical_branch": branch, "other_workspace": other, "canonical_sha": tip}
-            if classification["state"] not in {"ALREADY_IN_CANONICAL", "PATCH_EQUIVALENT"}:
+            if not other and classification["state"] not in {"ALREADY_IN_CANONICAL", "PATCH_EQUIVALENT"}:
                 return {"status": "BLOCKED_BRANCH_RECONCILIATION", "workspace_sha": facts["head_sha"], "canonical_sha": tip}
-            switch = subprocess.run(["git", "-C", str(target_root), "switch", branch], text=True, capture_output=True)
-            if switch.returncode:
-                tracking = _remote_tracking_ref(policy)
-                if _git(target_root, "show-ref", "--verify", f"refs/heads/{branch}", check=False):
-                    return {"status": "BLOCKED_BRANCH_RECONCILIATION", "reason": switch.stderr.strip()[:500], "canonical_sha": tip}
-                _git(target_root, "switch", "--track", "-c", branch, tracking)
-            facts = _git_facts(target_root)
+            # The registered user workspace may be on a stale branch while the
+            # canonical branch is open in another checkout. Keep its branch
+            # identity and let the guarded fast-forward below converge this path.
+            if not other:
+                switch = subprocess.run(["git", "-C", str(target_root), "switch", branch], text=True, capture_output=True)
+                if switch.returncode:
+                    tracking = _remote_tracking_ref(policy)
+                    if _git(target_root, "show-ref", "--verify", f"refs/heads/{branch}", check=False):
+                        return {"status": "BLOCKED_BRANCH_RECONCILIATION", "reason": switch.stderr.strip()[:500], "canonical_sha": tip}
+                    _git(target_root, "switch", "--track", "-c", branch, tracking)
+                facts = _git_facts(target_root)
         if facts["head_sha"] != tip:
             if not _is_ancestor(target_root, facts["head_sha"], tip):
                 return {"status": "BLOCKED_DIVERGED", "workspace_sha": facts["head_sha"], "canonical_sha": tip, "commit_classification": classification}
