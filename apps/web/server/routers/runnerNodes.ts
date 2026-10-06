@@ -81,6 +81,39 @@ export function safeWorkspaceIds(input: unknown): string[] {
   ].slice(0, 64);
 }
 
+export type SafeWorkspaceFact = {
+  workspaceId: string;
+  displayName: string | null;
+  gitHead: string | null;
+  gitBranch: string | null;
+  dirty: boolean | null;
+};
+
+export function safeWorkspaceFacts(
+  input: unknown,
+  workspaceIds: string[]
+): SafeWorkspaceFact[] {
+  if (!Array.isArray(input)) return [];
+  const allowedIds = new Set(workspaceIds);
+  const seen = new Set<string>();
+  return input.slice(0, 64).flatMap(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const raw = item as Record<string, unknown>;
+    const workspaceId = boundedText(raw.workspaceId, 160);
+    if (!workspaceId || !allowedIds.has(workspaceId) || seen.has(workspaceId)) return [];
+    seen.add(workspaceId);
+    const gitHead = boundedText(raw.gitHead, 64);
+    const gitBranch = boundedText(raw.gitBranch, 160);
+    return [{
+      workspaceId,
+      displayName: boundedText(raw.displayName, 160),
+      gitHead: gitHead && /^[a-f0-9]{40,64}$/i.test(gitHead) ? gitHead : null,
+      gitBranch: gitBranch && /^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/.test(gitBranch) && !gitBranch.includes("..") && !gitBranch.includes("//") ? gitBranch : null,
+      dirty: typeof raw.dirty === "boolean" ? raw.dirty : null,
+    }];
+  });
+}
+
 export const runnerNodesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = tenantRequired(ctx);
@@ -105,6 +138,7 @@ export const runnerNodesRouter = router({
           toolInventory?: unknown[];
           capabilityInventory?: unknown[];
           workspaceIds?: unknown[];
+          workspaces?: unknown[];
           platform?: {
             os: string;
             architecture: string;
@@ -117,6 +151,7 @@ export const runnerNodesRouter = router({
           "capability"
         );
         const workspaceIds = safeWorkspaceIds(snapshot?.workspaceIds);
+        const workspaces = safeWorkspaceFacts(snapshot?.workspaces, workspaceIds);
         const snapshotExpired = Boolean(
           row.snapshotExpiresAt && row.snapshotExpiresAt.getTime() <= Date.now()
         );
@@ -147,6 +182,7 @@ export const runnerNodesRouter = router({
           toolCount: toolInventory.length,
           capabilityCount: capabilityInventory.length,
           workspaceIds,
+          workspaces,
           toolInventory,
           capabilityInventory,
         };
