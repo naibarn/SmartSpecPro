@@ -20,7 +20,7 @@ The repository already has a desktop app, but not yet a desktop worker-host prod
    - `native_constrained`
    - `wsl2_managed`
    - `docker_isolated`
-3. Supersede the old “thin sidecar” wording from Feature 059.
+3. Supersede the old “thin sidecar” wording from Feature 301.
 4. Lock the minimum desktop worker registration metadata:
    - `desktopVersion`
    - `runtimeVersion`

@@ -3,7 +3,7 @@
 Version: 1.0
 Date: 2026-04-07
 Status: Proposed
-Depends-on: 072-claw-worker-platform-access, 071-openclaw-external-runtime-integration, 059-external-worker-provider-framework, 043-PublicAPI-ExternalAgentGateway
+Depends-on: 072-claw-worker-platform-access, 071-openclaw-external-runtime-integration, 301-external-worker-provider-framework, 043-PublicAPI-ExternalAgentGateway
 Audience: Web Control Plane, Public API, MCP, Runtime, Billing, Security, QA, Admin Ops
 
 ---

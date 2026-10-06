@@ -1,0 +1,912 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#000",
+      "specs/feature/296-silence-detection/spec.md",
+      "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54"
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/296-silence-detection/spec.md"
+      },
+      {
+        "digest": "008b1d450b77891ecbcf347ca707c3b91df74e832632a3e65465f7e754949206",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-plan.md"
+      },
+      {
+        "digest": "49a52fece191e007c20fc51c7f47887caef89d494ddbb9a280845f1e44735950",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-spec.md"
+      },
+      {
+        "digest": "dff5d36d88e2672c68158bb2329dcb9b4107d8758b56fad79361ca8950ad9666",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/COMPLETION_SUMMARY.md"
+      },
+      {
+        "digest": "2dd8324657dab9914b06e61bdb409e326280b81e638ff5165cabae738c1ee9b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/FINAL_SECURITY_IMPROVEMENTS.md"
+      },
+      {
+        "digest": "886076a18dc22e5643b14a1cde6421509e24cdfb92f5339fedfa4349fca85b55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/MASTER_SUMMARY.md"
+      },
+      {
+        "digest": "3c225d7d7d101d93e58baeb610e30e0fb5eaf2979fe5d383a5f492a2d8be0c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/PRODUCTION_READINESS_CHECKLIST.md"
+      },
+      {
+        "digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3531d61d2d6f73d0140477b1d21a16d38a6b41bb3dd6db5f18e236b8a8f01bbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/load_testing_guide.md"
+      },
+      {
+        "digest": "e8368036baf6d4561c2b877ff41cca7a2b1c63fa9fb3c7bb05e4d798f5d8fd5f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/performance_testing.md"
+      },
+      {
+        "digest": "1ba669d29fb51023081a4b89daca510d7fecbc1fcc94adfe7a98d24791843157",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/security_audit_checklist.md"
+      },
+      {
+        "digest": "cbf3df6157adc06d75fabfa6e78a7bc94e648ae8bdc1cd1894d5f1a9af73248b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/staging_deployment_guide.md"
+      },
+      {
+        "digest": "1bfcada688ca942913ebd2db6c2926519b79217af843a5d2deb741dfc789c202",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/uat_execution_guide.md"
+      },
+      {
+        "digest": "9976816626641011b5a982fc5878ebb8fd4cc51bcfd99928ff9119ba54ec374e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/usage.md"
+      },
+      {
+        "digest": "99518d36b810b8110366fc4fe4257e47c5428417c552371932ccd25834c0ba1e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/user_acceptance.md"
+      },
+      {
+        "digest": "115ffd086a262c32f3e4bfb454ce12ce3dea5fac459e2ee0fb3e7cca4657d28c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "0e48aeb00a4dc4fc6c4fd51e8d52eafbf13fd02ccd0c06a7514bbf70fe3b7a85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/index.md"
+      },
+      {
+        "digest": "b6d4d9388235c7cfbe8137037f2accfd7991f36e54467f6f3e9eb527211b13ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-01-types-shared-logic.md"
+      },
+      {
+        "digest": "de6faf095756b8c5337be013e21800cac0ed0326c46ed7a0c7a39654b2df8c40",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-02-dialog-layout.md"
+      },
+      {
+        "digest": "72518d70c35304d68ddc64c883e2877052c37b31bbde5b982a25639af0ed507d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-03-settings-detection.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/296-silence-detection/spec.md"
+      },
+      {
+        "digest": "008b1d450b77891ecbcf347ca707c3b91df74e832632a3e65465f7e754949206",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-plan.md"
+      },
+      {
+        "digest": "49a52fece191e007c20fc51c7f47887caef89d494ddbb9a280845f1e44735950",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-spec.md"
+      },
+      {
+        "digest": "dff5d36d88e2672c68158bb2329dcb9b4107d8758b56fad79361ca8950ad9666",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/COMPLETION_SUMMARY.md"
+      },
+      {
+        "digest": "2dd8324657dab9914b06e61bdb409e326280b81e638ff5165cabae738c1ee9b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/FINAL_SECURITY_IMPROVEMENTS.md"
+      },
+      {
+        "digest": "886076a18dc22e5643b14a1cde6421509e24cdfb92f5339fedfa4349fca85b55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/MASTER_SUMMARY.md"
+      },
+      {
+        "digest": "3c225d7d7d101d93e58baeb610e30e0fb5eaf2979fe5d383a5f492a2d8be0c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/PRODUCTION_READINESS_CHECKLIST.md"
+      },
+      {
+        "digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3531d61d2d6f73d0140477b1d21a16d38a6b41bb3dd6db5f18e236b8a8f01bbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/load_testing_guide.md"
+      },
+      {
+        "digest": "e8368036baf6d4561c2b877ff41cca7a2b1c63fa9fb3c7bb05e4d798f5d8fd5f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/performance_testing.md"
+      },
+      {
+        "digest": "1ba669d29fb51023081a4b89daca510d7fecbc1fcc94adfe7a98d24791843157",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/security_audit_checklist.md"
+      },
+      {
+        "digest": "cbf3df6157adc06d75fabfa6e78a7bc94e648ae8bdc1cd1894d5f1a9af73248b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/staging_deployment_guide.md"
+      },
+      {
+        "digest": "1bfcada688ca942913ebd2db6c2926519b79217af843a5d2deb741dfc789c202",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/uat_execution_guide.md"
+      },
+      {
+        "digest": "9976816626641011b5a982fc5878ebb8fd4cc51bcfd99928ff9119ba54ec374e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/usage.md"
+      },
+      {
+        "digest": "99518d36b810b8110366fc4fe4257e47c5428417c552371932ccd25834c0ba1e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/user_acceptance.md"
+      },
+      {
+        "digest": "115ffd086a262c32f3e4bfb454ce12ce3dea5fac459e2ee0fb3e7cca4657d28c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "0e48aeb00a4dc4fc6c4fd51e8d52eafbf13fd02ccd0c06a7514bbf70fe3b7a85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/index.md"
+      },
+      {
+        "digest": "b6d4d9388235c7cfbe8137037f2accfd7991f36e54467f6f3e9eb527211b13ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-01-types-shared-logic.md"
+      },
+      {
+        "digest": "de6faf095756b8c5337be013e21800cac0ed0326c46ed7a0c7a39654b2df8c40",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-02-dialog-layout.md"
+      },
+      {
+        "digest": "72518d70c35304d68ddc64c883e2877052c37b31bbde5b982a25639af0ed507d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-03-settings-detection.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 11,
+  "identity": {
+    "canonical_path": "specs/feature/296-silence-detection/spec.md",
+    "digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T09:57:07.911854Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-09-18T21:06:54+07:00",
+      "spec_last_changed_at": "2026-09-18T21:06:54+07:00"
+    },
+    "revision": null,
+    "slug": "296-silence-detection",
+    "spec_id": "296",
+    "title": "Feature 296: Silence Detection (Dead Air Removal) — Full-Screen Dialog"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [],
+    "updated_at": "2026-10-06T09:57:07.911854Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#000",
+        "specs/feature/296-silence-detection/spec.md",
+        "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54"
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T09:57:07.911854Z",
+    "sources": [
+      {
+        "digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/296-silence-detection/spec.md"
+      },
+      {
+        "digest": "008b1d450b77891ecbcf347ca707c3b91df74e832632a3e65465f7e754949206",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-plan.md"
+      },
+      {
+        "digest": "49a52fece191e007c20fc51c7f47887caef89d494ddbb9a280845f1e44735950",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-spec.md"
+      },
+      {
+        "digest": "dff5d36d88e2672c68158bb2329dcb9b4107d8758b56fad79361ca8950ad9666",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/COMPLETION_SUMMARY.md"
+      },
+      {
+        "digest": "2dd8324657dab9914b06e61bdb409e326280b81e638ff5165cabae738c1ee9b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/FINAL_SECURITY_IMPROVEMENTS.md"
+      },
+      {
+        "digest": "886076a18dc22e5643b14a1cde6421509e24cdfb92f5339fedfa4349fca85b55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/MASTER_SUMMARY.md"
+      },
+      {
+        "digest": "3c225d7d7d101d93e58baeb610e30e0fb5eaf2979fe5d383a5f492a2d8be0c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/PRODUCTION_READINESS_CHECKLIST.md"
+      },
+      {
+        "digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3531d61d2d6f73d0140477b1d21a16d38a6b41bb3dd6db5f18e236b8a8f01bbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/load_testing_guide.md"
+      },
+      {
+        "digest": "e8368036baf6d4561c2b877ff41cca7a2b1c63fa9fb3c7bb05e4d798f5d8fd5f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/performance_testing.md"
+      },
+      {
+        "digest": "1ba669d29fb51023081a4b89daca510d7fecbc1fcc94adfe7a98d24791843157",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/security_audit_checklist.md"
+      },
+      {
+        "digest": "cbf3df6157adc06d75fabfa6e78a7bc94e648ae8bdc1cd1894d5f1a9af73248b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/staging_deployment_guide.md"
+      },
+      {
+        "digest": "1bfcada688ca942913ebd2db6c2926519b79217af843a5d2deb741dfc789c202",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/uat_execution_guide.md"
+      },
+      {
+        "digest": "9976816626641011b5a982fc5878ebb8fd4cc51bcfd99928ff9119ba54ec374e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/usage.md"
+      },
+      {
+        "digest": "99518d36b810b8110366fc4fe4257e47c5428417c552371932ccd25834c0ba1e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/user_acceptance.md"
+      },
+      {
+        "digest": "115ffd086a262c32f3e4bfb454ce12ce3dea5fac459e2ee0fb3e7cca4657d28c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "0e48aeb00a4dc4fc6c4fd51e8d52eafbf13fd02ccd0c06a7514bbf70fe3b7a85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/index.md"
+      },
+      {
+        "digest": "b6d4d9388235c7cfbe8137037f2accfd7991f36e54467f6f3e9eb527211b13ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-01-types-shared-logic.md"
+      },
+      {
+        "digest": "de6faf095756b8c5337be013e21800cac0ed0326c46ed7a0c7a39654b2df8c40",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-02-dialog-layout.md"
+      },
+      {
+        "digest": "72518d70c35304d68ddc64c883e2877052c37b31bbde5b982a25639af0ed507d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-03-settings-detection.md"
+      },
+      {
+        "digest": "1006ff366c63f85c9e277bdb97c9f48ff5b45412a417f6d0dc3a57f6be5633ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-04-region-list.md"
+      },
+      {
+        "digest": "2c2fe7be94f4e110691df76c519904ef0a9bc0faa8466b1a7e8d0114f5907910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-05-waveform-overlay.md"
+      },
+      {
+        "digest": "c3318c7704e810181b926787b80a176e6f32dc79a52334974b086e752442709a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-06-mini-timeline.md"
+      },
+      {
+        "digest": "7db91ccfe9004af72394f73f55c2389686d6da9121a0134a59e109f7b5ae2178",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-07-preview-skip-silence.md"
+      },
+      {
+        "digest": "3760c71c386f94d90297c684dfcb57b57a0708fc6ef90cc679c5eda5bb6ce45b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-08-export-to-timeline.md"
+      },
+      {
+        "digest": "5cdcffffea8b8b4d759fc7bd0b855f08b7011616763a2f56d331bf4d50d36f77",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-09-backend-dead-air-cut.md"
+      },
+      {
+        "digest": "01d7ed481ff30c44e42bb8280bbcea9ce68e12aa06d2210cc48b48ac3673e668",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-10-media-job-client.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "90a0537c94dfc2df12fc54ba3cac3d8049072ce6",
+        "commit_hash_length": 40,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-types-shared-logic: complete; commit_hash=90a0537c94dfc2df12fc54ba3cac3d8049072ce6",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-types-shared-logic",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "9713fc9",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-dialog-layout: complete; commit_hash=9713fc9",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-dialog-layout",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "86718e9",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-settings-detection: complete; commit_hash=86718e9",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-settings-detection",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "871ad95",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-region-list: complete; commit_hash=871ad95",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-region-list",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "6132170",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-waveform-overlay: complete; commit_hash=6132170",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-waveform-overlay",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "822950e",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-06-mini-timeline: complete; commit_hash=822950e",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-06-mini-timeline",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "9330776",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-07-preview-skip-silence: complete; commit_hash=9330776",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-07-preview-skip-silence",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "f241552",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-08-export-to-timeline: complete; commit_hash=f241552",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-08-export-to-timeline",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "86730b3",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-09-backend-dead-air-cut: complete; commit_hash=86730b3",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-09-backend-dead-air-cut",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "b3ae661",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-10-media-job-client: complete; commit_hash=b3ae661",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-10-media-job-client",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "90a0537c94dfc2df12fc54ba3cac3d8049072ce6",
+        "commit_hash_length": 40,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-types-shared-logic: complete; commit_hash=90a0537c94dfc2df12fc54ba3cac3d8049072ce6",
+        "line": null,
+        "section": "section-01-types-shared-logic",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "9713fc9",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-dialog-layout: complete; commit_hash=9713fc9",
+        "line": null,
+        "section": "section-02-dialog-layout",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "86718e9",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-settings-detection: complete; commit_hash=86718e9",
+        "line": null,
+        "section": "section-03-settings-detection",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "871ad95",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-region-list: complete; commit_hash=871ad95",
+        "line": null,
+        "section": "section-04-region-list",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "6132170",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-waveform-overlay: complete; commit_hash=6132170",
+        "line": null,
+        "section": "section-05-waveform-overlay",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "822950e",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-06-mini-timeline: complete; commit_hash=822950e",
+        "line": null,
+        "section": "section-06-mini-timeline",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "9330776",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-07-preview-skip-silence: complete; commit_hash=9330776",
+        "line": null,
+        "section": "section-07-preview-skip-silence",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "f241552",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-08-export-to-timeline: complete; commit_hash=f241552",
+        "line": null,
+        "section": "section-08-export-to-timeline",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "86730b3",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-09-backend-dead-air-cut: complete; commit_hash=86730b3",
+        "line": null,
+        "section": "section-09-backend-dead-air-cut",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "b3ae661",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-10-media-job-client: complete; commit_hash=b3ae661",
+        "line": null,
+        "section": "section-10-media-job-client",
+        "source": "specs/feature/296-silence-detection/implementation/deep_implement_config.json",
+        "source_digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "value": "complete"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/296-silence-detection/spec.md"
+      },
+      {
+        "digest": "008b1d450b77891ecbcf347ca707c3b91df74e832632a3e65465f7e754949206",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-plan.md"
+      },
+      {
+        "digest": "49a52fece191e007c20fc51c7f47887caef89d494ddbb9a280845f1e44735950",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/claude-spec.md"
+      },
+      {
+        "digest": "dff5d36d88e2672c68158bb2329dcb9b4107d8758b56fad79361ca8950ad9666",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/COMPLETION_SUMMARY.md"
+      },
+      {
+        "digest": "2dd8324657dab9914b06e61bdb409e326280b81e638ff5165cabae738c1ee9b1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/FINAL_SECURITY_IMPROVEMENTS.md"
+      },
+      {
+        "digest": "886076a18dc22e5643b14a1cde6421509e24cdfb92f5339fedfa4349fca85b55",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/MASTER_SUMMARY.md"
+      },
+      {
+        "digest": "3c225d7d7d101d93e58baeb610e30e0fb5eaf2979fe5d383a5f492a2d8be0c2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/PRODUCTION_READINESS_CHECKLIST.md"
+      },
+      {
+        "digest": "ef29f86132452572c994dcea529a2c95930d09034facceae00babdd906c67369",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "3531d61d2d6f73d0140477b1d21a16d38a6b41bb3dd6db5f18e236b8a8f01bbf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/load_testing_guide.md"
+      },
+      {
+        "digest": "e8368036baf6d4561c2b877ff41cca7a2b1c63fa9fb3c7bb05e4d798f5d8fd5f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/performance_testing.md"
+      },
+      {
+        "digest": "1ba669d29fb51023081a4b89daca510d7fecbc1fcc94adfe7a98d24791843157",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/security_audit_checklist.md"
+      },
+      {
+        "digest": "cbf3df6157adc06d75fabfa6e78a7bc94e648ae8bdc1cd1894d5f1a9af73248b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/staging_deployment_guide.md"
+      },
+      {
+        "digest": "1bfcada688ca942913ebd2db6c2926519b79217af843a5d2deb741dfc789c202",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/uat_execution_guide.md"
+      },
+      {
+        "digest": "9976816626641011b5a982fc5878ebb8fd4cc51bcfd99928ff9119ba54ec374e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/usage.md"
+      },
+      {
+        "digest": "99518d36b810b8110366fc4fe4257e47c5428417c552371932ccd25834c0ba1e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/implementation/user_acceptance.md"
+      },
+      {
+        "digest": "115ffd086a262c32f3e4bfb454ce12ce3dea5fac459e2ee0fb3e7cca4657d28c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/reviews/iteration-1-opus.md"
+      },
+      {
+        "digest": "0e48aeb00a4dc4fc6c4fd51e8d52eafbf13fd02ccd0c06a7514bbf70fe3b7a85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/index.md"
+      },
+      {
+        "digest": "b6d4d9388235c7cfbe8137037f2accfd7991f36e54467f6f3e9eb527211b13ac",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-01-types-shared-logic.md"
+      },
+      {
+        "digest": "de6faf095756b8c5337be013e21800cac0ed0326c46ed7a0c7a39654b2df8c40",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-02-dialog-layout.md"
+      },
+      {
+        "digest": "72518d70c35304d68ddc64c883e2877052c37b31bbde5b982a25639af0ed507d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-03-settings-detection.md"
+      },
+      {
+        "digest": "1006ff366c63f85c9e277bdb97c9f48ff5b45412a417f6d0dc3a57f6be5633ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-04-region-list.md"
+      },
+      {
+        "digest": "2c2fe7be94f4e110691df76c519904ef0a9bc0faa8466b1a7e8d0114f5907910",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-05-waveform-overlay.md"
+      },
+      {
+        "digest": "c3318c7704e810181b926787b80a176e6f32dc79a52334974b086e752442709a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-06-mini-timeline.md"
+      },
+      {
+        "digest": "7db91ccfe9004af72394f73f55c2389686d6da9121a0134a59e109f7b5ae2178",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-07-preview-skip-silence.md"
+      },
+      {
+        "digest": "3760c71c386f94d90297c684dfcb57b57a0708fc6ef90cc679c5eda5bb6ce45b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-08-export-to-timeline.md"
+      },
+      {
+        "digest": "5cdcffffea8b8b4d759fc7bd0b855f08b7011616763a2f56d331bf4d50d36f77",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-09-backend-dead-air-cut.md"
+      },
+      {
+        "digest": "01d7ed481ff30c44e42bb8280bbcea9ce68e12aa06d2210cc48b48ac3673e668",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/296-silence-detection/sections/section-10-media-job-client.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 14,
+    "unresolved": 14
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T09:57:07.911854Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md"
       },
@@ -117,7 +117,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6"
+    "expected_spec_digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78"
   },
   "continuation": {
     "next_action": null,
@@ -131,7 +131,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md"
       },
@@ -253,7 +253,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md"
       },
@@ -356,13 +356,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
-    "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+    "digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.252212Z",
+      "last_evidence_at": "2026-10-06T09:56:58.868338Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-09T12:41:19+07:00",
       "spec_last_changed_at": "2026-04-15T08:00:16+07:00"
@@ -386,10 +386,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.252212Z"
+    "updated_at": "2026-10-06T09:56:58.868338Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -399,10 +399,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.252212Z",
+    "reconciled_at": "2026-10-06T09:56:58.868338Z",
     "sources": [
       {
-        "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md"
       },
@@ -549,27 +549,29 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
-        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "source_digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "value": "Proposed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_RELATIONSHIP",
         "confidence": "LOW",
-        "excerpt": "Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model",
+        "excerpt": "Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 301-external-worker-provider-framework where this feature defines the canonical desktop-host model",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "relation": "SUPERSEDES",
-        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
         "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
-        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
-        "target_ambiguous": true,
-        "target_candidates": [],
+        "source_digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "target_spec_ids": [],
-        "value": "conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model"
+        "value": "conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 301-external-worker-provider-framework where this feature defines the canonical desktop-host model"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -591,29 +593,26 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
-        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "source_digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "value": "Proposed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_RELATIONSHIP",
         "confidence": "LOW",
-        "excerpt": "Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model",
+        "excerpt": "Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 301-external-worker-provider-framework where this feature defines the canonical desktop-host model",
         "line": 7,
         "relation": "SUPERSEDES",
-        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
         "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
-        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
-        "target_ambiguous": true,
-        "target_candidates": [],
+        "source_digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "target_spec_ids": [],
-        "value": "conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model"
+        "value": "conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 301-external-worker-provider-framework where this feature defines the canonical desktop-host model"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "digest": "e8a71ab2c02f21b50afa8e4cc0a4504b2dbdf685775f2a2ae3eee3222a8e4d78",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md"
       },
@@ -768,7 +767,7 @@
     "unresolved": 148
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.252212Z",
+  "updated_at": "2026-10-06T09:56:58.868338Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

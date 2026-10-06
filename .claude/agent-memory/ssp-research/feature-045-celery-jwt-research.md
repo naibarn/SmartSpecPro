@@ -139,7 +139,7 @@ SmartSpecPro passes user JWT tokens as Celery task arguments in 4 tasks:
 - [ ] Full test suite passes
 
 ## Research Artifacts
-All research documents located at: `/specs/feature/045-CeleryJWTRefactor/`
+All research documents located at: `/specs/feature/300-celery-jwt-refactor/`
 - `INDEX.md` — Start here (decision points, checklist)
 - `QUICK-REF.md` — Implementation reference (code snippets, impact matrix)
 - `claude-research.md` — Complete analysis (12 sections, call flows, diagrams)

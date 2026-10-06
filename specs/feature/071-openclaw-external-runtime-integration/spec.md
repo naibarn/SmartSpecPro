@@ -3,15 +3,15 @@
 Version: 1.0
 Date: 2026-04-06
 Status: Proposed
-Depends-on: 059-external-worker-provider-framework, 004-desktop-app, 043-PublicAPI-ExternalAgentGateway
-Supersedes: OpenClaw-specific positioning inside Feature 059 where the documents conflict
+Depends-on: 301-external-worker-provider-framework, 004-desktop-app, 043-PublicAPI-ExternalAgentGateway
+Supersedes: OpenClaw-specific positioning inside Feature 301 where the documents conflict
 Audience: Web Control Plane, Teams, Workflow, Admin, Runtime, QA
 
 ---
 
 ## 1. Executive summary
 
-Feature 059 established SmartSpecPro's broader worker-runtime direction, but OpenClaw still needs a focused follow-on feature that turns the revised worker-fabric guidance into an implementation-ready plan.
+Feature 301 established SmartSpecPro's broader worker-runtime direction, but OpenClaw still needs a focused follow-on feature that turns the revised worker-fabric guidance into an implementation-ready plan.
 
 This feature adds **OpenClaw as the first canonical external runtime class** under SmartSpecPro's control plane by introducing:
 
@@ -36,7 +36,7 @@ SmartSpecPro already hints at external-agent integration in several places:
 
 - teams can include `external_connector` members
 - the UI already uses OpenClaw-flavored examples such as `openclaw://main-office`
-- Feature 059 names `openclaw_gateway` as a future worker type
+- Feature 301 names `openclaw_gateway` as a future worker type
 
 However, the current product still lacks the control-plane pieces needed to make OpenClaw real:
 
@@ -87,11 +87,11 @@ The result is a gap between product language and implementation reality. This fe
   - Windows-local workspace access
   - UNC-path or mapped-drive tasks
 
-### 5.2 Relationship to Feature 059
+### 5.2 Relationship to Feature 301
 
-- Feature 059 remains the umbrella worker-fabric baseline.
+- Feature 301 remains the umbrella worker-fabric baseline.
 - Feature 071 narrows and updates the OpenClaw slice so implementation can start.
-- If Feature 059 says "Desktop + ZeroClaw sidecar" and this feature needs OpenClaw to behave differently, Feature 071 controls OpenClaw behavior only.
+- If Feature 301 says "Desktop + ZeroClaw sidecar" and this feature needs OpenClaw to behave differently, Feature 071 controls OpenClaw behavior only.
 
 ### 5.3 Communication defaults
 

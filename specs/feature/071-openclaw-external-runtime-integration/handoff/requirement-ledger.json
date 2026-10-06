@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "27da8d2afbb7fc1cf0ee6ab8610181f35c4f43de72de987657a6af308645d296",
       "requirement_id": "REQ-DF17D02FABF8",
       "requirement_text": "1. Register OpenClaw gateways as first-class workers inside SmartSpecPro.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "fb46344e72e42daec69444ca4a55a54f7e4b3a1f0bc5795e29adca5dce69b655",
       "requirement_id": "REQ-D1925E8CB871",
       "requirement_text": "2. Expose a worker/job/artifact model that future runtimes can reuse, while implementing only `openclaw_gateway` in this feature.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "9fb2aa429289a1e51b4f698a40b2afa8b5c0e56ec56eb275c595adbe58d47db6",
       "requirement_id": "REQ-A7343A5BF284",
       "requirement_text": "3. Let personas, workflows, and team members target OpenClaw through capability intent rather than hard-coded runtime assumptions.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "d10800cda11807e8a0bd0878749fa67e5928d9a42f0b920293acb562f86be3a0",
       "requirement_id": "REQ-B01BEC8E79DD",
       "requirement_text": "4. Preserve SmartSpecPro ownership of auth, policy, audit, artifact publication, and indexing.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "2ddc56bc71352be88181bd55352e388d3f9dcad4e6a45f794df0656b1e8f4c98",
       "requirement_id": "REQ-9E4EAB522C8E",
       "requirement_text": "5. Keep current team and orchestration flows backward-compatible during migration from plain string connectors to registered workers.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "34fac685e671481856529968b8b5f7b933bf661b98a0446c89df2b7ba8d7f1ca",
       "requirement_id": "REQ-0ED6755C7317",
       "requirement_text": "6. Define a concrete gateway compatibility profile so Claw-family runtimes can reuse SmartSpecPro's central LLM proxy where the current code already supports it.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "8c6fcab498726af1a1d54a4934663e1cf1deffa6b503a0232a0e14735583016f",
       "requirement_id": "REQ-47F80531AF7B",
       "requirement_text": "- GPU-required media jobs",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "edb98c869c7752dd8ec90f28e4d8f68bb33fa67ab6e6e80ada1d4657e056c175",
       "requirement_id": "REQ-4FAD5F6298B7",
       "requirement_text": "- SSE/WebSocket may be added later for progress-heavy sessions, but is not required for v1.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "f704c9ee7a6a13610d9038e365d3449a320ede3a1e016843941d99244ef1921c",
       "requirement_id": "REQ-D947649A0990",
       "requirement_text": "Each registered OpenClaw worker must provide at least:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "7862d59040cc16b6fe29d86cbbfb3a57ada476c898b27e56eed8738d43ecf208",
       "requirement_id": "REQ-677AD717CFE1",
       "requirement_text": "- `assistant_profiles.externalRef` remains required for `external_connector` members.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "c72342a16428acc02da196148fbd93f196d18eb431b0fc05622abe93649e6f56",
       "requirement_id": "REQ-BA9B3B03D0B4",
       "requirement_text": "Jobs that require local Windows file access, GPU render, or strict secure-sandbox semantics must not default to OpenClaw.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "53f4a86f4907f2b3bf0d2b587c0e801c56c2a9400e3d88262a29c16815a95f0f",
       "requirement_id": "REQ-1910939828F2",
       "requirement_text": "- OpenClaw dashboard URLs are convenience links only and must be admin-visible, not end-user default UI.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "547b01276b3785eb60aab0c99567de4dc7d7a09ec08044a7756cede1d628ec01",
       "requirement_id": "REQ-5F5FD6F5BB8B",
       "requirement_text": "- This feature must add a new tenant feature flag, recommended name: `openClawExternalRuntime`.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "704ee19489e697deb490d583b051ad7d42088455d50de133dcfbfec38b8d61b9",
       "requirement_id": "REQ-4877F1FBE91E",
       "requirement_text": "- Admin surfaces may expose worker records across environments, but worker registration, claim, and team binding flows must remain gated until the tenant flag is enabled.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "e83a9763f95323ee7499e824399a291151ac4f7108cb7387043ab7b95c0cdf6b",
       "requirement_id": "REQ-1949E10DAF4A",
       "requirement_text": "- Because current `publicApiFeatureGuard` bypasses bearer-authenticated requests, worker routes must enforce this flag explicitly through worker-specific route/service guards rather than relying on `/v1` middleware behavior.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "f2ef3253174f40f064f5741c39a20168a0607a64e06a613416dd95a24df498e8",
       "requirement_id": "REQ-AE6414AED4D8",
       "requirement_text": "- Worker-dispatched OpenClaw jobs must continue to use SmartSpecPro credit accounting.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "d274dfbb45cd87628967deb5c385820e52ddadd9ee7210786f4ff07d674c4ee7",
       "requirement_id": "REQ-36409444F0F3",
       "requirement_text": "- Execution must integrate with `creditService.deductCredits()` semantics, including:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "8e3de14d29f753255147a020902d1b15ccdf3891b56e927044c63a8babd64c62",
       "requirement_id": "REQ-7A50D8D1C7AF",
       "requirement_text": "- Published outputs must reuse the existing library pipeline instead of inventing a second asset catalog.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "36e0df607c647b18c52b6217591f674b4f4016ecb1cec18f8dde7fac923f8770",
       "requirement_id": "REQ-A46A484A579F",
       "requirement_text": "- OpenClaw integration must therefore preserve backward-compatible pause semantics while introducing structured machine-readable reasons.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "912193f78f38249f3e05073e45184aa8e0d25a301cf8922af60f1780bb692922",
       "requirement_id": "REQ-83FE555F0C6C",
       "requirement_text": "- `POST /v1/mcp` is useful for tool access, but it must not be marketed as full LLM-gateway parity until the advertised `smartspec.llm.*` MCP tools execute real proxy behavior instead of placeholder responses.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "72d748ae38da375957f433bc54bd0d5c58acd5709b8853c71b907e9194e81e2a",
       "requirement_id": "REQ-3FE2ABE7679D",
       "requirement_text": "- `POST /v1/embeddings` does not exist today; this must be either implemented or explicitly documented as unsupported for the Claw gateway compatibility profile in this phase.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "eec0e9b777a48ed7247b1e40fbf9f531f0f3871e73a62c9840d82e9fcb7cac16",
       "requirement_id": "REQ-BE10A8523A0C",
       "requirement_text": "- this feature must stay external-runtime focused and not redefine the desktop shell",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "8a57b344f7051269545a70318e3beba0b2ea02489707ca96e282384a16dfe006",
       "requirement_id": "REQ-32604798EA3C",
       "requirement_text": "Tokens must be:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "4f3cd4260e48dbd0eec5734b9de5eac6bd1a178afd98fa5e97566e82b682d214",
       "requirement_id": "REQ-4ECD728ED15E",
       "requirement_text": "- SmartSpecPro creates artifact records and triggers indexing when required",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "72775d237e9c5ad75b84fbdc6933e9826330c463134290211cfbb0d9a405b87f",
       "requirement_id": "REQ-E9D08CF50D61",
       "requirement_text": "- when a published output should enter the tenant library, the publication path must reuse existing `createLibraryItem()` and `safeEnqueueLibraryIndexJob()` flows",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "68d3b6aeb17e87c889da48557566ebf192d8100748a8bd79ca6e988ec5879d37",
       "requirement_id": "REQ-8CB01A2511FB",
       "requirement_text": "- retry behavior must distinguish:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "f66382cd62448bb991803c62d03631b901a070db697ed95bd28f2281d1621e6a",
       "requirement_id": "REQ-E8DE0709137C",
       "requirement_text": "Explicit current limitations that must be captured in docs and rollout messaging:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "1d752944ba826efbbc314449f098c3d75061c6b2ceee8e16bb23fe715560b173",
       "requirement_id": "REQ-968E6D357A65",
       "requirement_text": "If `/v1/mcp` or `/v1/responses` remains part of the advertised Claw gateway profile, gateway identity handling must normalize auth into a tenant-safe and session-safe object for all allowed caller modes:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "385565684aac6b45b92fe9f4cacb4f992aad60f598b0eae7968e1944e1b9a812",
       "requirement_id": "REQ-47809883AE8E",
       "requirement_text": "Implementation must not:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "80efd75c94fbb68d04f9e99129d7b1787b684cfb0dc357c7adc8d591b9451312",
       "requirement_id": "REQ-D09E0E7A0A23",
       "requirement_text": "The scheduler must reject or reroute OpenClaw when:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "49c388275ca49e9270ab54ac29cf2fb3db512a4a7f6c6ea7b8600dc9d0de38c6",
       "requirement_id": "REQ-0A8BE3A2C4AC",
       "requirement_text": "- a job requires `gpu-required`",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "d9fd455439c8cc2b284d58eb6807d99fa8be68a64924f33d6ae4d921831da4ce",
       "requirement_id": "REQ-032DB03A5754",
       "requirement_text": "- OpenClaw job dispatch must reserve or deduct credits through the same central billing path used elsewhere in the platform",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "5556b7dfb998f6610e1df9cce5276c2b6f4a6762a8292555ae891003c53a1d1a",
       "requirement_id": "REQ-06E194E71F03",
       "requirement_text": "- if dispatch fails before claim, the reservation must be refundable",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "77927e6cc654549394a69388ef3c72fd1734443506eeef607c8b58d01a531e22",
       "requirement_id": "REQ-1652739F8DF9",
       "requirement_text": "- keep an `externalRef`",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "a9f42a931e7651e25ff7082d1a6079907b028dbad33d9c4771d2e3de57d473f4",
       "requirement_id": "REQ-3EFC56F9219D",
       "requirement_text": "- optionally bind to a registered OpenClaw worker",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "4fb39e1986097e4ef006b476e70016a352ef1266dda6e4303e8b701e41e0aeae",
       "requirement_id": "REQ-F53462029546",
       "requirement_text": "- display worker status when bound",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "b8996f1daa3631b1cab35d836ab206fe6b176004a8b74f68af3a66e7ee696ee7",
       "requirement_id": "REQ-4C5D406A8547",
       "requirement_text": "- show \"unresolved\" when only the string reference exists",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "a14ba0d8afae6a2359adf0bd3ee327ce71cef9d99f5fc732849f67a0e2d23f8a",
       "requirement_id": "REQ-BE7732D7ACD1",
       "requirement_text": "- `teamRouter` create/update inputs should accept optional `externalWorkerId`",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "1b46493648e21020c18024854c8bc1a854cf7f227da5b5702d4e6ba322cd4c85",
       "requirement_id": "REQ-841CFE786818",
       "requirement_text": "- `teamService` must continue to normalize and deduplicate `externalRef`",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "83739e7a9989d032b1aded89afeaebc6dc540ef0ea6501915e3c5c67cbd2a405",
       "requirement_id": "REQ-182AA457A183",
       "requirement_text": "- when `externalWorkerId` is present, UI should still display `externalRef` as the human-readable reference",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "adebc69a58c3315aa8faf8524b7c004596e7019d58b087b79cbf38a2ac5a01fe",
       "requirement_id": "REQ-EF840031D35C",
       "requirement_text": "- if a previously bound worker is deleted or revoked, `externalWorkerId` should become null without breaking the team member record",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "b12f7ca58596260f1ccf436492c185c46a5c0f4381ebee3a0b02cbe9398ac20e",
       "requirement_id": "REQ-77FF946BB874",
       "requirement_text": "- list workers",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "966d2e60a7de329e00b829b8f85e34bff4db4c94d9aa1cfc7fdcefbaf11f9499",
       "requirement_id": "REQ-DC63A05AAF72",
       "requirement_text": "- filter by runtime type, status, tenant, team, and policy",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "7a5e214397dbbf8da5435e22a8f3077ae89fac9f360c139096543458aaf5e414",
       "requirement_id": "REQ-33754394C171",
       "requirement_text": "- inspect runtime metadata and capability state",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "0cc08ba5306e4b83d27e73e6eba4866737aa3bcdfd39cb7fdb0d65d1dd481ed8",
       "requirement_id": "REQ-D22AF1150715",
       "requirement_text": "- disable, drain, or revoke workers",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "a327300928589432fc336d29b587b740eeed531e2b72f2cdb8b611cb3523a945",
       "requirement_id": "REQ-8CC69180D3A7",
       "requirement_text": "- view job history and artifact publication state",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "b5528ba551d7f3ecbc6f4cf948fc631f9cc8dd829841878f19745c68828f27a1",
       "requirement_id": "REQ-AF131C7C44AF",
       "requirement_text": "- runtime type",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "f72273928d0640af674fd34fe075fa727e51529cf6e9f52d52259dc643c754e3",
       "requirement_id": "REQ-C97160FEDEFF",
       "requirement_text": "- capability defaults",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "f359a2b318eb5b29404514ca5fd94c08469c83a0f1eb63b45e48205737a90aa8",
       "requirement_id": "REQ-BF4D820A430D",
       "requirement_text": "- policy defaults",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "62c1245ca5f299db255935557127ef6619f197dfbd290e6b04d8410bd60a9214",
       "requirement_id": "REQ-7DE2CE722D9E",
       "requirement_text": "- channel/plugin allowlists where needed",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "91d73e0875c9dc5b4dc32a5d08d02906fa2c7a69149f4799cb56089f1095b0a1",
       "requirement_id": "REQ-C2F28797BC60",
       "requirement_text": "- max concurrency",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "67977275fe4a91ec62920d33df91fd147a8c534402833daf56fe2609b1054374",
       "requirement_id": "REQ-62C4D5310613",
       "requirement_text": "- artifact visibility defaults",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "c3a6a4bce953d408e1229bce7971487a3f2456b96361f8636ae9e7b85abca26f",
       "requirement_id": "REQ-CFF73F4B00B5",
       "requirement_text": "- the run engine must continue to emit a compatible human-readable pause reason during rollout",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "1c0ed3ccd813c99135a19ff0f0aa68e225fcc6c50b5ed6759c974c94b49f0ae2",
       "requirement_id": "REQ-D55D53B40A82",
       "requirement_text": "- follow-up UI work should add structured reason support so `RoomWorkflowPanel` does not rely only on substring matching",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "3b81bc68b37e219ba4c2b08ae0be8c4efd4e0a71678cb2839c1b430e4c471efd",
       "requirement_id": "REQ-9262FDBBEDA3",
       "requirement_text": "- acceptance for this feature should include one paused external-connector run rendered correctly in the existing workflow board",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "dad18fec976a76e5558a37cee76656a9d38d78e3891b7788c1883350085763a3",
       "requirement_id": "REQ-D4283768BC65",
       "requirement_text": "- SmartSpecPro owns auth, policy, and audit",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "a2e4136a542d01a2ac80b24ccedb51fe307deeb91d432e4204ef57bbba280c6b",
       "requirement_id": "REQ-9A55C3A38557",
       "requirement_text": "- OpenClaw workers execute only within explicit tenant and worker policy",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "bcfaf7c4ede4198444f5af96533213400f37d0bd83564b441816351ff7edb3fa",
       "requirement_id": "REQ-1A4A5FDE309C",
       "requirement_text": "- no unrestricted shell or filesystem promises are implied by OpenClaw registration",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "ed87e74e88d6d69a8fd287d7f4e03c38ae27eb5eb04cd4873959ad48c48d32b7",
       "requirement_id": "REQ-6542DD92101C",
       "requirement_text": "Existing `external_connector` members without a bound worker must continue to function as manual or unresolved collaborators.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "f60c11c71fd27dfabd241a4d6998dcd57d6f776c68becb3ed6a5fd99030b05f6",
       "requirement_id": "REQ-34498579CE41",
       "requirement_text": "This feature must not force all historical connectors to bind immediately.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "6d59c814cdc373d386b6a13c97bdaa81e14bcaa026a9911fd46837658f5a69b9",
       "requirement_id": "REQ-ACF22C7336D3",
       "requirement_text": "1. An admin can register at least one OpenClaw runtime as `openclaw_gateway` and see it in a worker registry UI.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "01e31948a0ff7ec6743d4674168a6d14cdb0be785a397de55c924cb4aa5ff077",
       "requirement_id": "REQ-A03B3D941203",
       "requirement_text": "2. The worker can send heartbeat updates and appear as `online`, `offline`, or `unhealthy`.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "d4316cf11a51d9e9288ea9042156de11b87118f858f021ac35dbb6fd47eace76",
       "requirement_id": "REQ-74B7DE3905E7",
       "requirement_text": "3. A team external connector can optionally bind to a registered OpenClaw worker while preserving `externalRef`.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "978b851f8cb2912bad41a58aad401d4f1f52f2bb7f80a72623ac47f444bf0917",
       "requirement_id": "REQ-126A9EF33D28",
       "requirement_text": "4. A capability-routed task can be scheduled to a suitable OpenClaw worker, claimed through polling, and reported through job events.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "ee950a49543e223f6ac8e1e1b2d1b892eb921ac09fc50a705dd2209f9b54e5b5",
       "requirement_id": "REQ-3CF3ABC6B2C7",
       "requirement_text": "5. OpenClaw-produced artifacts can be uploaded through signed URLs, published into SmartSpecPro records, and linked back to the originating run or workflow.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "82d7701a05cdbf142b3e0a351f43c8a7e8e25d2c7edea580c1b2d34b5df5b285",
       "requirement_id": "REQ-5427A6A3D944",
       "requirement_text": "6. Tasks that require desktop-local file access or GPU render are not silently routed to OpenClaw.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,7 +1471,7 @@
       "requirement_digest": "4d883e3fdfcf8ed2dd46b085b94a2246968f2aecf9d823edc32c51836ebe15dc",
       "requirement_id": "REQ-51C7B10257C4",
       "requirement_text": "7. Unresolved historical external connectors remain supported and do not break team or run flows.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1493,7 +1493,7 @@
       "requirement_digest": "d155e0d01ba78d92760c4d09a21d858f88f914fe335573b4e5c7ce9f47d3b2d9",
       "requirement_id": "REQ-3FD25B85FF36",
       "requirement_text": "8. The feature is rollout-gated by `openClawExternalRuntime`, default `false`, and worker routes enforce that gate explicitly for bearer-authenticated callers.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1515,7 +1515,7 @@
       "requirement_digest": "4704225d73f19e26ef326858c32add75f7538e87b1e7d87b6ab30dd2ed22eb7b",
       "requirement_id": "REQ-C396E9E01186",
       "requirement_text": "9. At least one published OpenClaw output can become a `library_items` record with a `library_links` back-reference and an indexing job request.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1537,7 +1537,7 @@
       "requirement_digest": "9eeea0a292653176339ec4293ee320d12d97a08a411f978e5d470442da541b55",
       "requirement_id": "REQ-7EF3BE108C07",
       "requirement_text": "10. Credit usage for an OpenClaw-dispatched job is recorded through the central credit service with idempotency and can be reconciled on failure or completion.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1559,7 +1559,7 @@
       "requirement_digest": "c62df5ecead1e8f05bd224cf37ced99481495ab51831c7c1f1d71716b8004881",
       "requirement_id": "REQ-80CD31D364F0",
       "requirement_text": "11. A paused team run waiting on an OpenClaw-bound external connector still renders correctly in the current workflow UI.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1581,7 +1581,7 @@
       "requirement_digest": "b29d2d44f906012cd7c289d0bc7217172cd4b7566c056f8f9644c24849cd5a3d",
       "requirement_id": "REQ-B3664BFFCA01",
       "requirement_text": "12. At least one external runtime caller can use `/v1/chat/completions`, `/v1/responses`, and `/v1/models` with the documented auth profile as the Claw-compatible HTTP gateway contract.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1603,7 +1603,7 @@
       "requirement_digest": "ed296712c862100a5e862187b1fdc90d33113b79c1fca20df9dc82cdacb2c175",
       "requirement_id": "REQ-E9B8D67D8C82",
       "requirement_text": "13. `/v1/mcp` either hides unimplemented `smartspec.llm.*` tools from discovery or executes them as real gateway proxy operations; placeholder discovery is not acceptable for claimed LLM parity.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1625,7 +1625,7 @@
       "requirement_digest": "2f649244d43554c5bf07003c9abd9510516cc207d47f73aefaf64264e094ce0e",
       "requirement_id": "REQ-CE0565D84E96",
       "requirement_text": "14. Gateway docs explicitly state whether embeddings are unsupported in this phase or expose a real public embeddings route.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1647,13 +1647,13 @@
       "requirement_digest": "626c7a64c6246e54d219dedd169076912740261f7e22ad400cffab412a14f568",
       "requirement_id": "REQ-7D6FEE8C9370",
       "requirement_text": "15. Claw-compatible gateway routes derive tenant identity from auth for API-key/bearer callers instead of collapsing external traffic into the `default` tenant.",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "source_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+  "spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
   "spec_id": "071"
 }

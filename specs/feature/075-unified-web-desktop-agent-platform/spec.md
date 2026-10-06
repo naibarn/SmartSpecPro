@@ -4,7 +4,7 @@ Version: 1.0
 Date: 2026-04-08
 Status: Proposed
 Depends-on: 004-desktop-app, 052-agency-swarm-full-capability, 064-skill-maintenance-lifecycle, 070-local-client-llm-mode, 071-openclaw-external-runtime-integration, 072-claw-worker-platform-access, 074-claw-worker-mcp-platform-completion
-Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model
+Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 301-external-worker-provider-framework where this feature defines the canonical desktop-host model
 Audience: Product, Web Control Plane, Desktop/Tauri, Runtime, Skills, Agency, Security, DevOps, QA, Admin
 
 ---

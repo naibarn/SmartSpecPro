@@ -6,25 +6,15 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "LOW",
-    "conflicts": [
-      {
-        "kind": "DUPLICATE_SPEC_ID",
-        "paths": [
-          "specs/feature/164-worker-app-ux-localization-and-series-workspace",
-          "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure"
-        ]
-      }
-    ],
+    "confidence": "HIGH",
+    "conflicts": [],
     "evidence": [
-      {
-        "digest": "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md"
-      }
+      "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#164",
+      "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
+      "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde"
     ],
     "predecessors": [],
-    "status": "AUTHORITY_CONFLICT",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
   "blockers": [],
@@ -50,7 +40,7 @@
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -79,13 +69,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
     "digest": "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:16.443770Z",
+      "last_evidence_at": "2026-10-06T09:57:08.066212Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
@@ -112,7 +102,22 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:16.443770Z"
+    "updated_at": "2026-10-06T09:57:08.066212Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#164",
+        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
+        "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde"
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -122,7 +127,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:16.443770Z",
+    "reconciled_at": "2026-10-06T09:57:08.066212Z",
     "sources": [
       {
         "digest": "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
@@ -190,7 +195,7 @@
     "unresolved": 86
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:16.443770Z",
+  "updated_at": "2026-10-06T09:57:08.066212Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

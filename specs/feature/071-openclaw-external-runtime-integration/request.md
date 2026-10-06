@@ -16,7 +16,7 @@ Create a new feature package under `specs/feature` that extends the prior worker
 
 The planning package should now go beyond the first spec draft and leave behind a **comprehensive implementation roadmap** that covers:
 
-- continue from `059-external-worker-provider-framework` instead of rewriting the full worker-fabric program
+- continue from `301-external-worker-provider-framework` instead of rewriting the full worker-fabric program
 - use the revised worker-fabric guideline as the authoritative design input for OpenClaw positioning
 - stay aligned with the current repository structure and naming patterns
 - be concrete enough that implementation can start without re-opening major product questions
@@ -24,7 +24,7 @@ The planning package should now go beyond the first spec draft and leave behind 
 
 ## Repository-informed assumptions
 
-- `059-external-worker-provider-framework/spec.md` is the baseline worker-fabric spec, but its OpenClaw positioning is still broad and partially outdated relative to the revised guideline
+- `301-external-worker-provider-framework/spec.md` is the baseline worker-fabric spec, but its OpenClaw positioning is still broad and partially outdated relative to the revised guideline
 - the current web app already has a notion of `external_connector` team members through `assistant_profiles.externalRef`, but there is no canonical worker registry yet
 - the current repo already has runtime-profile and job-management patterns via sandbox tables, services, and admin UI that can inform worker-runtime design without forcing OpenClaw into the sandbox stack
 - SmartSpec Desktop and `apps/tauri-shell` already exist, so this feature should not invent a separate desktop product line

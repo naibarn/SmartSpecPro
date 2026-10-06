@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md"
       },
@@ -92,7 +92,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b"
+    "expected_spec_digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28"
   },
   "continuation": {
     "next_action": null,
@@ -106,7 +106,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md"
       },
@@ -203,7 +203,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md"
       },
@@ -281,13 +281,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md",
-    "digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+    "digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.240981Z",
+      "last_evidence_at": "2026-10-06T09:56:58.855699Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:58:29+07:00",
       "spec_last_changed_at": "2026-04-08T19:58:29+07:00"
@@ -311,10 +311,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.240981Z"
+    "updated_at": "2026-10-06T09:56:58.855699Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,10 +324,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.240981Z",
+    "reconciled_at": "2026-10-06T09:56:58.855699Z",
     "sources": [
       {
-        "digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md"
       },
@@ -409,11 +409,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md",
-        "source_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "source_digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
         "value": "Proposed"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -435,14 +440,14 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md",
-        "source_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "source_digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
         "value": "Proposed"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "digest": "439547ae8d28ec96abd66c735d3a7b8ef799579f56ec9d96aedb081d95f49f28",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md"
       },
@@ -532,7 +537,7 @@
     "unresolved": 126
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.240981Z",
+  "updated_at": "2026-10-06T09:56:58.855699Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

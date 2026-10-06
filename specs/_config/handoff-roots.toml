@@ -13,6 +13,7 @@ canonical_roots = [
 # solely because their directory names resemble current Specs.
 alternate_roots = [
   "docs/portable-skill-pack/specs",
+  "specs/_history/spec-id-conflicts",
 ]
 
 # Configured collection behavior, independent of any particular Spec ID.

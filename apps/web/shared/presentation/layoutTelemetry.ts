@@ -1,5 +1,5 @@
 /**
- * Layout Routing Telemetry (Spec 014 — Section 07)
+ * Layout Routing Telemetry (Spec 299 — Section 07)
  *
  * Structured telemetry events for layout routing decisions, fallback
  * triggers, and quality gate results. Designed to be consumed by the

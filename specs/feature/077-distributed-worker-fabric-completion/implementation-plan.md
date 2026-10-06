@@ -150,7 +150,7 @@ Key outcomes:
 - docs clarify Feature 075 product runtime labels versus Feature 077 worker runtime types
 - workflow and persona surfaces gain runtime-aware worker dispatch, wait, publish, and index building blocks with explicit failure semantics
 - workflow and persona implementation targets are explicit in the router, node-registry, editor, and admin-monitoring surfaces
-- migration guidance from Feature 059 wording
+- migration guidance from Feature 301 wording
 - rollout order that protects already-working OpenClaw flows
 
 ## Risks and mitigations

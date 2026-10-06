@@ -7,6 +7,7 @@ from typing import Any
 
 from .contracts import completion_eligible
 from .inventory import inventory, json_bytes
+from .spec_ids import build_registry_projection
 from .store import handoff_dir, read_manifest, render_status, _atomic_write
 
 
@@ -145,7 +146,7 @@ def build_views(repo: Path) -> dict[str, Any]:
         claim_summary = "; ".join(value.replace("|", "\\|").replace("\n", " ")[:90] for value in claim_values[:2])
         status_lines.append(f"| [{row.get('spec_id') or '—'} {row.get('title')}]({row['path']}) | {row['record_kind']} | {row.get('disposition')} | {row.get('lifecycle')} | {row.get('continuation')} | {row.get('confidence')} | {row.get('verification')} | {claim_summary} | {row.get('next_action')} |")
     review_queue = [{"priority": row["review_priority"], "record_key": row["record_key"], "spec_id": row.get("spec_id"), "path": row["path"], "authority": row.get("authority"), "confidence": row.get("confidence"), "reference_counts": row.get("current_reference_counts", {}), "declared_claim_count": len(row.get("declared_claims", [])), "next_action": row.get("next_action")} for row in ambiguity]
-    return {"spec-index.json": index, "SPEC-STATUS.md": "\n".join(status_lines) + "\n", "reconciliation-report.json": report, "continuation-queue.json": {"schema_version": 1, "records": queue, "excluded": excluded, "reconciliation_review": review_queue}, "ambiguity-review.json": {"schema_version": 1, "record_count": len(ambiguity), "records": ambiguity}}
+    return {"spec-index.json": index, "SPEC-STATUS.md": "\n".join(status_lines) + "\n", "reconciliation-report.json": report, "continuation-queue.json": {"schema_version": 1, "records": queue, "excluded": excluded, "reconciliation_review": review_queue}, "ambiguity-review.json": {"schema_version": 1, "record_count": len(ambiguity), "records": ambiguity}, "spec-id-registry.json": build_registry_projection(repo, discovered)}
 
 
 def write_views(repo: Path, views: dict[str, Any]) -> None:

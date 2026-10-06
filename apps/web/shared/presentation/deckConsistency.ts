@@ -1,5 +1,5 @@
 /**
- * Deck-Level Consistency Evaluator (Spec 014 — Section 07)
+ * Deck-Level Consistency Evaluator (Spec 299 — Section 07)
  *
  * Checks adjacent slide mode coherence and penalizes incoherent
  * mode oscillation within a presentation deck.

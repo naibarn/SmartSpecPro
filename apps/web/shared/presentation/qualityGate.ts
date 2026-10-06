@@ -1,5 +1,5 @@
 /**
- * Quality Gate Service (Spec 014 — Section 07)
+ * Quality Gate Service (Spec 299 — Section 07)
  *
  * Applies acceptance thresholds from contracts-appendix.md §7:
  *   - auto-accept: fitScore.overall >= 0.78
