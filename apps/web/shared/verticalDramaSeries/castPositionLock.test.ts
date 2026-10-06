@@ -1,14 +1,76 @@
 import { describe, expect, it } from "vitest";
 import {
+  addVerticalDramaVariantCharacterDescriptionAliases,
   buildVerticalDramaVerifiedCastPositions,
+  canonicalizeVerticalDramaCharacterDescriptionOverrideKeys,
   normalizeVerticalDramaCharacterDescriptionOverrides,
   requiresVerticalDramaCastPositionLock,
+  resolveVerticalDramaCharacterDescriptionKeys,
   resolveVerticalDramaSpeakerIdentity,
   validateVerticalDramaCastPositionLock,
   viewerPositionsForCastCount,
 } from "./castPositionLock";
 
 describe("Vertical Drama cast position lock", () => {
+  it("maps dialogue variant keys to the matching base character in the frame cast", () => {
+    const characters = [
+      { characterKey: "child", characterId: "10" },
+      {
+        characterKey: "child-gray-shirt",
+        characterId: "11",
+        parentCharacterId: "10",
+      },
+    ];
+
+    expect(
+      resolveVerticalDramaCharacterDescriptionKeys({
+        dialogueCharacterKeys: ["child-gray-shirt", "child"],
+        requiredCharacterRefs: ["child"],
+        characters,
+      })
+    ).toEqual(["child"]);
+  });
+
+  it("adds variant speaker aliases when building custom identity anchors", () => {
+    const characters = [
+      { characterKey: "child", characterId: "10" },
+      {
+        characterKey: "child-gray-shirt",
+        characterId: "11",
+        parentCharacterId: "10",
+      },
+    ];
+
+    expect(
+      addVerticalDramaVariantCharacterDescriptionAliases(
+        { child: "child wearing a gray shirt" },
+        characters
+      )
+    ).toEqual({
+      child: "child wearing a gray shirt",
+      "child-gray-shirt": "child wearing a gray shirt",
+    });
+  });
+
+  it("canonicalizes submitted variant override keys to the frame cast", () => {
+    const characters = [
+      { characterKey: "child", characterId: "10" },
+      {
+        characterKey: "child-gray-shirt",
+        characterId: "11",
+        parentCharacterId: "10",
+      },
+    ];
+
+    expect(
+      canonicalizeVerticalDramaCharacterDescriptionOverrideKeys(
+        { "child-gray-shirt": "เด็กใส่เสื้อสีเทา" },
+        ["child"],
+        characters
+      )
+    ).toEqual({ child: "เด็กใส่เสื้อสีเทา" });
+  });
+
   it("maps the reported Shot 5 order to deterministic viewer positions", () => {
     const orderedCharacterRefs = [
       "character-4",

@@ -546,7 +546,9 @@ import type {
   VdMotionProfile,
 } from "@shared/verticalDramaSeries";
 import {
+  addVerticalDramaVariantCharacterDescriptionAliases,
   buildVerticalDramaVerifiedCastPositions,
+  canonicalizeVerticalDramaCharacterDescriptionOverrideKeys,
   normalizeVerticalDramaCharacterDescriptionOverrides,
   resolveVerticalDramaSpeakerIdentity,
   validateVerticalDramaCastPositionLock,
@@ -1356,9 +1358,11 @@ async function loadEnhancedShotContext(input: {
   // Load roster rows directly from verticalDramaCharacters table for this series
   const rosterRows = (await db
     .select({
+      id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
       name: verticalDramaCharacters.name,
       role: verticalDramaCharacters.role,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -1366,10 +1370,12 @@ async function loadEnhancedShotContext(input: {
         eq(verticalDramaCharacters.tenantId, input.tenantId),
         eq(verticalDramaCharacters.seriesId, input.seriesId)
       )
-    )) as Array<{
+  )) as Array<{
+    id: number;
     characterKey: string;
     name: string;
     role: string | null;
+    parentCharacterId: number | null;
   }>;
   for (const r of rosterRows) {
     if (r.characterKey && r.name) {
@@ -1377,6 +1383,18 @@ async function loadEnhancedShotContext(input: {
       speakerNameMap.set(r.characterKey.toLowerCase(), r.name);
     }
   }
+  const promptCharacterDescriptionOverrides =
+    addVerticalDramaVariantCharacterDescriptionAliases(
+      characterDescriptionOverrides,
+      rosterRows.map(character => ({
+        characterKey: character.characterKey,
+        characterId: String(character.id),
+        parentCharacterId:
+          character.parentCharacterId != null
+            ? String(character.parentCharacterId)
+            : undefined,
+      }))
+    );
 
   // Resolve verified cast positions from start frame lock if present
   let verifiedCastPositions: Array<{
@@ -1570,7 +1588,7 @@ async function loadEnhancedShotContext(input: {
       ...storyboardShot,
       characterIds,
       screenCallerCharacterRefs,
-      characterDescriptionOverrides,
+      characterDescriptionOverrides: promptCharacterDescriptionOverrides,
       visualCastPolicy,
       clipNumber: (clip as { clipNumber?: number }).clipNumber,
       sourceShotNumbers:
@@ -1616,7 +1634,7 @@ async function loadEnhancedShotContext(input: {
       storyboardRevision: row.updatedAt.toISOString(),
       storyboardShot,
       verifiedCastPositions,
-      characterDescriptionOverrides,
+      characterDescriptionOverrides: promptCharacterDescriptionOverrides,
       visualCastPolicy,
       episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
       episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
@@ -1625,7 +1643,7 @@ async function loadEnhancedShotContext(input: {
     },
     mediaBundle,
     visionReferences,
-    characterDescriptionOverrides,
+    characterDescriptionOverrides: promptCharacterDescriptionOverrides,
     targetVideoModel,
     authoringModel,
     nativeAudioEnabled: pack.nativeAudioEnabled === true,
@@ -18084,11 +18102,39 @@ export const verticalDramaEpisodesRouter = router({
           });
         }
         const frame = plan.frames[frameIndex];
-        const submittedCharacterKeys = Object.entries(input.overrides)
+        const characterRows = await tx
+          .select({
+            id: verticalDramaCharacters.id,
+            characterKey: verticalDramaCharacters.characterKey,
+            parentCharacterId: verticalDramaCharacters.parentCharacterId,
+          })
+          .from(verticalDramaCharacters)
+          .where(
+            and(
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.userId, userId),
+              eq(verticalDramaCharacters.seriesId, seriesId)
+            )
+          );
+        const characterRefs = characterRows.map(character => ({
+          characterKey: character.characterKey,
+          characterId: String(character.id),
+          parentCharacterId:
+            character.parentCharacterId != null
+              ? String(character.parentCharacterId)
+              : undefined,
+        }));
+        const canonicalInputOverrides =
+          canonicalizeVerticalDramaCharacterDescriptionOverrideKeys(
+            input.overrides,
+            frame.requiredCharacterRefs ?? [],
+            characterRefs
+          );
+        const submittedCharacterKeys = Object.entries(canonicalInputOverrides)
           .filter(([, description]) => description.trim().length > 0)
           .map(([key]) => key.trim());
         const overrides = normalizeVerticalDramaCharacterDescriptionOverrides(
-          input.overrides,
+          canonicalInputOverrides,
           frame.requiredCharacterRefs ?? []
         );
         const rejectedCharacterKeys = submittedCharacterKeys.filter(
