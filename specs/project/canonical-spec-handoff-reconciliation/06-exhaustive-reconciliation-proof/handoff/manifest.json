@@ -33,10 +33,10 @@
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: Specs 271, 276, 277, 279, 280, 283, 284, 285, and 286 were integrated at 5c11b0d671bddbd63e9fe425d3c0c98bf99db463. Remaining candidates 278 and 282 have unresolved same-ID/revision authority conflicts; candidate 281 remains held because its Docker/OCI deployment target conflicts with the retired-runtime boundary. Preserve inventory-derived outputs as provisional and do not begin bulk reconciliation. See specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/recovered-spec-subset-5c11b0d.md.",
+    "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: 9 non-conflicting Specs are integrated at 5c11b0d671bddbd63e9fe425d3c0c98bf99db463. Recovered Spec 278 is a whitespace-only duplicate of canonical main and is not a normative conflict. Recovered Work Context Spec 282 materially conflicts with current canonical Spec 282; Specs 284 and 285 depend on the recovered meaning. Spec 281 remains held for its Docker/OCI deployment target. Resolve the Spec 282 authority/numbering and Spec 281 policy disposition before declaring the recovered set uploaded, validated, and integrated. Keep generated inventory views provisional and do not bulk reconcile. See handoff/evidence/recovery-candidate-content-comparison-826979a.md.",
     "next_ready_workunit": null,
     "reactivation_predicate": "Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref",
-    "resume_point": "Framework ready at ad560a5d05b498f2f1881cb96daac526c7588827; latest framework parser follow-up 3e47dab0d59acd274d3e5d897813ca0f6d5d8513. Partial recovered Spec upload integrated at 5c11b0d671bddbd63e9fe425d3c0c98bf99db463. Resume after the remaining candidate authority/policy dispositions are resolved and the selected canonical Spec set is uploaded, validated, and integrated.",
+    "resume_point": "Framework ready at ad560a5d05b498f2f1881cb96daac526c7588827; parser follow-up 3e47dab0d59acd274d3e5d897813ca0f6d5d8513; nine candidate Specs partially integrated at 5c11b0d671bddbd63e9fe425d3c0c98bf99db463. Recovered Spec 278 is a whitespace-only duplicate; remaining blocker is distinct Work Context Spec 282 authority/numbering plus Spec 281 runtime policy. Resume bulk migration only after those dispositions and integration of the selected canonical set.",
     "waiting_predicate": "Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref"
   },
   "continuation_assessment": {
@@ -56,7 +56,7 @@
         "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: resolve the recovered Work Context Spec 282 authority/numbering conflict with current canonical Spec 282 and reconcile Spec 281 Docker/OCI deployment text against repository policy. Spec 278 is a whitespace-only duplicate of the current canonical Spec. Do not regenerate inventory-derived outputs or begin bulk reconciliation before the selected canonical set is integrated.",
     "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
     "residual_requirements": []
   },
@@ -86,7 +86,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -143,6 +143,27 @@
     "updated_at": "2026-10-06T00:43:01.838078Z"
   },
   "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
+        },
+        {
+          "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
+          "identity_ambiguous": true,
+          "kind": "SOURCE",
+          "line": 1281,
+          "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
+        }
+      ],
+      "next_action": "WAITING_POST_RECOVERY_SPEC_UPLOAD: resolve the recovered Work Context Spec 282 authority/numbering conflict with current canonical Spec 282 and reconcile Spec 281 Docker/OCI deployment text against repository policy. Spec 278 is a whitespace-only duplicate of the current canonical Spec. Do not regenerate inventory-derived outputs or begin bulk reconciliation before the selected canonical set is integrated.",
+      "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+      "residual_requirements": []
+    },
     "lifecycle": {
       "current_state": "WAITING_DEPENDENCY",
       "previous_state": null,
@@ -240,7 +261,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T02:57:58.425350Z",
+  "updated_at": "2026-10-06T03:03:02.251278Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
