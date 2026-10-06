@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 165 unresolved of 165
-- Next action: Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.
-- Manifest generation: 5
+- Next action: Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.
+- Manifest generation: 6
 
 ## Source-declared status and relationship claims
 

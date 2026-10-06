@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+    "expected_canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Produce and bind workspace convergence/retirement receipts in every final-verification caller; run the remaining P0 race and regression scenarios.",
-    "next_ready_workunit": "P0-WU-3",
+    "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
+    "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
-    "resume_point": "P0-WU-3",
+    "resume_point": "P0-WU-4",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -41,7 +41,7 @@
         "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
       }
     ],
-    "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
+    "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
     "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
     "residual_requirements": []
   },
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -88,7 +88,11 @@
     "title": "SPEC-293 — SmartAIHub Unified Git Workspace & Repository Federation"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "392b41dbaadcee6bfb4497735d451db8b553aef7",
+      "a6c67a6cd888b64d7822a22e736e9ca3cd845527",
+      "1b93981fdde901e30ca6f681af02315de68d65cb"
+    ],
     "mapping": [],
     "source_paths": [],
     "started": false,
@@ -96,9 +100,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "392b41dbaadcee6bfb4497735d451db8b553aef7",
+    "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
     "integrated": true,
-    "integrated_at": "2026-10-06T17:53:47Z"
+    "integrated_at": "2026-10-06T18:13:55Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -120,7 +124,7 @@
           "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
         }
       ],
-      "next_action": "Continue P0-WU-3: produce and bind durable canonical-convergence and worktree-retirement receipts; then execute remaining race and 30-case regression coverage.",
+      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
       "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
       "residual_requirements": []
     },
@@ -215,7 +219,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T17:57:12.095041Z",
+  "updated_at": "2026-10-06T18:18:36.642722Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
