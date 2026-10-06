@@ -127,17 +127,27 @@
         "successor_spec_id": "226"
       }
     ],
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "conflicts": [],
     "evidence": [
       {
+        "claim": "Spec declares Proposed / Incremental Upgrade Specification.",
         "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
+      },
+      {
+        "claim": "A narrow development-control bridge exists on canonical main.",
+        "kind": "CURRENT_IMPLEMENTATION",
+        "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
+      },
+      {
+        "kind": "CURRENT_TEST",
+        "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "DORMANT_VALID",
     "successors": []
   },
   "blockers": [],
@@ -153,102 +163,24 @@
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "MEDIUM",
+    "decision": "MAINTENANCE_ONLY",
     "evidence": [
       {
-        "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
+        "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L4"
       },
       {
-        "excerpt": "// while the additive Spec 226 D3 procedures roll out.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 383,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
-        "excerpt": "throw new Error(\"Spec 226 authorization procedures are unavailable\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 417,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
-        "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 907,
-        "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
-      },
-      {
-        "excerpt": "* Spec 226 user-surface adapter. Creation persists a pending canonical job;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 195,
-        "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
-      },
-      {
-        "excerpt": "\"spec-226-development-control-v3\" as const;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 21,
         "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
       },
       {
-        "excerpt": "* Additive Spec 226 projection and owner-scoped control adapter. It reads and",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 213,
-        "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
-      },
-      {
-        "excerpt": "bridgeVersion: \"spec-226-development-control-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 169,
-        "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
-      },
-      {
-        "excerpt": "bridgeVersion: \"spec-226-development-control-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 735,
-        "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
-      },
-      {
-        "excerpt": "bridgeVersion: \"spec-226-development-control-v1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 808,
-        "path": "apps/web/client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx"
-      },
-      {
-        "excerpt": "describe(\"Spec 226 DevelopmentRun control bridge\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 91,
-        "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
-      },
-      {
-        "excerpt": "testTarget: \"Spec 226 canonical read projection\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 184,
-        "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
-      },
-      {
-        "excerpt": "bridgeVersion: \"spec-226-development-control-v3\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 236,
         "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Reassess only when product authority activates a bounded Spec 226 upgrade work unit.",
+    "rationale": "Maintain the currently integrated narrow bridge. Do not resume the proposed 309-requirement expansion unless product authority explicitly activates a scoped work unit.",
+    "residual_requirements": [
+      "309 proposal requirements remain open and unimplemented; they are not active work until the proposed upgrade is authorized."
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -265,18 +197,30 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "evidence": [
       {
         "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
+      },
+      {
+        "kind": "CURRENT_IMPLEMENTATION",
+        "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
+      },
+      {
+        "kind": "CURRENT_TEST",
+        "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
+      },
+      {
+        "kind": "RECOVERY_ARCHIVE",
+        "path": "/home/dev/projects/SmartSpecPro-recovery/20261006T123752Z-168641d-956764ed/spec226-final-snapshot-20261006T2200+07/metadata.json"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "The normative Spec declares a proposed incremental upgrade and has no evidence of product approval or activation. Canonical main contains a narrow development-control bridge, but the 309 open proposal requirements are not an approved implementation backlog. The archived candidate worktree is preserved as archival recovery evidence and is not current authority.",
+    "value": "DORMANT_VALID"
   },
-  "generation": 9,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
     "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
@@ -306,13 +250,233 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
+    "current_state": "DORMANT_VALID",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      {
+        "kind": "NORMATIVE_PROPOSAL_STATE",
+        "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L4"
+      },
+      {
+        "kind": "CURRENT_NARROW_IMPLEMENTATION",
+        "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
+      }
+    ],
     "updated_at": "2026-10-06T03:28:17.841078Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "199",
+          "referenced_spec_id": "199",
+          "referencing_spec_id": "226",
+          "relation_text": "replacing",
+          "requirement_ids": [],
+          "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L105",
+          "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "successor_spec_id": "226"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "200",
+          "referenced_spec_id": "200",
+          "referencing_spec_id": "226",
+          "relation_text": "replacing",
+          "requirement_ids": [],
+          "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L105",
+          "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "successor_spec_id": "226"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "214",
+          "referenced_spec_id": "214",
+          "referencing_spec_id": "226",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+          "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "successor_spec_id": "226"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "215",
+          "referenced_spec_id": "215",
+          "referencing_spec_id": "226",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+          "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "successor_spec_id": "226"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "224",
+          "referenced_spec_id": "224",
+          "referencing_spec_id": "226",
+          "relation_text": "replacing",
+          "requirement_ids": [],
+          "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L104",
+          "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "successor_spec_id": "226"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "224",
+          "referenced_spec_id": "224",
+          "referencing_spec_id": "226",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+          "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "successor_spec_id": "226"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "226",
+          "referenced_spec_id": "226",
+          "referencing_spec_id": "224",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
+          "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+          "successor_spec_id": "224"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "226",
+          "referenced_spec_id": "226",
+          "referencing_spec_id": "240",
+          "relation_text": "merge",
+          "requirement_ids": [],
+          "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+          "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+          "successor_spec_id": "240"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "226",
+          "referenced_spec_id": "226",
+          "referencing_spec_id": "249",
+          "relation_text": "replacement",
+          "requirement_ids": [],
+          "source": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md#L707",
+          "source_digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
+          "successor_spec_id": "249"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "228",
+          "referenced_spec_id": "228",
+          "referencing_spec_id": "226",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2502",
+          "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "successor_spec_id": "226"
+        }
+      ],
+      "confidence": "MEDIUM",
+      "conflicts": [],
+      "evidence": [
+        {
+          "claim": "Spec declares Proposed / Incremental Upgrade Specification.",
+          "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
+        },
+        {
+          "claim": "A narrow development-control bridge exists on canonical main.",
+          "kind": "CURRENT_IMPLEMENTATION",
+          "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
+        },
+        {
+          "kind": "CURRENT_TEST",
+          "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
+        }
+      ],
+      "predecessors": [],
+      "status": "DORMANT_VALID",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "MEDIUM",
+      "decision": "MAINTENANCE_ONLY",
+      "evidence": [
+        {
+          "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L4"
+        },
+        {
+          "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
+        }
+      ],
+      "next_action": "Reassess only when product authority activates a bounded Spec 226 upgrade work unit.",
+      "rationale": "Maintain the currently integrated narrow bridge. Do not resume the proposed 309-requirement expansion unless product authority explicitly activates a scoped work unit.",
+      "residual_requirements": [
+        "309 proposal requirements remain open and unimplemented; they are not active work until the proposed upgrade is authorized."
+      ]
+    },
+    "disposition": {
+      "confidence": "MEDIUM",
+      "evidence": [
+        {
+          "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
+        },
+        {
+          "kind": "CURRENT_IMPLEMENTATION",
+          "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
+        },
+        {
+          "kind": "CURRENT_TEST",
+          "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
+        },
+        {
+          "kind": "RECOVERY_ARCHIVE",
+          "path": "/home/dev/projects/SmartSpecPro-recovery/20261006T123752Z-168641d-956764ed/spec226-final-snapshot-20261006T2200+07/metadata.json"
+        }
+      ],
+      "rationale": "The normative Spec declares a proposed incremental upgrade and has no evidence of product approval or activation. Canonical main contains a narrow development-control bridge, but the 309 open proposal requirements are not an approved implementation backlog. The archived candidate worktree is preserved as archival recovery evidence and is not current authority.",
+      "value": "DORMANT_VALID"
+    },
+    "lifecycle": {
+      "current_state": "DORMANT_VALID",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        {
+          "kind": "NORMATIVE_PROPOSAL_STATE",
+          "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L4"
+        },
+        {
+          "kind": "CURRENT_NARROW_IMPLEMENTATION",
+          "path": "apps/web/server/services/spec226DevelopmentControlBridge.ts"
+        }
+      ],
+      "updated_at": "2026-10-06T03:28:17.841078Z"
+    },
+    "reconciliation_confidence": {
+      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+      "value": "MEDIUM"
+    }
+  },
   "reconciliation": {
-    "confidence": "LOW",
+    "confidence": "MEDIUM",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
@@ -519,7 +683,7 @@
     ],
     "conflict_duplication_risk": "REVIEW_REQUIRED",
     "current_architecture_fit": "UNASSESSED",
-    "current_product_relevance": "UNASSESSED",
+    "current_product_relevance": "A narrow development-control bridge is integrated; the broader proposed platform upgrade is not activated.",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
     "declared_claims": [
       {
@@ -541,7 +705,7 @@
         "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
       }
     ],
-    "implementation_equivalence": "UNASSESSED",
+    "implementation_equivalence": "Do not infer completion from the narrow bridge. The 309 proposal requirements remain open.",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
     "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
@@ -556,7 +720,7 @@
     "unresolved": 309
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.841078Z",
+  "updated_at": "2026-10-06T15:51:54.301145Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

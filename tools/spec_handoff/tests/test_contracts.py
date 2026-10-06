@@ -30,6 +30,17 @@ class ContractTests(unittest.TestCase):
         value["continuation_assessment"]["decision"] = "RECONCILIATION_REQUIRED"
         self.assertNotEqual(value["continuation_assessment"]["decision"], "CONTINUE_REQUIRED")
 
+    def test_dormant_valid_is_a_deterministic_noncompletion_state(self):
+        value = manifest()
+        value["authority"]["status"] = "DORMANT_VALID"
+        value["disposition"] = {"value": "DORMANT_VALID", "rationale": "Proposed scope is valid but dormant", "confidence": "HIGH", "evidence": ["spec.md"]}
+        value["lifecycle"]["current_state"] = "DORMANT_VALID"
+        value["continuation_assessment"] = {"decision": "MAINTENANCE_ONLY", "confidence": "HIGH", "rationale": "No active implementation is required", "residual_requirements": ["R-1"], "evidence": ["architecture.md"], "next_action": "Reassess if product scope is activated"}
+        self.assertEqual(validate_manifest(value), [])
+        eligible, reasons = completion_eligible(value, {"requirements": [{"requirement_id": "R-1", "status": "OPEN"}]})
+        self.assertFalse(eligible)
+        self.assertTrue(reasons)
+
     def test_completion_rejects_completion_file_only_state(self):
         value = manifest()
         value["verification"] = {"status": "UNKNOWN", "sha": None}

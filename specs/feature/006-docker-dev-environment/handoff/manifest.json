@@ -6,7 +6,7 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "conflicts": [],
     "evidence": [
       {
@@ -15,13 +15,18 @@
         "path": "specs/feature/006-docker-dev-environment/spec.md"
       },
       {
-        "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "claim": "Web application runs as a host systemd Node process from apps/web.",
+        "kind": "RUNTIME_CONFIGURATION",
+        "path": "systemd/smartspec-web.service"
+      },
+      {
+        "claim": "Docker Compose remains for supporting infrastructure and optional media services.",
+        "kind": "RUNTIME_CONFIGURATION",
+        "path": "systemd/smartspec-infra.service"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "DORMANT_VALID",
     "successors": []
   },
   "blockers": [],
@@ -37,30 +42,24 @@
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "MEDIUM",
+    "decision": "MAINTENANCE_ONLY",
     "evidence": [
       {
-        "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/006-docker-dev-environment/spec.md"
+        "path": "systemd/smartspec-web.service"
       },
       {
-        "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "path": "systemd/smartspec-infra.service"
       },
       {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
+        "path": "docker-compose.infra.yml"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Reassess if product/runtime authority reactivates Dockerized web application hosting.",
+    "rationale": "No work is required to containerize the web application under the current host-systemd architecture. Continue maintenance only for the Docker-based infrastructure still used by the repository.",
+    "residual_requirements": [
+      "The original Dockerized web-stack requirement remains inactive; it is not an active implementation obligation."
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -77,7 +76,7 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "evidence": [
       {
         "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
@@ -85,15 +84,22 @@
         "path": "specs/feature/006-docker-dev-environment/spec.md"
       },
       {
-        "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "kind": "CURRENT_RUNTIME_CONFIGURATION",
+        "path": "systemd/smartspec-web.service"
+      },
+      {
+        "kind": "CURRENT_INFRASTRUCTURE_CONFIGURATION",
+        "path": "systemd/smartspec-infra.service"
+      },
+      {
+        "kind": "SUPPORTING_CONFIGURATION",
+        "path": "docker-compose.infra.yml"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "The full Dockerized web-stack target is not an active product requirement: the current web application is configured as a host systemd service, while Docker Compose is retained for supporting infrastructure. Preserve the Spec as valid dormant intent and reassess only if containerized app hosting is reactivated.",
+    "value": "DORMANT_VALID"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/006-docker-dev-environment/spec.md",
     "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
@@ -123,13 +129,112 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
+    "current_state": "DORMANT_VALID",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      {
+        "kind": "CURRENT_RUNTIME_CONFIGURATION",
+        "path": "systemd/smartspec-web.service"
+      },
+      {
+        "kind": "CURRENT_INFRASTRUCTURE_CONFIGURATION",
+        "path": "systemd/smartspec-infra.service"
+      }
+    ],
     "updated_at": "2026-10-06T03:28:14.615911Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "MEDIUM",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/006-docker-dev-environment/spec.md"
+        },
+        {
+          "claim": "Web application runs as a host systemd Node process from apps/web.",
+          "kind": "RUNTIME_CONFIGURATION",
+          "path": "systemd/smartspec-web.service"
+        },
+        {
+          "claim": "Docker Compose remains for supporting infrastructure and optional media services.",
+          "kind": "RUNTIME_CONFIGURATION",
+          "path": "systemd/smartspec-infra.service"
+        }
+      ],
+      "predecessors": [],
+      "status": "DORMANT_VALID",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "MEDIUM",
+      "decision": "MAINTENANCE_ONLY",
+      "evidence": [
+        {
+          "path": "systemd/smartspec-web.service"
+        },
+        {
+          "path": "systemd/smartspec-infra.service"
+        },
+        {
+          "path": "docker-compose.infra.yml"
+        }
+      ],
+      "next_action": "Reassess if product/runtime authority reactivates Dockerized web application hosting.",
+      "rationale": "No work is required to containerize the web application under the current host-systemd architecture. Continue maintenance only for the Docker-based infrastructure still used by the repository.",
+      "residual_requirements": [
+        "The original Dockerized web-stack requirement remains inactive; it is not an active implementation obligation."
+      ]
+    },
+    "disposition": {
+      "confidence": "MEDIUM",
+      "evidence": [
+        {
+          "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/006-docker-dev-environment/spec.md"
+        },
+        {
+          "kind": "CURRENT_RUNTIME_CONFIGURATION",
+          "path": "systemd/smartspec-web.service"
+        },
+        {
+          "kind": "CURRENT_INFRASTRUCTURE_CONFIGURATION",
+          "path": "systemd/smartspec-infra.service"
+        },
+        {
+          "kind": "SUPPORTING_CONFIGURATION",
+          "path": "docker-compose.infra.yml"
+        }
+      ],
+      "rationale": "The full Dockerized web-stack target is not an active product requirement: the current web application is configured as a host systemd service, while Docker Compose is retained for supporting infrastructure. Preserve the Spec as valid dormant intent and reassess only if containerized app hosting is reactivated.",
+      "value": "DORMANT_VALID"
+    },
+    "lifecycle": {
+      "current_state": "DORMANT_VALID",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        {
+          "kind": "CURRENT_RUNTIME_CONFIGURATION",
+          "path": "systemd/smartspec-web.service"
+        },
+        {
+          "kind": "CURRENT_INFRASTRUCTURE_CONFIGURATION",
+          "path": "systemd/smartspec-infra.service"
+        }
+      ],
+      "updated_at": "2026-10-06T03:28:14.615911Z"
+    },
+    "reconciliation_confidence": {
+      "source_spec_digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
+      "value": "MEDIUM"
+    }
+  },
   "reconciliation": {
-    "confidence": "LOW",
+    "confidence": "MEDIUM",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
@@ -175,9 +280,9 @@
       }
     ],
     "conflict_duplication_risk": "UNASSESSED",
-    "current_architecture_fit": "UNASSESSED",
+    "current_architecture_fit": "PARTIAL: Docker supports infrastructure; the web application runs under host systemd.",
     "current_product_relevance": "UNASSESSED",
-    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "current_runtime_dependency": "Docker is used by supporting infrastructure services, not the web application process.",
     "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
@@ -207,7 +312,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:14.615911Z",
+  "updated_at": "2026-10-06T15:51:54.261625Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

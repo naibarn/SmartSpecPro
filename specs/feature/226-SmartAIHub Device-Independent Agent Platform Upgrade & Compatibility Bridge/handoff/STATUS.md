@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 226 — Spec 226 — SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Disposition: `DORMANT_VALID` (MEDIUM)
+- Lifecycle: `DORMANT_VALID`
+- Continuation: `MAINTENANCE_ONLY` (MEDIUM)
 - Requirements: 0 pass / 309 unresolved of 309
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 9
+- Next action: Reassess only when product authority activates a bounded Spec 226 upgrade work unit.
+- Manifest generation: 10
 
 ## Source-declared status and relationship claims
 
