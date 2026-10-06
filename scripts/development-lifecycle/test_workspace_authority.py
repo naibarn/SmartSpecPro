@@ -157,11 +157,12 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         git(self.seed, "commit", "-m", "integrated v2")
         integrated = git(self.seed, "rev-parse", "HEAD")
         git(self.seed, "push", "origin", "main")
-        result = authority.converge_canonical_workspace(self.canonical, self.policy, integrated_sha=integrated)
+        result = authority.converge_canonical_workspace(self.canonical, self.policy, integrated_sha=integrated, task_id="run-224")
         self.assertEqual(result["status"], "USER_WORKSPACE_CONVERGED")
         self.assertEqual(git(self.canonical, "rev-parse", "HEAD"), integrated)
         self.assertEqual(git(self.canonical, "status", "--porcelain=v1"), "")
         self.assertEqual(result["receipt"]["canonical_user_workspace_sha"], integrated)
+        self.assertEqual(result["receipt"]["task_id"], "run-224")
 
     def test_dirty_canonical_workspace_is_snapshotted_and_never_overwritten(self) -> None:
         original = (self.canonical / "tracked.txt").read_text(encoding="utf-8")

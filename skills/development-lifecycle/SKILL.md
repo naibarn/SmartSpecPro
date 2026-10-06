@@ -30,7 +30,10 @@ editor workspace when applicable. After promotion, call `converge` with the
 integrated SHA, then `verify`. Convergence means exact parity with the latest
 canonical SHA and a clean workspace, tied to a durable receipt. If dirty, first
 record ownership and preserve staged, unstaged, and untracked content; leave
-the user workspace untouched and report convergence pending. Never replace the
+the user workspace untouched and report convergence pending. For Spec 224 Final
+Verify evidence, pass the exact development run ID using `converge --task-id`
+and register the owned task worktree with that same ID; both lifecycle receipts
+must bind to the same run. Never replace the
 user-facing authority with a permanent alternate checkout. Internal exact-SHA
 worktrees are allowed only as explicitly registered task/session/integration
 workspaces. Continue in-flight work only with its base SHA and reconciliation

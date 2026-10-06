@@ -8,9 +8,10 @@ import {
   validateSpec224VerificationProvenance,
   type Spec224VerificationProvenance,
 } from "./spec224VerificationProvenance";
-import type {
-  DevelopmentEvent,
-  DevelopmentRun,
+import {
+  workspaceLifecycleEvidenceErrorCode,
+  type DevelopmentEvent,
+  type DevelopmentRun,
 } from "./spec224DevelopmentRunContracts";
 
 const FINAL_EVIDENCE_REF = /^evidence:final[-:][A-Za-z0-9_./:@#-]{1,181}$/;
@@ -27,6 +28,8 @@ export type Spec224FinalVerifyInput = {
   finalEvidenceRef: string;
   workspaceConvergenceEvidenceRef: string;
   worktreeRetirementEvidenceRef: string;
+  workspaceConvergenceReceipt: Record<string, unknown>;
+  worktreeRetirementReceipt: Record<string, unknown>;
   /** Optional until every canonical caller can provide the live tuple. */
   provenance?: Spec224VerificationProvenance;
 };
@@ -36,6 +39,13 @@ export type Spec224FinalVerifyResult =
       status: "FAIL";
       outcome: "REPAIR_REQUIRED";
       closureErrorCode: string;
+      run: DevelopmentRun;
+      revision: number;
+    }
+  | {
+      status: "WAIT";
+      outcome: "CONVERGENCE_PENDING";
+      reason: string;
       run: DevelopmentRun;
       revision: number;
     }
@@ -77,6 +87,26 @@ export function createSpec224FinalVerifyService(
       if (record.run.state !== "FINAL_VERIFY" && !isDuplicateCompletion) {
         throw new Error("FINAL_VERIFY_RUN_REQUIRED");
       }
+      const lifecycleEvidenceRefs = [
+        ...record.run.evidenceRefs,
+        input.workspaceConvergenceEvidenceRef,
+        input.worktreeRetirementEvidenceRef,
+      ];
+      const workspaceEvidenceError = workspaceLifecycleEvidenceErrorCode(
+        record.run,
+        input.workspaceConvergenceReceipt,
+        input.worktreeRetirementReceipt,
+        lifecycleEvidenceRefs
+      );
+      if (workspaceEvidenceError) {
+        return {
+          status: "WAIT",
+          outcome: "CONVERGENCE_PENDING",
+          reason: workspaceEvidenceError,
+          run: record.run,
+          revision: record.revision,
+        };
+      }
       if (
         !isDuplicateCompletion &&
         record.revision !== input.expectedRevision
@@ -116,6 +146,8 @@ export function createSpec224FinalVerifyService(
           payload: {
             action: "final_verify_completed",
             finalEvidenceRef,
+            workspaceConvergenceReceipt: input.workspaceConvergenceReceipt,
+            worktreeRetirementReceipt: input.worktreeRetirementReceipt,
           },
           evidenceRefs: [
             finalEvidenceRef,

@@ -1,5 +1,5 @@
 {
-  "generation": 0,
+  "generation": 1,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "03763a6ac2a3d17c72f15808aa8366a4025f3f168e5d0eea094f7bc60d70c013",
       "requirement_id": "REQ-A08D34016679",
       "requirement_text": "**Implementation rule:** ADDITIVE ONLY. MUST NOT replace Git/GitHub, SPAAS, Development Orchestrator, Task Control, Resource Fabric, command ingress, authorization, secret storage, deployment runtime, or billing authority.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "53aa890cfae5f5bd51ffc7f30960ba88f80b7f3fe55d5576e1a49b99fd534968",
       "requirement_id": "REQ-E33880F0CF09",
       "requirement_text": "SmartAIHub SHALL provide a **Unified Git Workspace & Repository Federation** layer so that platform engineering, administrators acting as creators, tenant teams, individual users, and customer projects can connect and use Git repositories without mixing ownership or visibility domains.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "47d8288edd6606ac52a9c8d06a17fd69904b6217c57d89c74bf60257927f1f92",
       "requirement_id": "REQ-6BF4AD8D7862",
       "requirement_text": "The system SHALL explicitly separate these scopes:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "af1cb638046a0eed5534f5053502dc3676e36cb7b0d618b3d8b9c350c3b7a7ab",
       "requirement_id": "REQ-FDBAB7C057EA",
       "requirement_text": "SmartAIHub MAY present these workspaces through one consistent UI family, but MUST NOT collapse their authorization boundaries or operational purposes.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "5746430e90497a40054c8c43855f515415f0b6f71ac9cdb993808a8b4eaab671",
       "requirement_id": "REQ-A94C640933E6",
       "requirement_text": "Implementation SHALL resolve current canonical revisions from the repository canonical registry/handoff authority when present (including `SPEC_INDEX.yaml` if/when materialized). If no registry file is present, G0 SHALL use canonical `specs/feature` identity, manifest/status/handoff metadata and explicit collision checks; filesystem mtime alone is never authority.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "bc1dacfb4d8402e464ff94ab19976703a301b0e364ed82477c91bb1f30ff75d2",
       "requirement_id": "REQ-48E6411EB5E0",
       "requirement_text": "| Unified UI governance | SPEC-287 governs UI generation/conformance. Git Workspace UI must comply. |",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "5e83fb4ed90c9677fcdfaa82eff3dac7338900f5164b2082b6e499fffab47373",
       "requirement_id": "REQ-CE3B3182FDE7",
       "requirement_text": "This spec MUST NOT create:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "602d162dd1544ff89d9778b9f590758adc3105643e8cef81b6f34fd731ae3417",
       "requirement_id": "REQ-7914159DA036",
       "requirement_text": "Each workspace SHALL have:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "3710cf71d500e915998eca17521a26c7843b54a6f606da6390beb36c089b3498",
       "requirement_id": "REQ-14ED04D150AF",
       "requirement_text": "Normal users MUST NOT discover its private repository metadata merely because they can use SmartAIHub.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "4016bcee8ce07779b7c3660e56b2836e3794e00dcc7bb450e9d2b3fcb26bb6ce",
       "requirement_id": "REQ-7EE578C79215",
       "requirement_text": "An administrator acting as a creator SHALL use a separate `ADMIN_CREATOR` or ordinary personal workspace for Mini Apps/Apps/projects not belonging to platform engineering.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "39beecf01fa6224bc9447389aa11cc49add96867878f635978919c5b85d793f7",
       "requirement_id": "REQ-23DA64291FD2",
       "requirement_text": "Being `PLATFORM_ADMIN` MUST NOT automatically reclassify personal creator repositories as platform engineering.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "b77daf767dea01a783df8b455f77c3dc461e98968f8d518c653308659186dec8",
       "requirement_id": "REQ-94714780A1F1",
       "requirement_text": "Customer-controlled repositories SHALL be treated as externally owned sources with explicit authorization, retention and transfer constraints.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "37927f49786fa12afc36487225a4f15e27a3d200ece8701886372c16046db23c",
       "requirement_id": "REQ-FA44B63F84AD",
       "requirement_text": "Logical repository identity MUST survive legitimate access-route changes.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "dc8974e64d7f49afdd29a06c3c3612d8dad8425ff03d237fedb09048713eb185",
       "requirement_id": "REQ-C481F48CCD74",
       "requirement_text": "`installation_id`, OAuth account and token IDs MUST NOT be part of logical repository identity.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "fe90cea3c5d438a6515a33f91322ce201289e836a6e14676f0d5d3bf727f53bd",
       "requirement_id": "REQ-81A9ADE73756",
       "requirement_text": "Late events or cached actions from old generations MUST NOT restore revoked access.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "4cfa7cae0c387016af906db74127d2ec1deb1f5dca39201a326d272932ac732f",
       "requirement_id": "REQ-BDA6CA714D43",
       "requirement_text": "Mission-control/workspace tables MUST store:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "6b72c3c39604d80eda964daa236d4dab834543c6be9b615c28c7e7fd2d5a813f",
       "requirement_id": "REQ-6A2A6CE82B72",
       "requirement_text": "They MUST NOT store plaintext tokens/private keys.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "94a82cfe62beee5dd68afc77a85a31b915973baad5584b1f1f185a49db2960ae",
       "requirement_id": "REQ-16CC628D300E",
       "requirement_text": "The same GitHub user MAY participate through multiple installations/organizations. The same repository MAY be visible through multiple authorized connections. These facts MUST NOT duplicate the repository entity.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "9adca81bbdc7178beb370d236e816dd3203b030d11878990bcfa069863778000",
       "requirement_id": "REQ-722395EAC6B6",
       "requirement_text": "When creating an App/Mini App/project, source placement SHALL be explicit.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "24ca5156a6abbe04c4124c3161ae9211725f2e4c1fda549ee0d1d99281620fa2",
       "requirement_id": "REQ-0A5863CA98F6",
       "requirement_text": "Public repository creation MUST be an explicit effect with a clear source-code exposure warning.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "fdc12d104bfeaffc94a773dde1eae80e0838e83873a6804d012bd215b9dac85f",
       "requirement_id": "REQ-EF457B37F17E",
       "requirement_text": "Bindings SHALL therefore support:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "f71e7b91c3190db3816bec05385370a545e208ab5ba6b17a9831a8e1d9cbc6f0",
       "requirement_id": "REQ-A6DDF11A5B97",
       "requirement_text": "`root_path` SHALL be normalized and protected against path traversal.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "9ed5484d7ba2139fe43e6d5c7d2102ecadf70c951992cb266fc6cfc2da4444da",
       "requirement_id": "REQ-0F3F089F8C23",
       "requirement_text": "Managed repositories MUST:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "d42b29f3e77274d1596aad73086a3ee3878973d7086811cf232ae0cd4d084020",
       "requirement_id": "REQ-9C44CD3EC7B5",
       "requirement_text": "Creation and binding MUST be idempotent with stable request IDs.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "d33a72adedf3f1381894dd8fae34ed56776ae6d4ca63ee209d3daa0a10faf8ff",
       "requirement_id": "REQ-CE613DD5FE40",
       "requirement_text": "If provider creation succeeds but SmartAIHub binding fails, recovery MUST reconcile the already-created repository rather than blindly create another one.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "d5c71fa01154024138aa90b8d3e4bd247b10d70fec4db2cd0219a21ad414d3ae",
       "requirement_id": "REQ-F7F644FF5125",
       "requirement_text": "Import SHALL NOT mean copying all repository bytes into a new canonical SmartAIHub store.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "e24dfb05048a6332eded8c4dcb5195abdb09b045e50dcb58224b6aee1af988ec",
       "requirement_id": "REQ-61AD38BCC6E5",
       "requirement_text": "Untrusted repository content MUST be treated as data. Import MUST NOT execute repository scripts/hooks/package installers simply to identify an App.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "99c18bb31bbe289841fe6ecbabc128f5eb8f38dfb2b564c9bbc3e11cd073001b",
       "requirement_id": "REQ-50EB54CC20CD",
       "requirement_text": "The UI MUST NOT label all of these as “clone” without explaining the effect.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "d02487bb29f836c7bf8c7c6ad70f2fee2d67b846b06aeaa11fea0ec0f80d390c",
       "requirement_id": "REQ-FA4A1EC01C83",
       "requirement_text": "Transfer/export SHALL distinguish:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "777da12fa58c7fbe17ee13b854ff84859cef4cfe2ba737aa1235246405255826",
       "requirement_id": "REQ-F5C04AEB82A1",
       "requirement_text": "A transfer MUST NOT silently transfer secrets, deployment credentials, customer data or non-exportable runtime state.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "c375d4e61d9da6973b0014ec181641b960110c2e90f5336d96a13fa19f4c26e7",
       "requirement_id": "REQ-847951292999",
       "requirement_text": "Destructive semantics MUST be explicit.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "f0b4a1331b2be9324242959d11456c8cbfab0ad1795a0cdec3c19e144f88d011",
       "requirement_id": "REQ-B7F3A1D51317",
       "requirement_text": "Deleting an App MUST NOT implicitly delete its Git repository unless a separately authorized policy/action explicitly requests it.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "12308ed14ec443cd6ad26492b4444c62f61c90815bcb91878416946b5333a0f8",
       "requirement_id": "REQ-8CC09C5B2C53",
       "requirement_text": "Provider deletion requires strong confirmation/approval according to policy and MUST preserve an audit/evidence receipt without retaining unauthorized source contents.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "0752a91c42e82fa07f7c023a1c951a70efdb8d6b99e7eaea45d1a0045aba01ca",
       "requirement_id": "REQ-A9AE239FFE62",
       "requirement_text": "Every repository read/mutation SHALL require the intersection of:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "ccca9eada6cce3442f7f09346e7b26c749cae79e1d2577983e4a37d63876f676",
       "requirement_id": "REQ-40D14126A6B8",
       "requirement_text": "Platform administrators MAY administer platform configuration and, when authorized, connection health. They MUST NOT automatically gain source browsing/mutation authority over private user/tenant/customer repositories solely because they are platform admins.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "0475f8ad161140d9cbd5bac7dfe04e228fc2565506b0267a85fc1819f92698a7",
       "requirement_id": "REQ-9D3472BE506D",
       "requirement_text": "Emergency/support access, if the product supports it, MUST use a separately auditable break-glass mechanism with purpose limitation and expiry.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "2258785c9effd09dcfe3aa058ff9d4dd981cf09c29ad94b7ae5471d2ffd2e513",
       "requirement_id": "REQ-5D18964B7028",
       "requirement_text": "`RepositoryMutationPolicy` SHALL control capabilities such as:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "94e2eed0ad074ca19b438885ecd767fe9d517fe52449e10c877fac0960784566",
       "requirement_id": "REQ-0BEC27D71FDF",
       "requirement_text": "Read-only connections MUST never surface enabled mutating controls.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "97d2d3f6782b8c1c47b25204d138b5c5d52498a35f9a3d9a7594212182254e45",
       "requirement_id": "REQ-418B8FF90F74",
       "requirement_text": "Sensitive mutations MUST route through SPEC-279 and canonical approval/policy authorities rather than direct UI provider calls that bypass audit.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "113a174039d81ba6fb75617b24d0fbf40108a12cbd17feda4201fd205c9237d1",
       "requirement_id": "REQ-6844797964C0",
       "requirement_text": "Required properties:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "9b7e889309129994b0e1373d0f7b7eb3f05235a860cc37ac1728ac61ad13303f",
       "requirement_id": "REQ-AA61A79168AF",
       "requirement_text": "A missed webhook MUST be repairable by reconciliation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "8969e420109c7be9229330a9937adadeca149c6b53040862db395562522b014c",
       "requirement_id": "REQ-E692F0E7C2A2",
       "requirement_text": "A revoked connection MUST not remain visible through stale cache or search index results.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "ef96a11a232ddba50a38d54ece99992e9c95f588c84713fd6d5a72f453266519",
       "requirement_id": "REQ-3C7AAA9D2734",
       "requirement_text": "Provider connection identity and workspace ownership SHALL be separate.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "61f0de69843e7b1116167072e79a7a2c2f94c39ddcb48f04d6b6e2835bb3adbc",
       "requirement_id": "REQ-47F9BB1AD530",
       "requirement_text": "A single GitHub App installation MAY authorize repositories later bound into more than one permitted SmartAIHub workspace, but each `RepositoryAccessBinding` MUST independently prove current workspace authorization.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "cc9d29b6d9e9215edec2b0c7ff8b07d5dfd990da20a0296ea21fee0000ed2bab",
       "requirement_id": "REQ-E29F1745CEF9",
       "requirement_text": "Disconnecting one user's connection MUST NOT tombstone a logical Repository that remains authorized through another valid connection. Conversely, an alternate connection MUST NOT silently preserve access for a workspace whose own authorization was revoked.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "0a59ea41f72382e5d5597f0f479359da9c541afd6ae742f7d188c7e94d02b447",
       "requirement_id": "REQ-C230EF600374",
       "requirement_text": "Reconciliation SHALL classify at least:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "dd3fbc5d6e0c77c34c4d66ee4d72f569a1fac9780db206fd488ce004372ba9d8",
       "requirement_id": "REQ-7B40301FBD2F",
       "requirement_text": "A provider-missing repository MUST NOT be immediately hard-deleted from SmartAIHub projections because temporary permission loss can look like deletion. The adapter SHALL distinguish `not found because unauthorized` from provider-confirmed lifecycle facts when the provider API permits.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "0166258855651e78a116c586fda83a151591a3063df0e575ed421511bff78e49",
       "requirement_id": "REQ-696524F892BB",
       "requirement_text": "Admin surfaces SHALL separate platform engineering from user/tenant source administration.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "58c901b30189a4eaf6c336eb8bafbeb9119e01b36d0202b8be894415125fcec3",
       "requirement_id": "REQ-B4248E149EFD",
       "requirement_text": "Admin personal creator work SHALL NOT appear inside `Platform Engineering`; it appears in the admin user's normal creator workspace.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "da990578814590910c06a0f2c83666669f8d04e945946d692397ee0b69f9c991",
       "requirement_id": "REQ-170C48E1B0CB",
       "requirement_text": "Tenant UI MUST NOT expose personal repositories unrelated to that tenant.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "a6daa50c1a6a3f55cd9e63236c48449ce4bd66f2cbc87645f4c1bd3244fbb72d",
       "requirement_id": "REQ-971706D50D70",
       "requirement_text": "When repository-backed source is appropriate, App creation SHALL offer repository placement without forcing Git terminology too early.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "92acb28e97fdecdf9b25817654bc85f6b22ff180c4e3dfb9c3c03697a929abe0",
       "requirement_id": "REQ-517D4CE29679",
       "requirement_text": "Chat SHALL use explicit Git workspace context rather than assuming every Git question refers to platform engineering.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "5ae84fbcca714dda63614999ccd3f58a0b72dbb81a2097db16bab24e67f51dc4",
       "requirement_id": "REQ-7B2AA0CAC1FC",
       "requirement_text": "Read answers MUST be authorization-scoped and evidence-backed.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "fe863ded0f36e3818e319be81d778599d066e6c4449ec7a843efb8ccbd7854a0",
       "requirement_id": "REQ-82E04CBCED2A",
       "requirement_text": "Mutations MUST route through SPEC-279 and re-resolve a stable target immediately before execution.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "baf75351bdab293dcf177f52283dc04eaf83bff738e233dfc7a05007e45ea055",
       "requirement_id": "REQ-D3A338BBC7EC",
       "requirement_text": "Pronouns such as “อันนี้”, “ตัวนั้น”, “merge เลย” MUST NOT rely solely on stale chat text. Use a generation-fenced conversation operations context and require disambiguation when multiple authorized targets remain.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "0a88b5b94faa39ecd82017986f36df645aae6c06e18820e0fad76032a470a299",
       "requirement_id": "REQ-F5B6F5822259",
       "requirement_text": "The system MUST preserve active scope in UI deep links and Chat context.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "867ef9a6f1b3968da414df2f821ab11d214275c4cd661d41001ee92d9e42cff8",
       "requirement_id": "REQ-9C57DC349D68",
       "requirement_text": "Search results SHALL be filtered by current authorization before aggregation/ranking counts are exposed.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "2dc7865109f45641f566e451a323dcc3ea0969a7dd56358bc1c34550dcb6d1b2",
       "requirement_id": "REQ-AF5ACB59E89D",
       "requirement_text": "Repository search MUST NOT reveal private repository names merely because another source previously indexed them.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "dff20974204b78ecb15a6b5a59a4a9050031b37d6ac94b2ed3287cb0d12b9829",
       "requirement_id": "REQ-152D01E907AB",
       "requirement_text": "Repository names SHALL be resolved against provider constraints and target namespace.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "78c0f43d8d332c5a997834e5fc0758d2cbbbd838b45b2326d54daea4ec8d0b06",
       "requirement_id": "REQ-17AC0C9278D5",
       "requirement_text": "SmartAIHub SHOULD generate a preview but MUST support user/tenant override when authorized.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "825afc96dfd7479e24f0402944e449baaaa2404bd22bb16917f27fed8f88d649",
       "requirement_id": "REQ-8B3F81F5D15B",
       "requirement_text": "Name resolution MUST handle:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "d95558bdac69c752d0047b628367dc95ef6efc294c51edc2142887250c7ac09b",
       "requirement_id": "REQ-DBF607D611B5",
       "requirement_text": "App display name changes MUST NOT silently rename repositories.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "7511731b59c64fb657991098f01eb27707b90208ca2181267767d6457466fbe0",
       "requirement_id": "REQ-CBD5A763940C",
       "requirement_text": "The system SHALL expose repository/provider quotas and API-rate constraints where material.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "4b64db7c6e9037c3535e4819cdd84aee38727e868962394305243abc0b40e1bd",
       "requirement_id": "REQ-9EDE566D0CEC",
       "requirement_text": "Material actions SHALL produce durable audit/evidence receipts including:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "cc61419722218df3c9c4be7c2a790b53ef092550b72100816883971aef7028c4",
       "requirement_id": "REQ-925BA26B5CE5",
       "requirement_text": "Repository source contents are not required inside the audit record.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "b9401ecdb9be2abd5b933804c76b42de25ac7a3188b56f56b7f53977d346a4b4",
       "requirement_id": "REQ-A1525F16D57C",
       "requirement_text": "Required defenses include:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,7 +1471,7 @@
       "requirement_digest": "da077bb580be46943392da7c94ea690abe5c4c00845f5e26683831f4831c7666",
       "requirement_id": "REQ-59CC68477398",
       "requirement_text": "All persistent records SHALL carry tenant/workspace ownership context where applicable.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1493,7 +1493,7 @@
       "requirement_digest": "cad9447ff541903951be9e6bd1f00a2d1d84c69592031dcc557313fa838d26b4",
       "requirement_id": "REQ-A22C9EE4A297",
       "requirement_text": "Cross-tenant repository sharing MUST use explicit Work Context / federation policy; a repository binding in Tenant A does not silently make it visible to Tenant B.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1515,7 +1515,7 @@
       "requirement_digest": "565983867ffc6635b5982e9aa740d8a984ac8a540108a4965b0e0394d180dc6e",
       "requirement_id": "REQ-1B262436B45D",
       "requirement_text": "`PLATFORM_MANAGED` hosting MUST preserve tenant/user ownership semantics even when provider infrastructure is shared.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1537,7 +1537,7 @@
       "requirement_digest": "a70d6b5834b66b89aefc8dea0526dc68be1ce7c45b5324b2f881e304837fab54",
       "requirement_id": "REQ-5FB590E71C5A",
       "requirement_text": "A deleted/recreated worktree path MUST start a new workspace generation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1559,7 +1559,7 @@
       "requirement_digest": "612d73bca0e7f5d1ab1fdf579e5387c95cbef7b9e49ab0ded86360a92cd98563",
       "requirement_id": "REQ-56A04885B82C",
       "requirement_text": "Repository inspection/provisioning SHALL detect Git LFS usage where material and expose LFS health/limitations without downloading all LFS objects by default.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1581,7 +1581,7 @@
       "requirement_digest": "36af0975a25b3c667c63f263a2e59df447a7d56dd3aea700cec155826b07bf56",
       "requirement_id": "REQ-F700073BC7E5",
       "requirement_text": "Transfer/export readiness SHALL distinguish:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1603,7 +1603,7 @@
       "requirement_digest": "36146cc102d81cb756e769f263925985291e82958276816458597c3dfee5e130",
       "requirement_id": "REQ-33838C280967",
       "requirement_text": "A source export MUST NOT claim completeness if only LFS pointer files were copied while required LFS objects were unavailable.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1625,7 +1625,7 @@
       "requirement_digest": "8e24581c9179ba2f37b7f5199d74527355b8657c69d7feecb5a898324dc6fe84",
       "requirement_id": "REQ-4DFB213C018E",
       "requirement_text": "Each external submodule remote SHALL be treated as a separate repository/source requiring its own authorized Repository/AccessBinding when SmartAIHub needs to inspect or mutate it.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1647,7 +1647,7 @@
       "requirement_digest": "12574e98ab35fa8152edfc8aa290b658a30eddbfb3503f3d9889441b07a0ff92",
       "requirement_id": "REQ-CF5CE3961650",
       "requirement_text": "Import/scan MAY record submodule declarations as metadata but MUST NOT recursively clone/execute them by default.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1669,7 +1669,7 @@
       "requirement_digest": "b647cf65a787a68882e24d1c728de803d90f06e7b6903e276f24c3ca747271f7",
       "requirement_id": "REQ-25A13B472CF1",
       "requirement_text": "For App source completeness, the product/package layer may declare required nested sources; the Git Workspace layer reports whether each is authorized/resolved/current.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1691,7 +1691,7 @@
       "requirement_digest": "460102adbb3d1499e2bffde799f96451ffbb7e4fe684b6ee83aa20f96b0171a7",
       "requirement_id": "REQ-3B31DF8B9A63",
       "requirement_text": "Writing GitHub Actions/provider automation secrets, if supported, MUST use the canonical secret broker/secure write path. SmartAIHub MUST NOT rely on reading secret values back from the provider and MUST NOT persist plaintext values in Git Workspace tables, logs, Chat or audit payloads.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1713,7 +1713,7 @@
       "requirement_digest": "15aad7f95f9373a8456f16ed11b79644b3248b8e7ef47299cd4675f6e0f71746",
       "requirement_id": "REQ-4790BDC5B2F8",
       "requirement_text": "Branches/tags SHALL carry a ref generation or equivalent lineage guard for mutation-sensitive operations. Force-push, delete/recreate or PR retarget MUST invalidate stale action previews/check assumptions tied to the previous generation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1735,7 +1735,7 @@
       "requirement_digest": "4c20fbfff088cfcdd8d3a96fbf6db70ff0e353f6dd58ec377f18a1e9dc2db52f",
       "requirement_id": "REQ-38215EE0505F",
       "requirement_text": "These are distinct dimensions and MUST NOT be collapsed into one generic `status` string.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1757,7 +1757,7 @@
       "requirement_digest": "609108a394f45fa2414c75086bb7fc3a04fb48c4dcbbd732f4c5357e9df0b367",
       "requirement_id": "REQ-567E8A9FAED4",
       "requirement_text": "Repository projections SHALL distinguish:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1779,7 +1779,7 @@
       "requirement_digest": "5b21295284dfdef78e444e648496ad38ff826f3244067264a87dfbe17ecab54f",
       "requirement_id": "REQ-04A5249B4B47",
       "requirement_text": "Heuristic/ambiguous bindings MUST NOT authorize mutation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1801,7 +1801,7 @@
       "requirement_digest": "a3e4cf1118c7790900f675bbbb77dbcfa9d56f00fc58659225aa83b838b6bce7",
       "requirement_id": "REQ-C9DE52BC9169",
       "requirement_text": "UI SHALL paginate/virtualize and SHALL NOT load all repository graphs into browser or LLM context.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1823,7 +1823,7 @@
       "requirement_digest": "61a528d82764d3777fc656f34d8afd8229d131dc655f0a48984d95093cccb19d",
       "requirement_id": "REQ-184BF5028847",
       "requirement_text": "- SmartAIHub workspace authorization SHALL be re-evaluated immediately;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1845,7 +1845,7 @@
       "requirement_digest": "a355527b862699fa9d3459820278e79e2cff936da4baff055ba963233738bacf",
       "requirement_id": "REQ-F1A09C8DB083",
       "requirement_text": "- personal connections SHALL not be silently transferred to the tenant;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1867,7 +1867,7 @@
       "requirement_digest": "bc8cc3798b84f1fd7609389ab9261235985bef62d8105dfa2bac613d7770f668",
       "requirement_id": "REQ-E027F78CF7E5",
       "requirement_text": "- repository bindings SHALL become `ACCESS_LOST`/reassigned/detached as appropriate, not deleted blindly;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1889,7 +1889,7 @@
       "requirement_digest": "5e4bfb8c3bcf9e95218ef194568aafb74bc1f04eed28204632434d404c295211",
       "requirement_id": "REQ-EE91BF97B5C9",
       "requirement_text": "- active mutation previews/leases using that principal's authority SHALL be invalidated or reauthorized;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1911,7 +1911,7 @@
       "requirement_digest": "b5710d6d2550ca3bea55fe409608910709d2a44eae4009d678c91c9d59cd8665",
       "requirement_id": "REQ-74392BA92BD2",
       "requirement_text": "- Apps/projects SHALL identify orphaned source ownership requiring an owner decision;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1933,7 +1933,7 @@
       "requirement_digest": "7a5ee80822a898e96a5b747ecccbdb56a9f32740fb7685db690d5c793ac98431",
       "requirement_id": "REQ-F463B2B38AE5",
       "requirement_text": "- provider repository deletion MUST NOT be an automatic offboarding side effect.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1955,7 +1955,7 @@
       "requirement_digest": "30f0e3e3f48048034bbe08d108a592cf825561ef3f746512b651ff0410f1953c",
       "requirement_id": "REQ-A8EE7CEF62BF",
       "requirement_text": "1. Platform admin sees SmartAIHub engineering repos under Platform Engineering, while the admin's personal Mini App appears only under Admin Creator/User workspace.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1977,7 +1977,7 @@
       "requirement_digest": "0340581fb4faa37ab17a5f96f61125315ca7187cdcb58fe01f51213b18253c9b",
       "requirement_id": "REQ-A246F2D8116D",
       "requirement_text": "2. Normal user cannot discover private Platform Engineering repo names.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1999,7 +1999,7 @@
       "requirement_digest": "b5b5589c0c60b96b339fec9146664e226e22367f078d3c2bfc03723e48f4db9f",
       "requirement_id": "REQ-DC612E7ED2F7",
       "requirement_text": "3. User connects GitHub App with access to two repos; SmartAIHub shows only selected/authorized repos.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2021,7 +2021,7 @@
       "requirement_digest": "5505c62840db99084809ce313b013f6bb60d44b22bfa15aeb87c0973556369cf",
       "requirement_id": "REQ-D55C57F1C7BA",
       "requirement_text": "4. User creates Mini App → My GitHub → private repo provisioned idempotently → App binding created → repository visible under that App.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2043,7 +2043,7 @@
       "requirement_digest": "3195fc39297ce6986d98984e2f5b995b2279c354b2115d9f3e2a4098ba80c16d",
       "requirement_id": "REQ-83321A12D36A",
       "requirement_text": "5. User creates Mini App with SmartAIHub Managed source → source remains user-owned scope, not Platform Engineering.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2065,7 +2065,7 @@
       "requirement_digest": "4daf0f912483f1edce73dfe9301b24613a28cbdaf786cf4e78d3626d6371c2a6",
       "requirement_id": "REQ-6D9A80EFCF28",
       "requirement_text": "6. Tenant admin binds an org repo; user outside the tenant cannot access it despite sharing the same GitHub provider identity.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2087,7 +2087,7 @@
       "requirement_digest": "577d72ccaab4554f0751112ef4b0bc07710669a1389a36e48aeb5ca3914064dc",
       "requirement_id": "REQ-C649C1FCF01E",
       "requirement_text": "7. One App binds frontend/backend/infra repositories and remains one App identity.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2109,7 +2109,7 @@
       "requirement_digest": "e028c4921920a98c775c46819e5cdf4ab1802651620b226313266f0f0607fc66",
       "requirement_id": "REQ-970C10AB8227",
       "requirement_text": "8. One monorepo binds `/apps/a` and `/apps/b` to different Apps without repository duplication.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2131,7 +2131,7 @@
       "requirement_digest": "003325fc6ae3e4eba489e6095eb5d8e5bd142640db62056bdb611db728c377b4",
       "requirement_id": "REQ-5FC949CC9C6C",
       "requirement_text": "9. Repository is renamed/transferred/reinstalled; stable Repository identity survives while AccessBinding generation changes.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2153,7 +2153,7 @@
       "requirement_digest": "0bae6f6e786311f1e6ba5d36da4a440271f9b587513b444aa828e6a1cdf08d13",
       "requirement_id": "REQ-117D6B2A1E18",
       "requirement_text": "10. GitHub permission is revoked; UI/search/Chat/action caches stop revealing/acting on repository data.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2175,7 +2175,7 @@
       "requirement_digest": "01f365c7e3f15b0da4970aa8a92b6176db6102063e3bfc544ecc169e5569b4b7",
       "requirement_id": "REQ-4E19E325E358",
       "requirement_text": "11. Chat “merge ตัวนี้” after switching workspace cannot mutate a stale repo/PR target.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2197,7 +2197,7 @@
       "requirement_digest": "222e9cfa50460001524f593e5031d65e963d40bc53187f9367357fc14f13bcec",
       "requirement_id": "REQ-97EB9BCA53C2",
       "requirement_text": "12. Read-only provider connection never exposes enabled merge/delete controls.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2219,7 +2219,7 @@
       "requirement_digest": "d566b018ff3a8e7feade1d3040e2dd62eeb3988581190cc2390cca4f078bfbb4",
       "requirement_id": "REQ-9A8754D2C498",
       "requirement_text": "13. Provider repo create succeeds but SmartAIHub response times out; retry reconciles existing repo instead of creating duplicate.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2241,7 +2241,7 @@
       "requirement_digest": "adeaf389be901ed2ab8a945519dc00607203ebe28d84284675d5018d29bab18b",
       "requirement_id": "REQ-C91A8B1DB320",
       "requirement_text": "14. App deletion does not delete repository unless a separately authorized provider-delete action is requested.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2263,7 +2263,7 @@
       "requirement_digest": "dcf7eeccd1fe11b5b83bf63346d09298f5749350409e19a0f94126f0ebe3d72f",
       "requirement_id": "REQ-1854010285CF",
       "requirement_text": "15. Managed repo export to user GitHub preserves App identity while Repository bindings/ownership route change.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2285,7 +2285,7 @@
       "requirement_digest": "c1630d3599e13e110b3836eff939e2b63949f85888dacca1c26b8d8a7e63b6d8",
       "requirement_id": "REQ-FB7236D7D84F",
       "requirement_text": "16. Public repo creation requires explicit public-source exposure confirmation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2307,7 +2307,7 @@
       "requirement_digest": "d7822787c991bf7179a8aad9d0c3735dbf012879f9acd77a234b2d3683935f36",
       "requirement_id": "REQ-444551AB7101",
       "requirement_text": "17. Importing untrusted repo does not execute package scripts/hooks.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2329,7 +2329,7 @@
       "requirement_digest": "9d3d327d0b57b2b06cd9bddebbc492aa9d155efb5e6510639e0ac71021c2241d",
       "requirement_id": "REQ-91BA44CCD9FE",
       "requirement_text": "18. Platform Mission Control can consume Platform Engineering repository projections without receiving user repository inventory by default.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2351,7 +2351,7 @@
       "requirement_digest": "a4b6ad6e8316960ed19c69fd4148a6ca9c9165eac815b12c2b7cfdc7ff4739fd",
       "requirement_id": "REQ-4827775AEA8B",
       "requirement_text": "19. User asks “Mini App ของฉันตัวไหน CI พัง?” and Chat answers only from authorized user/app scope.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2373,7 +2373,7 @@
       "requirement_digest": "a2234d65eaf9cf9f1a6663ba02ece13fd1661ecaa0cec7aeaf50f7c3ace15a99",
       "requirement_id": "REQ-261FEE318124",
       "requirement_text": "20. Cross-tenant shared customer repository exposes only policy-authorized metadata through Work Context federation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2395,7 +2395,7 @@
       "requirement_digest": "0f2fa5539a85b0efcb283cdfeff3ac3b3cc0261ec7853afaf4233c3e496575ee",
       "requirement_id": "REQ-13CE1EB0ADFA",
       "requirement_text": "21. One GitHub App installation exposes a repo through two authorized workspace bindings; revoking one workspace removes only that workspace's access.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2417,7 +2417,7 @@
       "requirement_digest": "524754c2dcef767f4f270d0f31385f6ba761e1605bb54c94a357398251ac4aba",
       "requirement_id": "REQ-E26298E873C3",
       "requirement_text": "22. User disconnects personal GitHub but tenant-owned installation still provides authorized tenant access; personal scope does not inherit tenant access automatically.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2439,7 +2439,7 @@
       "requirement_digest": "2b5cc898082eac439947721677e086960c72a89b6636443f8583162298cfba2f",
       "requirement_id": "REQ-E3DEC83F27DC",
       "requirement_text": "23. User leaves tenant; personal repo remains personal, tenant repo access disappears, and no provider repo is deleted automatically.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2461,7 +2461,7 @@
       "requirement_digest": "1a5fbb10e14a83d7080bd7d0cd677d5750ef0cd32bf7b7ee259acb05335c1268",
       "requirement_id": "REQ-ACBA89AFFD36",
       "requirement_text": "24. Repository deleted outside SmartAIHub becomes `PROVIDER_MISSING`; a same-name repo recreated with new provider ID is not mistaken for the old repository.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2483,7 +2483,7 @@
       "requirement_digest": "aedb866256c43e7a9337a661d3b38fdcf72ad6a1e7fbd13393cb132fbe415502",
       "requirement_id": "REQ-D0B717DB6A74",
       "requirement_text": "25. Git LFS repo export with missing LFS objects reports incomplete source instead of success.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2505,7 +2505,7 @@
       "requirement_digest": "166cabfe829c24fa4f4f67509cffed2f36f3a2c7be574800c897f6dfca2e57b3",
       "requirement_id": "REQ-146D5539AE50",
       "requirement_text": "26. Submodule points to private external repo without authorization; import records unresolved nested source but does not clone it.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2527,7 +2527,7 @@
       "requirement_digest": "635fecb0e51df6e48f7dd871e06533e43b71fe073f7366fc94a414529edea0dc",
       "requirement_id": "REQ-804407F35262",
       "requirement_text": "27. Force-push invalidates stale merge/action preview tied to old ref generation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2549,7 +2549,7 @@
       "requirement_digest": "3fd9541382471fe05854906419e239a4bce44de21bb438be0199086df8f73b61",
       "requirement_id": "REQ-190DC17127BE",
       "requirement_text": "28. Provider automation secret update leaves only secret reference/audit metadata, never plaintext value.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2571,7 +2571,7 @@
       "requirement_digest": "7ceb2333e38ddb0241a7f7d884f61853739f0117619f65d9badbca7a60cd5b9a",
       "requirement_id": "REQ-57ABBCD071A4",
       "requirement_text": "Implementation SHALL pass at minimum:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2593,7 +2593,7 @@
       "requirement_digest": "515ae4a9ea657c0ebd16541c319dd8a07e85d26941fdcfa65548ceca9defe49c",
       "requirement_id": "REQ-851779670978",
       "requirement_text": "| 6 | Authorization | Required SmartAIHub policy ∩ workspace/tenant ∩ provider permission ∩ action policy |",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2615,7 +2615,7 @@
       "requirement_digest": "9dc17bf382b0a9cb3ec5e63826e420c955ab7aaaa129e1121bb7a11d6d15222a",
       "requirement_id": "REQ-4579931066AD",
       "requirement_text": "SmartAIHub SHALL model how source was acquired independently from the current repository topology.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2637,7 +2637,7 @@
       "requirement_digest": "5ac76cb4a19831c984619e9d5f38cef8a97e451e63a8137b66b86c76f8fa8cfc",
       "requirement_id": "REQ-B82A18D802A3",
       "requirement_text": "A source acquisition record SHALL include, where known:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2659,7 +2659,7 @@
       "requirement_digest": "973296e543018a2dcc16789cd1f0161c58f87872db684fa916110e681a6d099f",
       "requirement_id": "REQ-9ACFB6470F7B",
       "requirement_text": "`CLONE` MUST NOT imply that a provider-side fork exists. `FORK` MAY be a provider-native relationship. `IMPORT` MAY create an independent repository with no provider-native lineage.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2681,7 +2681,7 @@
       "requirement_digest": "8c6c159fabe9549c5b72b8ed438107c21640f0c4000b7eef6824fce562012d2d",
       "requirement_id": "REQ-E8938C683EBC",
       "requirement_text": "The federation SHALL support both perspectives:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2703,7 +2703,7 @@
       "requirement_digest": "97c631c05e6e0138169c0935ba2e60f5021b476bde6e78917463df277e98be0a",
       "requirement_id": "REQ-70D65E723790",
       "requirement_text": "Provider-native fork relationships and SmartAIHub provenance relationships MUST remain distinguishable.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2725,7 +2725,7 @@
       "requirement_digest": "41ece14b9fbc1815ed5bd920154942924997fbce1b87c1c325db372c4fbf747e",
       "requirement_id": "REQ-19E44360988B",
       "requirement_text": "The system SHALL represent:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2747,7 +2747,7 @@
       "requirement_digest": "20d1f05755d5c73ba90b1465d5d513ed038cd71b115332a51f15ead6f4d29063",
       "requirement_id": "REQ-364B655AEB10",
       "requirement_text": "A Pull Request SHALL bind base repository and head repository separately. Fork PR identity MUST NOT collapse to `repository + branch`.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2769,7 +2769,7 @@
       "requirement_digest": "e99007a799765c3248c32b4bbc1080aca0a1d48cfeb1fa1d1969e316d469af89",
       "requirement_id": "REQ-E9EAD0990870",
       "requirement_text": "A clone MAY exist before a writable remote exists. SmartAIHub SHALL support:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2791,7 +2791,7 @@
       "requirement_digest": "174ec21431301ccdfd0e3bdd30ff3709991402eab315a5736d6bed2a6c9b4fa4",
       "requirement_id": "REQ-D1FB01D3F5C0",
       "requirement_text": "Mission Control SHALL be able to surface `DURABILITY_RISK` when valuable commits or changes exist only in non-durable local state.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2813,7 +2813,7 @@
       "requirement_digest": "437702d87d5d8f29be6b0ea91e0e7acef475dda5a9a3040214420db6482ac945",
       "requirement_id": "REQ-FE3B188F866D",
       "requirement_text": "SmartAIHub MUST NOT hard-code remote name semantics such as `origin=ours` and `upstream=external`.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2835,7 +2835,7 @@
       "requirement_digest": "de20a6b3e94277e2f042788d42b323760276a01be74b628eb5ea846001d0a111",
       "requirement_id": "REQ-F9A8BF76A612",
       "requirement_text": "`INDEPENDENT_DERIVATIVE` MUST NOT be continuously flagged merely because upstream advanced. Provenance remains visible without treating upstream drift as a blocker.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2857,7 +2857,7 @@
       "requirement_digest": "e262f3240d66c30e96ea2efffc32784f9eaf6afe817a394024621f960c913ed3",
       "requirement_id": "REQ-55666211D33C",
       "requirement_text": "SmartAIHub SHALL NOT claim to enumerate who cloned a repository when the provider does not expose clone identity. Known forks, PR-visible source repositories, connected internal derivatives and provider-supported topology may be displayed; unknown clones remain unknowable.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2879,7 +2879,7 @@
       "requirement_digest": "b4bde6d963b09aec1c3e2ab100003a0730da95a556a90e3cb56b82923aaa201b",
       "requirement_id": "REQ-8748FDA5164A",
       "requirement_text": "SPEC-293 SHALL own only the source-side binding reference required to correlate a repository/app/project with deployment targets owned elsewhere.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2901,7 +2901,7 @@
       "requirement_digest": "128354a4db1dda8a81f60fc5d8938f601bcc347d5555ac62ced6307a0353850b",
       "requirement_id": "REQ-04FE7F3C9565",
       "requirement_text": "An App may be cloned while source is placed in a new repository; a repository may be forked without creating a new App identity. Both relationships MAY coexist but MUST be stored separately.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2923,7 +2923,7 @@
       "requirement_digest": "d2aa16fd18e5c13faebbc144ed866ec53f47a77b2bbaaf23d76b3731ceca3f98",
       "requirement_id": "REQ-E3F9A4BBA434",
       "requirement_text": "1. Clone external repo locally without a writable remote and preserve source SHA/provenance.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2945,7 +2945,7 @@
       "requirement_digest": "59ada3580e88d1dbc9c71074a13b26af7c6e7954035f1837603966eea8992055",
       "requirement_id": "REQ-3728335C69BB",
       "requirement_text": "2. Later create a new repository and bind it as `DERIVED_FROM` without falsely creating `FORK_OF`.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2967,7 +2967,7 @@
       "requirement_digest": "c7f88e4d0517c074be3175d0ca331e1cd8b211784be57b0c0b6839a30fe6e2c2",
       "requirement_id": "REQ-072C687A86BB",
       "requirement_text": "3. Provider-native fork remains distinguishable from clone/import provenance.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2989,7 +2989,7 @@
       "requirement_digest": "00ddf05630c7d32711c0a75e4ce8192f3faf19e7de923171d92409d078a84639",
       "requirement_id": "REQ-6AF85D485DFF",
       "requirement_text": "4. Incoming PR from an external fork resolves distinct head/base repository identities.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3011,7 +3011,7 @@
       "requirement_digest": "de80184ae2df974a8d57d3b4584011602325300e56323e5a7e012b64e7bc1a1d",
       "requirement_id": "REQ-434FE1AD5210",
       "requirement_text": "5. Outbound PR from our fork to external upstream preserves SmartAIHub WorkUnit/Handoff links.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3033,7 +3033,7 @@
       "requirement_digest": "a155273e8db568f3a962eb4f643c4f6d0888b79678d0cebd34e90a91b0b14ad9",
       "requirement_id": "REQ-8964A89B186D",
       "requirement_text": "6. Internal tenant/user fork preserves tenant isolation and product lineage separately.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3055,7 +3055,7 @@
       "requirement_digest": "4cd442effbfb2483694bd036e6f514b431d0968c364c9b0cac8d1b14253a047b",
       "requirement_id": "REQ-62C626DFC2DC",
       "requirement_text": "7. `INDEPENDENT_DERIVATIVE` does not generate false upstream-sync blockers.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3077,7 +3077,7 @@
       "requirement_digest": "39c676f73cbec793dda9a6db6f98b89f3016e399e3864574c6355d7beb04630a",
       "requirement_id": "REQ-B1DF6A9F9E05",
       "requirement_text": "8. Remote names may be arbitrary while normalized remote roles remain correct.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3099,7 +3099,7 @@
       "requirement_digest": "f3c30b8d06b69ac5748a19914a0a280196b8b5f5cac899a81f77efbe62566e2c",
       "requirement_id": "REQ-D353A299D45B",
       "requirement_text": "9. Valuable local-only commits produce `DURABILITY_RISK` until durably checkpointed or exported.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3121,7 +3121,7 @@
       "requirement_digest": "40ed018414eee64ece0d6bf697135cfb993a03942d12428979754fa4ae5b2966",
       "requirement_id": "REQ-A825CDE64A50",
       "requirement_text": "10. Unknown external clones are never inferred as known forks.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3143,7 +3143,7 @@
       "requirement_digest": "290632285d167388ca839cedae5cde3a7e73e86cc65dfdd788e6b3e8bfa71c45",
       "requirement_id": "REQ-930921B8D070",
       "requirement_text": "11. RepositoryDeploymentBinding can map one repo/root to multiple environments.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3165,7 +3165,7 @@
       "requirement_digest": "73c6e2be31618c84bbe623cf488e8540bd029eaee202f88fe044088072b75045",
       "requirement_id": "REQ-8F82594B072D",
       "requirement_text": "12. Deployment binding never grants deployment permission by itself.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3187,7 +3187,7 @@
       "requirement_digest": "8f932de905dbf649b64475e5fb91e4ed8db9814c933d36d80f5610f8179b7a5e",
       "requirement_id": "REQ-4C00B76E9D1D",
       "requirement_text": "13. Repo transfer/rename preserves deployment binding by stable repository identity.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3209,7 +3209,7 @@
       "requirement_digest": "2df67cd43d382ede32ae6da747aa443b16fefe25eb6ad2dd5a953eed94b75dba",
       "requirement_id": "REQ-B75778B9A47C",
       "requirement_text": "14. App source can move repositories while App identity is preserved.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3231,7 +3231,7 @@
       "requirement_digest": "5d3ed81533532dc9407798c4768714c7d5c9f6b5de419431f13610cff02745f9",
       "requirement_id": "REQ-0252B99D161C",
       "requirement_text": "15. Monorepo roots can bind to different deployment targets without leakage.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3253,7 +3253,7 @@
       "requirement_digest": "bbe885cfe9714e4248ac1e6ad4c3e9a354ec9ebd0ea8049e4c32383b4110cceb",
       "requirement_id": "REQ-19B69078DA2B",
       "requirement_text": "| 20 | PR topology | Required distinct head/base repository identity for fork PRs |",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3275,7 +3275,7 @@
       "requirement_digest": "4f52d6d0280d336ee02e1cef72e16cc63380802c2678a4f7f4cf3ea0efa30482",
       "requirement_id": "REQ-F49926BA4FEC",
       "requirement_text": "> **Repository topology, source provenance, and deployment topology are related but distinct.** SmartAIHub SHALL preserve clone/fork/import lineage without assuming provider-native relationships, and SHALL expose deployment bindings only as references to the canonical production authority.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3297,7 +3297,7 @@
       "requirement_digest": "ab9cb1472a99046e2332aa41e96a5f94989368dd9a5540b94723e97ca5048acb",
       "requirement_id": "REQ-5E617468078F",
       "requirement_text": "Clone, fork, import, template, mirror and archive-import operations MAY bring third-party source into SmartAIHub. The Git Workspace layer SHALL preserve provenance facts without pretending to make a legal determination.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3319,7 +3319,7 @@
       "requirement_digest": "1168deda90cf61eeac0c73f2f38eb4010cebbc939f1fcb2d33c795cf0401c827",
       "requirement_id": "REQ-3A46B6241DA2",
       "requirement_text": "- unknown license MUST NOT be silently converted into “allowed”;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3341,7 +3341,7 @@
       "requirement_digest": "86b69b44ebbb8d945204bcce311ee8ccf0ef587104db0397ebf654ea17840617",
       "requirement_id": "REQ-210783872BE9",
       "requirement_text": "- provenance MUST survive creation of a new independent repository after clone/import;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3363,7 +3363,7 @@
       "requirement_digest": "ff9dd9183d6646ceb4048d9d09dc0897197ca0e2302bc0ec50f08ac6d08e093d",
       "requirement_id": "REQ-398E2A25222E",
       "requirement_text": "- a later source rewrite MUST preserve the acquisition source SHA/digest used at the time of derivation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3385,7 +3385,7 @@
       "requirement_digest": "0f1ef0038f95b331a55f3a0b33350f6746f77a6fa43cc842909c4c9eccadd6a4",
       "requirement_id": "REQ-3A3E88A14688",
       "requirement_text": "Repository state SHALL distinguish commit identity from commit trust evidence.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3407,7 +3407,7 @@
       "requirement_digest": "55d77de50047f6198766ff186e54a06e658f0e29d5d89d6ce03cd95336e8781b",
       "requirement_id": "REQ-8D4415397442",
       "requirement_text": "A provider-reported verified signature is evidence about that commit/signature. It MUST NOT by itself prove that a SmartAIHub principal authorized the business action.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3429,7 +3429,7 @@
       "requirement_digest": "7b3577412e4f6ffe73ee8c245b95663d7eedeac7a0629d723aa4d5730514f863",
       "requirement_id": "REQ-E53500C6D518",
       "requirement_text": "An incoming PR from an external fork MUST be treated as untrusted source even when the base repository is trusted.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3451,7 +3451,7 @@
       "requirement_digest": "f180b20fa39ef837e259c274a5cf7b7ffb715accff4857165089903bdc0ea8be",
       "requirement_id": "REQ-E0BB8C11E865",
       "requirement_text": "Normalized PR facts SHALL expose:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3473,7 +3473,7 @@
       "requirement_digest": "b3b69ca18b78e2a87ac36b69f6bd1ebb88322422f7cdab3efae53bd07622c92a",
       "requirement_id": "REQ-F42331FEA933",
       "requirement_text": "- Chat/UI MUST NOT imply that a PR is safe merely because required checks exist;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3495,7 +3495,7 @@
       "requirement_digest": "635f1cff69b0d18e7953f2de7b05e37c9da0eb29fc63c0b43020cc26ed140e54",
       "requirement_id": "REQ-B08076FC92F3",
       "requirement_text": "- `pull_request_target`-style privileged workflow patterns MUST be treated as a distinct high-risk execution path when an adapter detects equivalent provider semantics;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3517,7 +3517,7 @@
       "requirement_digest": "d606f103a0f56e3ea3c42d971093ef1197f92278fcdc3f642efe2f3d9c15f919",
       "requirement_id": "REQ-D78EE43DF2BD",
       "requirement_text": "- checkout/run operations against external fork content MUST preserve head SHA/ref-generation fencing;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3539,7 +3539,7 @@
       "requirement_digest": "bef928967a92a4ddec2c6b898675d2dea10705a48609a4be6ccecfe1740edbfb",
       "requirement_id": "REQ-D0D7C16337F2",
       "requirement_text": "Each relationship SHALL carry:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3561,7 +3561,7 @@
       "requirement_digest": "b5047c94a3e9b9650093d969c73655f3228c5307a00fabec393f41f9a506534c",
       "requirement_id": "REQ-7B67C444E06B",
       "requirement_text": "- provenance relationships such as `DERIVED_FROM`, `TEMPLATE_DERIVED_FROM`, and `MIRROR_OF` MUST be cycle-checked before mutation;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3583,7 +3583,7 @@
       "requirement_digest": "4258a1ddc00f099a2092a2a5853f6be9cf5eed7e208602a156c8e76ae0a65740",
       "requirement_id": "REQ-7B66C6A4C32D",
       "requirement_text": "- `TRANSFERRED_FROM` records a lifecycle event and MUST NOT be interpreted as an upstream source dependency;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3605,7 +3605,7 @@
       "requirement_digest": "9c5062db0a7f5235a71a916844f8599ed0ee0f6a6368aa8e61aed6f476e8c6a4",
       "requirement_id": "REQ-5B2B9D59C154",
       "requirement_text": "- rename/URL redirects MUST NOT create a second logical repository when the stable provider repository ID is unchanged;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3627,7 +3627,7 @@
       "requirement_digest": "bccee2f7f43cec559bcb6d8f441536d52ceffd8dea7f3112c9dad2eed3fcb083",
       "requirement_id": "REQ-C8FEB240FBA5",
       "requirement_text": "Every clone/fetch/import adapter SHALL enforce a SourceFetchPolicy that covers:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3649,7 +3649,7 @@
       "requirement_digest": "b76620606a9ad94f06ff059f70f5244b7e9115cc3dcb40481d9be564a841699f",
       "requirement_id": "REQ-5D7345A2B37B",
       "requirement_text": "- credentials embedded in clone/fetch URLs MUST be redacted and MUST NOT be persisted;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3671,7 +3671,7 @@
       "requirement_digest": "4e91a8fbffb7ddf5ab3ba7fbf7611bcdbc4dc7df4bdab209252b23d1e7893461",
       "requirement_id": "REQ-766331E1A1EE",
       "requirement_text": "- redirect chains MUST be bounded and revalidated;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3693,7 +3693,7 @@
       "requirement_digest": "abe2ef40743b1dbefaccd5579000d7be6fc291621b7fd7468c575e0814c97f9e",
       "requirement_id": "REQ-6ED60181DA27",
       "requirement_text": "- local filesystem / arbitrary private-network source protocols MUST be denied unless an explicit authorized execution policy permits them;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3715,7 +3715,7 @@
       "requirement_digest": "f57445f1ac6a38adfa6eaab9ec7f549b437390480fd34cb41a7286e7de4cf3fe",
       "requirement_id": "REQ-E8D5B1663340",
       "requirement_text": "- source acquisition MUST NOT recursively execute repository-supplied hooks or arbitrary commands;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3737,7 +3737,7 @@
       "requirement_digest": "6f857f07d0d9a57fbf0aeeffd7d32b858fa9c0bb881e3ec6881d7d005659a2fb",
       "requirement_id": "REQ-D3F25E742C07",
       "requirement_text": "A shallow/partial clone is not automatically invalid, but handoff/export/transfer MUST state when required history or objects are unavailable.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3759,7 +3759,7 @@
       "requirement_digest": "9fed05186deb58b1337aed2d97bd9520e5db3568cf92e2a2bf6a41ece11ceeb2",
       "requirement_id": "REQ-1FB53B047090",
       "requirement_text": "`DURABILITY_RISK` MUST include valuable commits that are not reachable from any authorized durable remote or durable artifact/bundle.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3781,7 +3781,7 @@
       "requirement_digest": "251557d63db19f21608e6d17f89e28152deee7d9bd5193f3b31b7268ecaedbb5",
       "requirement_id": "REQ-2F6EB125B963",
       "requirement_text": "The adapter capability manifest SHALL declare whether it can observe:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3803,7 +3803,7 @@
       "requirement_digest": "79b923c6ffd56ecbcd4f602fb140b41d3e3669f4e3db71429cbefd2ab5ce3db2",
       "requirement_id": "REQ-626C94413FA7",
       "requirement_text": "SPEC-293 MUST NOT generalize one provider's private-fork behavior to all providers.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3825,7 +3825,7 @@
       "requirement_digest": "0981936c7c01375bb335b59296bfd8a0ffccd347a4cacb32937c776fd2712df5",
       "requirement_id": "REQ-AD144DF5B973",
       "requirement_text": "When provider access changes, fork visibility and mutation capability SHALL be recalculated independently from cached repository metadata.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3847,7 +3847,7 @@
       "requirement_digest": "2cb23ec08f297f8c0dbf1c80892b971199c7da9d0230816dac3e52756d484906",
       "requirement_id": "REQ-C9C8FAF0B2FA",
       "requirement_text": "Changes to repository-wide files (lockfiles, build config, workspace config, shared libraries) MAY affect multiple bindings and MUST NOT be silently attributed to only one App.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3869,7 +3869,7 @@
       "requirement_digest": "c2c7fb3ea4892d9b7bb5c24af496150a0dbc818a32f7737f7078ceeb88615a88",
       "requirement_id": "REQ-991CFEF28CD6",
       "requirement_text": "Every Git provider adapter SHALL publish a versioned capability manifest instead of relying on GitHub assumptions.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3891,7 +3891,7 @@
       "requirement_digest": "c8ad60b9fcbcd270942caab6270e942bfa555cb942bc0bfa2bb7b65e92993530",
       "requirement_id": "REQ-1E2D39CAF685",
       "requirement_text": "Unsupported capability MUST yield `UNSUPPORTED`, not false/empty state.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3913,7 +3913,7 @@
       "requirement_digest": "769fcbb9378177ef971b9276bc1e93f1af4c6cc66a2dc9eac78e12135feaba47",
       "requirement_id": "REQ-34A35CAC9CC5",
       "requirement_text": "SmartAIHub-managed source MUST have an explicit portability/recovery contract.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3935,7 +3935,7 @@
       "requirement_digest": "2df2e9cfe3ff95972d3212c63f5cc9d99a5240662931cb328fe1a768a021181d",
       "requirement_id": "REQ-101FAE1B1913",
       "requirement_text": "For repositories where SmartAIHub is the hosting/provisioning owner, policy SHALL define:",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3957,7 +3957,7 @@
       "requirement_digest": "0bcd95ec4a6e6144847ac8033b6532c8271bc980ad1dd4dc70618425296d4bcc",
       "requirement_id": "REQ-145DBF729A5E",
       "requirement_text": "A repository must not be marked `EXPORTED_COMPLETE` when required Git/LFS/submodule objects are missing.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3979,7 +3979,7 @@
       "requirement_digest": "698cdae61322ca73d45d6732d9898fba32ed1e084b7e406a70915c015112f4dd",
       "requirement_id": "REQ-265517262C18",
       "requirement_text": "1. An external clone with no detected license is recorded as `UNKNOWN` and is not silently classified as allowed.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4001,7 +4001,7 @@
       "requirement_digest": "b3c5fdcd151640c1319ea3ffa0fb62b66663bcc9eb2014908e892bb1397a63a1",
       "requirement_id": "REQ-A4F171D0FAB9",
       "requirement_text": "2. Source provenance survives clone → new independent repository creation with original source SHA retained.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4023,7 +4023,7 @@
       "requirement_digest": "c20ec00e5616793db4d04841324de350d92108c3bf48a33427f01307af9e129d",
       "requirement_id": "REQ-02BB63C7F0DB",
       "requirement_text": "3. External fork PR is classified `EXTERNAL_UNTRUSTED` even when targeting an internal trusted repository.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4045,7 +4045,7 @@
       "requirement_digest": "c69699cc9918ea443d2f0e3db86da3669b52f7a2729df2598fb6e0cee9e0a947",
       "requirement_id": "REQ-090B14F6E2EC",
       "requirement_text": "4. A privileged CI path cannot become safe merely because the PR check is green.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4067,7 +4067,7 @@
       "requirement_digest": "ef7f9bec670d065cf64da35d65cea1dab35591ffdb70dc2fe19b1928df6d0542",
       "requirement_id": "REQ-8995FD86936B",
       "requirement_text": "5. Force-pushing an external PR head invalidates trust-sensitive evidence bound to the old head SHA.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4089,7 +4089,7 @@
       "requirement_digest": "7beceff9be244189089418d0c7004f55fd61231e5777c1c162fbb6ed61f87d0b",
       "requirement_id": "REQ-B0B94CF127F5",
       "requirement_text": "6. Repository rename with same stable provider ID does not create a new logical Repository.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4111,7 +4111,7 @@
       "requirement_digest": "87b62f898d23dbd24dc5600942d8a593004e9c02012420c7f4379b0962e3248c",
       "requirement_id": "REQ-3C3AB61BE8E3",
       "requirement_text": "7. A new repository created under an old repository name is treated as a new identity.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4133,7 +4133,7 @@
       "requirement_digest": "525bfbfd562d84606e07e6b7aff399b62671f6a95706d0f36b07e2c96b01884e",
       "requirement_id": "REQ-05A80133C3F6",
       "requirement_text": "8. `DERIVED_FROM` and `MIRROR_OF` cycle attempts are rejected or quarantined for reconciliation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4155,7 +4155,7 @@
       "requirement_digest": "5ad0b36cc4bd746a01f09410bb5a8bc3f495116afc41bdd3e03c227103c20ee9",
       "requirement_id": "REQ-186E0DD6625F",
       "requirement_text": "9. Clone/fetch URL credentials are redacted and arbitrary local/private-network protocols are policy-gated.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4177,7 +4177,7 @@
       "requirement_digest": "2bb141326cf121cff3f27c644f60a8304c6979c283bf7f600337c14005f70656",
       "requirement_id": "REQ-62DEF3F2C542",
       "requirement_text": "10. Shallow/partial clones expose object-completeness state instead of claiming full source durability.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4199,7 +4199,7 @@
       "requirement_digest": "3d0502cd44a947d23b2c6d6a52a422e65e80e46100d7cd73adb4a10b987c207c",
       "requirement_id": "REQ-8D49B42CFCDF",
       "requirement_text": "11. Private-fork visibility/access changes invalidate cached access without deleting an otherwise still-authorized logical repository.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4221,7 +4221,7 @@
       "requirement_digest": "d050e16ede2cf3a48f6a32e2698bfcf2acc2be450be365fe3a1cc1a27664d7bf",
       "requirement_id": "REQ-28D880DDF8BB",
       "requirement_text": "12. Monorepo shared-file change can map to multiple candidate Apps/services.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4243,7 +4243,7 @@
       "requirement_digest": "710987ed52547f97a1562afc1eecbf7f5f531483af04b2bdeb3f84fb900d9a80",
       "requirement_id": "REQ-A6BB34D41C19",
       "requirement_text": "13. Provider without merge-queue support reports `UNSUPPORTED`, not an empty healthy merge queue.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4265,7 +4265,7 @@
       "requirement_digest": "363e5ce78d540660d1d8261c7a3729c74d0a057452a405a619a06c398d0281c3",
       "requirement_id": "REQ-03871BE2EF7A",
       "requirement_text": "14. Managed repository export does not report complete while required LFS/submodule content is unresolved.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4287,7 +4287,7 @@
       "requirement_digest": "2439418633bdcf75b5daa78c5dac520e1db81dd9e9df35e266c0f4e16d46a153",
       "requirement_id": "REQ-185F08CA8EC4",
       "requirement_text": "`PullRequestTrustProjection` SHALL be extended with workflow-execution trust so that “the PR check is green” cannot erase the difference between untrusted code and privileged credentials.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4309,7 +4309,7 @@
       "requirement_digest": "78c0f9714124ead3a27d03e41a75a017ab2c385fc2244f9c825756d880264347",
       "requirement_id": "REQ-55CF49BC3FDA",
       "requirement_text": "- privileged workflow context MUST NOT execute external/fork-controlled code merely because the workflow definition itself came from a trusted base branch;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4331,7 +4331,7 @@
       "requirement_digest": "1eaa7b1b3821424f614b6326c35ffa4a12d90c79df86cb48acd67b04600c0e71",
       "requirement_id": "REQ-378970C4F55C",
       "requirement_text": "- adapter detection of `pull_request_target`, `workflow_run`, comment-triggered checkout, downloaded fork artifacts, or equivalent privileged-provider flows SHALL mark the execution path for explicit trust evaluation;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4353,7 +4353,7 @@
       "requirement_digest": "35aa81231b34a80c495b8cfd49099eb0af44e983a40182e9044e2ce9940784e2",
       "requirement_id": "REQ-CCCD2BEC1590",
       "requirement_text": "- write-capable tokens, repository/org secrets, deployment credentials, private-network reachability and reusable self-hosted runners SHALL increase the privilege classification;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4375,7 +4375,7 @@
       "requirement_digest": "d736c2f90b098f675770ace56f09bf10a6a9d2ebb5c68338251185b04dbabcde",
       "requirement_id": "REQ-27B61D615728",
       "requirement_text": "- OIDC is preferred where the deployment authority supports it, but the OIDC trust policy MUST bind the intended repository/workflow/ref/environment identity and MUST NOT authorize arbitrary untrusted repositories;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4397,7 +4397,7 @@
       "requirement_digest": "74c86f48582d3f825f0bff0f896e2b1045b591d6b2873012af04727cf310110f",
       "requirement_id": "REQ-96D4BA1B1C6B",
       "requirement_text": "SPEC-293 SHALL project provider governance facts independently from PR state.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4419,7 +4419,7 @@
       "requirement_digest": "fa831e2d771706f11c5df771e50efc38ee97e51231694d53488557970ceeff3b",
       "requirement_id": "REQ-36482E23C846",
       "requirement_text": "`CODEOWNERS` presence is evidence only. When provider policy requires code-owner review, merge readiness SHALL consume the provider rule and the review state for the current diff/ref generation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4441,7 +4441,7 @@
       "requirement_digest": "0ac50f6b020d50d6ee50f25910c46b113336bf4817fb367cb445422d89ac4ff0",
       "requirement_id": "REQ-EA9EFDB741ED",
       "requirement_text": "Tags and releases are labels around Git objects and MAY be mutable unless policy proves otherwise. Release-sensitive records SHALL pin immutable object identity rather than trust a tag name alone.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4463,7 +4463,7 @@
       "requirement_digest": "c9447ea52c0cc8e7d1dc45ebb20af07abf5bcec5cf3376549f278d88569789d2",
       "requirement_id": "REQ-0410ABC8A3EB",
       "requirement_text": "Moving/recreating a tag after a build/release MUST create drift and MUST NOT rewrite historical release provenance silently.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4485,7 +4485,7 @@
       "requirement_digest": "3208dd30bdca06e8c2448f94f0ba3f793c0485f02abcc1b1d47fb0958c75b1d5",
       "requirement_id": "REQ-C5E4A14426B3",
       "requirement_text": "Provider automation identity SHALL be separate from human/provider-account identity.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4507,7 +4507,7 @@
       "requirement_digest": "ebe31bc70064ae540beceb2bde1f0068790018fa807f32b672f2e53425ee239a",
       "requirement_id": "REQ-002383F1A124",
       "requirement_text": "- deploy keys/tokens MUST NOT be silently shared across tenants/repositories;",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4529,7 +4529,7 @@
       "requirement_digest": "88265f3098e02a16b2945368ae746d232e0c7d6dd3fe9597945600a63875d787",
       "requirement_id": "REQ-DC05F71B4628",
       "requirement_text": "Mission Control MUST preserve the last authorized evidence and mark source availability explicitly; it MUST NOT invent current fork state or treat disappearance as approval/closure.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4551,7 +4551,7 @@
       "requirement_digest": "e00dbcdb08d957f4292c8978001dbfb9a8fc21414e1fc8fdc31e23106bc99c79",
       "requirement_id": "REQ-18147FCA2ED5",
       "requirement_text": "`ARCHIVE_IMPORT` and uploaded Git bundle/archive acquisition SHALL have extraction controls independent of normal Git fetch.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4573,7 +4573,7 @@
       "requirement_digest": "baf0cb9b36134bc0ac3d6a0dadd708a387129a9d62ec5e816458c72cb5d4e999",
       "requirement_id": "REQ-E76A9E42A4D1",
       "requirement_text": "Archive extraction MUST defend against path traversal, archive bombs, special-device entries and unauthorized symlink escape. Imported archive provenance SHALL bind an immutable content digest even when no Git commit exists yet.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4595,7 +4595,7 @@
       "requirement_digest": "f18b0b1eb84889f0d3a2f564c7f46c5d4546dd702c33a062c4831dc282b3bb83",
       "requirement_id": "REQ-0CADCD61F928",
       "requirement_text": "Submodule and nested-source traversal SHALL be bounded.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4617,7 +4617,7 @@
       "requirement_digest": "cf4cd96b9422dd9ffef90e31d7a1a0febaa0b6a740a0fb275a9663fb606f3695",
       "requirement_id": "REQ-3BC18D8192B0",
       "requirement_text": "A recursive source cycle or credential-reuse attempt MUST NOT become an infinite fetch loop or cross-repository secret leak.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4639,7 +4639,7 @@
       "requirement_digest": "cc73665c02d0840e414908b281d626f3128d39c59ea1d890d5815132cff15d6b",
       "requirement_id": "REQ-D5792ACDF40D",
       "requirement_text": "A local clone MAY have several writable remotes. SmartAIHub SHALL not infer that the remote named `origin` is canonical.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4661,7 +4661,7 @@
       "requirement_digest": "e000117b561a14d0d7787c7b26c64221615d404549e3561acd2f62729d435010",
       "requirement_id": "REQ-3FB28F19EC50",
       "requirement_text": "Before checkpoint/promotion, the canonical push/integration destination SHALL come from repository/project policy, not the remote name.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4683,7 +4683,7 @@
       "requirement_digest": "fb5d2b4ac28b0ad1e044e4242cbb22c73e534676ab06b474cfc14041c3ce7b7f",
       "requirement_id": "REQ-0E5ABA546DD2",
       "requirement_text": "Reusable Git logic MUST treat object IDs as opaque algorithm-qualified identifiers rather than assuming a 40-character SHA-1 string.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4705,7 +4705,7 @@
       "requirement_digest": "2bf45a55bf1a2f94aa3bdb67202b12d42fabde99aaa1673611c2d5ba3bf1fb2c",
       "requirement_id": "REQ-9DBEBC57232C",
       "requirement_text": "Database schemas, APIs, regex validation and UI truncation MUST NOT make SHA-1 length a semantic invariant. Provider adapters MAY normalize current provider IDs while preserving the algorithm/format metadata where known.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4727,7 +4727,7 @@
       "requirement_digest": "4615cbc52d2ca58ea9f84e18e1495f0fc0104bbd6a2d3ac55aec43f8da8ef47b",
       "requirement_id": "REQ-366618FED85D",
       "requirement_text": "Mutation preconditions SHALL fence both source generation and governance generation.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4749,7 +4749,7 @@
       "requirement_digest": "2bfbee1326fb8e1b585041e98790197360a1956a3d48a3ba444c11af64249d03",
       "requirement_id": "REQ-F8C33445257A",
       "requirement_text": "A merge/tag/release/push preview produced before a ruleset, CODEOWNERS requirement, deployment-environment gate, access binding or branch-protection change MUST be re-evaluated before execution.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4771,7 +4771,7 @@
       "requirement_digest": "dde8653a4a35827deeb74058fc74504698d2998f28b89988a3b24817a5886f0a",
       "requirement_id": "REQ-F7499A26B6AB",
       "requirement_text": "1. A privileged workflow cannot execute an external fork head with write token/secrets merely because the workflow came from the base branch.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4793,7 +4793,7 @@
       "requirement_digest": "a89cadb817136e6552665c194bda86805426e2cb3dfd29a6ddc8bf8736377772",
       "requirement_id": "REQ-7F148A99E74A",
       "requirement_text": "2. OIDC deployment identity with an over-broad repository/ref trust condition is surfaced as policy risk rather than treated as automatically safe.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4815,7 +4815,7 @@
       "requirement_digest": "5a3e3ef0d468ba0ba19dd47ad0309710581812c2f10fa7575c8b8744015dcd6f",
       "requirement_id": "REQ-1601ACB428CC",
       "requirement_text": "3. CODEOWNERS/ruleset/required-review state is generation-fenced and stale approval state is not reused after the diff/head changes.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4837,7 +4837,7 @@
       "requirement_digest": "24cc56486dd7afdd4c556dd54069edb1004bc380388c975a2afa62554080093c",
       "requirement_id": "REQ-F6AEE12FD965",
       "requirement_text": "4. A moved/recreated tag creates release-source drift while the historical release remains pinned to its original commit/object evidence.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4859,7 +4859,7 @@
       "requirement_digest": "272db956564e3abebf420acbeb8994fd8285c893f4ca4f78b3aedf6d773ed295",
       "requirement_id": "REQ-5C4C592D8C4E",
       "requirement_text": "5. Deployment automation credentials are represented as automation principals and cannot silently expand a user's or tenant's SmartAIHub authority.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4881,7 +4881,7 @@
       "requirement_digest": "c396743f19d689b8d865f8778584629cad6bf27806dacdd2ae879c58fe8179b3",
       "requirement_id": "REQ-3FA808E67095",
       "requirement_text": "6. Deleted/inaccessible fork head preserves last authorized PR evidence and becomes `HEAD_REF_DELETED`/`REPOSITORY_UNAVAILABLE`, not “clean/merged”.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4903,7 +4903,7 @@
       "requirement_digest": "51222b7988ac2a3a102e84abc79d74c8eb6e7c96169d882831fa3f02a04cb8a2",
       "requirement_id": "REQ-4B0CEAB41A29",
       "requirement_text": "7. Archive import rejects path traversal/archive-bomb/symlink escape according to policy and records immutable archive digest provenance.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4925,7 +4925,7 @@
       "requirement_digest": "fc79f1b305db63639a1f1697147ed72f168d0c887982d215ab70ac733ae300e5",
       "requirement_id": "REQ-76CC2F94C53A",
       "requirement_text": "8. Recursive submodules are depth/count/cycle bounded and do not inherit provider credentials implicitly.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4947,7 +4947,7 @@
       "requirement_digest": "6f3c98261ae880af42c5f23900ea4a840cdeb6e22c31b8a09db4c14d85c8904b",
       "requirement_id": "REQ-C0335D47D9B9",
       "requirement_text": "9. A workspace with two writable remotes reports divergence/canonical destination from project policy rather than remote naming convention.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4969,7 +4969,7 @@
       "requirement_digest": "e850d31002df0e0c97ca82ffe5af43790f9b7687d9fcde6ba824266957a8be40",
       "requirement_id": "REQ-54C0618A0757",
       "requirement_text": "10. Object IDs longer/different from SHA-1 format are accepted by generic persistence/API contracts.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4991,7 +4991,7 @@
       "requirement_digest": "5630ff58b292959bb72e1251dd80ae4051c7fc56825b0d3083aceb34c6b13b62",
       "requirement_id": "REQ-1D9A42DBB7C0",
       "requirement_text": "11. A ruleset/governance change after preview invalidates the old merge/tag/release mutation precondition.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5013,13 +5013,167 @@
       "requirement_digest": "bfff7f4a44c2b20233a49069fa514533c0f45926ffd466ea5287e9fa582a3bbf",
       "requirement_id": "REQ-A62B544C4300",
       "requirement_text": "12. Tag protection capability unsupported by a provider yields `UNSUPPORTED/UNKNOWN`, not false “unprotected”.",
-      "source_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2232"
+      ],
+      "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2232",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7c2d6b502d862de68d50c6813069dc55e22c013481ca5d7008f6925db18f6afc",
+      "requirement_id": "REQ-022B110FA38C",
+      "requirement_text": "Each project/repository binding MUST resolve through one shared authority",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2238"
+      ],
+      "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2238",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "604b562b5b834111eee810935f595e13a83f95983cabb8692716063418dc8785",
+      "requirement_id": "REQ-795882ED5177",
+      "requirement_text": "status labels, and creator identity are observations; they MUST NOT confer",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2250"
+      ],
+      "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2250",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "736b139d9021d6e3d71c52bcf3afa034fe10a957b90e3d8e5333cc16b4125976",
+      "requirement_id": "REQ-48082918A788",
+      "requirement_text": "After integration, the registered canonical user workspace MUST converge to",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2254"
+      ],
+      "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2254",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "767dea44c6ea191e1b096e91adc0997f19f6e86fa7044799f58b3fca2bca1882",
+      "requirement_id": "REQ-BB398981FC8F",
+      "requirement_text": "commit/stash, and latest-ref stability. Dirty work MUST be left byte-for-byte",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2275"
+      ],
+      "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2275",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f20843a233cb3a702faf6b94a5f6cd9cbb6ea347eb0ed7332e294f358cf7fce3",
+      "requirement_id": "REQ-9E75E9387EEE",
+      "requirement_text": "lifecycle, and all required fresh checks. `RELEASE_COMPLETE` additionally",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2276"
+      ],
+      "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2276",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "91e2b7b4ed29e960b81bf5f593e5a3bcd19675d55e402cdb4d5d2019729c18b0",
+      "requirement_id": "REQ-2DB561EFF1DF",
+      "requirement_text": "requires artifact provenance, settled required migrations, deployment, runtime",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2293"
+      ],
+      "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2293",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "eeba2a9c3fc507a57ba29c26296bdf55a6684fd0c6413e847444d11a4c595700",
+      "requirement_id": "REQ-A62D3617ADE8",
+      "requirement_text": "their registered runner/provider adapters and MUST report `UNKNOWN` when proof",
+      "source_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+  "spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
   "spec_id": "293"
 }
