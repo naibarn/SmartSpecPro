@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 165 unresolved of 165
 - Next action: Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.
-- Manifest generation: 8
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 
