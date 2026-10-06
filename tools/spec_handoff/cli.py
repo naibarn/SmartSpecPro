@@ -142,8 +142,8 @@ def main(argv: list[str] | None = None) -> int:
         ledger = json.loads(ledger_path.read_text(encoding="utf-8")) if ledger_path.exists() else {"requirements": []}
         rendered = render_status(value, ledger)
         if args.regenerate:
-            from .store import _atomic_write
-            _atomic_write(handoff / "STATUS.md", rendered.encode("utf-8"))
+            from .store import _atomic_write as _store_atomic_write
+            _store_atomic_write(handoff / "STATUS.md", rendered.encode("utf-8"))
         print(rendered, end="")
         return 0
     if args.command == "validate":
@@ -194,8 +194,8 @@ def main(argv: list[str] | None = None) -> int:
             result = {"identity": result["manifest"]["identity"], "generation": result["manifest"]["generation"], "disposition": result["manifest"]["disposition"], "lifecycle": result["manifest"]["lifecycle"], "continuation_assessment": result["manifest"]["continuation_assessment"], "requirements": len(result["ledger"]["requirements"]), "evidence_count": result["evidence_count"], "write": args.write}
         data = json_bytes(result)
         if args.output:
-            from .store import _atomic_write
-            _atomic_write(args.output, data)
+            from .store import _atomic_write as _store_atomic_write
+            _store_atomic_write(args.output, data)
             print(f"reconciliation report written: {args.output}")
         else:
             print(data.decode("utf-8"), end="")
