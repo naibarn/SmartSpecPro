@@ -731,6 +731,53 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect(getEnhancedPromptSemanticValidationError(compact, input)).toBeNull();
   });
 
+  it("rejects positional compact anchors when a speaker has an identity override", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [
+          {
+            characterKey: "character-4",
+            speakerId: "character-4",
+            speaker: "ภาคิน",
+            position: "viewer-center-right",
+            text: "ถ้าเป็นฝาแฝด ทำไมเราอยู่คนละบ้าน",
+          },
+        ],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+      characterDescriptionOverrides: {
+        "character-4": "เด็กใส่เสื้อสีเทา",
+      },
+    });
+    const positionAnchored = {
+      prompt: [
+        'HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK)',
+        'Line 1 ONLY (character-4 @ viewer-center-right): "ถ้าเป็นฝาแฝด ทำไมเราอยู่คนละบ้าน"',
+      ].join("\n"),
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+    const identityAnchored = {
+      ...positionAnchored,
+      prompt: 'Line 1 ONLY (character-4 identified by เด็กใส่เสื้อสีเทา): "ถ้าเป็นฝาแฝด ทำไมเราอยู่คนละบ้าน"',
+    };
+
+    expect(
+      getEnhancedPromptSemanticValidationError(positionAnchored, input)
+    ).toContain("shot-local identity override");
+    expect(
+      getEnhancedPromptSemanticValidationError(identityAnchored, input)
+    ).toBeNull();
+  });
+
   it("rejects compact canonical dialogue events attached to another speaker ID", () => {
     const input = buildEnhancedSkillInput({
       shot: {

@@ -828,6 +828,12 @@ export function getEnhancedPromptSemanticValidationError(
     const compactSpeakerId = firstNonBlankString(line.speakerId, line.characterKey)
       || `char-${index + 1}`;
     const compactPosition = firstNonBlankString(line.position);
+    const customIdentity = customIdentityFor(
+      line.characterKey,
+      line.speakerId,
+      line.speaker,
+      line.speakerHint,
+    );
     if (!text || !speaker) {
       return `canonical dialogue line ${index + 1} requires text and speaker`;
     }
@@ -842,24 +848,23 @@ export function getEnhancedPromptSemanticValidationError(
       // the source dialogue carries one, require the exact value; otherwise
       // validate speaker identity and exact dialogue text without inventing
       // a position requirement.
-      const positionAnchor = compactPosition
-        ? ` @ ${escapeRegExp(compactPosition)}`
-        : "(?: @ [^):\\r\\n]+)?";
+      const positionAnchor = customIdentity
+        ? ` identified by ${escapeRegExp(customIdentity)}`
+        : compactPosition
+          ? ` @ ${escapeRegExp(compactPosition)}`
+          : "(?: @ [^):\\r\\n]+)?";
       const compactCanonicalLine = new RegExp(
         `(?:^|\\n)Line ${index + 1} ONLY \\(${escapeRegExp(compactSpeakerId)}${positionAnchor}\\): "${escapeRegExp(text)}"(?: \\[[^\\]\\r\\n]*\\])?(?=\\n|$)`,
         "g",
       );
       if (prompt.match(compactCanonicalLine)?.length !== 1) {
+        if (customIdentity) {
+          return `canonical dialogue line ${index + 1} ignores its shot-local identity override`;
+        }
         return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker}`;
       }
       continue;
     }
-    const customIdentity = customIdentityFor(
-      line.characterKey,
-      line.speakerId,
-      line.speaker,
-      line.speakerHint,
-    );
     const speakerAnchor = customIdentity
       ? `\\s+identified\\s+by\\s+${escapeRegExp(customIdentity)}`
       : "(?:\\s+on\\s+viewer-[a-z-]+)?";
