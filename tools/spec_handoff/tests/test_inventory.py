@@ -93,7 +93,7 @@ class InventoryTests(unittest.TestCase):
             spec = repo / "specs/feature/005-frontmatter"
             spec.mkdir(parents=True)
             spec.joinpath("spec.md").write_text(
-                "---\ntitle: Frontmatter title\nrevision: 1.7-candidate\n---\n"
+                "---\ntitle: Frontmatter title\ncanonical_revision: \"R1.7-candidate\"\n---\n"
                 + "\n".join(f"metadata line {index}" for index in range(90))
                 + "\n# Delayed heading\n",
                 encoding="utf-8",
@@ -103,6 +103,16 @@ class InventoryTests(unittest.TestCase):
             self.assertEqual(record["title"], "Frontmatter title")
             self.assertEqual(record["revision"], "1.7")
             self.assertEqual(record["record_kind"], "CANONICAL_SPEC")
+
+    def test_markdown_bold_revision_with_r_prefix_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.make_repo(repo)
+            spec = repo / "specs/feature/006-bold-revision"
+            spec.mkdir(parents=True)
+            spec.joinpath("spec.md").write_text("# Bold revision\n\n**Revision:** R2.4 — hardening\n", encoding="utf-8")
+            record = next(row for row in inventory(repo)["records"] if row["path"] == "specs/feature/006-bold-revision")
+            self.assertEqual(record["revision"], "2.4")
 
 
 if __name__ == "__main__":
