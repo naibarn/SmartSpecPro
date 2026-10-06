@@ -141,3 +141,9 @@
 - Raw Googlebot check remains a current exact-SHA FAIL (two descriptions and two canonicals on `/` and `/features`); see `evidence/raw-googlebot-after-4b536d8.json`. Do not infer no-JS SEO success from hydrated browser results.
 - Current source SHA is reachable from `origin/main`; PRs #37 and #38 are attached to the task. The static frontend criterion is complete; whole-spec acceptance remains open.
 - Documentation/evidence PR #39 merged normally as `5bcb00a19b0b4de5aa465251f65a17b48b58915b`; it changes no application source, so the production static app SHA remains the parent `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63`. No new build/deploy is needed for that docs-only commit.
+
+
+## Handoff reconciliation — PR #40
+- PR #40 (https://github.com/naibarn/SmartSpecPro/pull/40) is `MERGED`; GitHub API and `git fetch origin main` both confirm merge/current-main SHA `25883550a64f6a93fd8fc75f1dfbd2cbccf9c382`.
+- PR #40 only corrects durable documentation. It does not change application source. The public static deployment remains bound to source SHA `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63`, index SHA-256 `c1879fffe401d4b5ef6e1fa6a88326796d6298667a60ebd6baf54b6480986723`, rollback snapshot `/home/dev/.cache/codex/deploy-backups/smartspec-web-main-20261005T215638.638049Z`.
+- Current outcome is `CHECKPOINT_PROMOTED_PARTIAL`, not complete. Post-deploy Home image matrix is 15/15; raw Googlebot metadata still fails on `/` and `/features`. Backend rollout remains blocked on a safe exact-SHA/migration plan; remaining Spec 270, rights, consent, manual contrast, RUM/indexation, tenant-fixture, and full-typecheck obligations are listed with next actions in `acceptance-status.md`.

@@ -167,3 +167,6 @@ Review rounds: 10 requested passes. Three material findings were corrected befor
 91. **Canonical/deployed source binding — clean.** Verified current main `5bcb00a1…` is the docs-only merge after deployed application SHA `4b536d8a…`; static production files/index remain hash-bound to the latter and PR #39 makes no app change. Handoff no longer conflates latest main with the published build source.
 
 - The source-selection fix had two consecutive clean post-deploy code/evidence reviews (88–89). Round 90 separately records a manual accessibility obligation; only the bounded §16.7 image-delivery criterion is closed, not whole Spec 263/270.
+
+
+92. **Latest-main handoff binding — clean.** GitHub API and refreshed `origin/main` both resolve to `25883550a64f6a93fd8fc75f1dfbd2cbccf9c382` after docs-only PR #40. The deployed app SHA remains `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63`; its public index hash is `c1879fffe401d4b5ef6e1fa6a88326796d6298667a60ebd6baf54b6480986723`. Acceptance files now distinguish current main from deployed app source and retain SEO/runtime as open.
