@@ -1206,11 +1206,11 @@
       "id": "SPEC-HANDOFF-RESUME-001",
       "user_message": "ดำเนิน Spec เดิมต่อจาก handoff โดยไม่อ่าน chat เก่า และห้ามถือว่า sections ครบแปลว่าเสร็จ",
       "expected_owner": "orchestra",
-      "expected_route": "resume-canonical-handoff",
+      "expected_route": "canonical-handoff-resume",
       "expected_agents": [],
       "expected_gates": [
-        "Canonical Handoff Validation",
-        "Requirement Ledger Closure",
+        "Lifecycle Convergence Gate",
+        "Unit Tests",
         "Verification Before Completion"
       ],
       "forbidden_execution": [
@@ -1223,12 +1223,12 @@
     {
       "id": "SPEC-HANDOFF-STALE-WRITE-001",
       "user_message": "อัปเดตสถานะ Spec หลัง main เปลี่ยนไปแล้ว",
-      "expected_owner": "spec-handoff-writer",
-      "expected_route": "refresh-reconcile-recompute",
+      "expected_owner": "orchestra",
+      "expected_route": "canonical-handoff-reconcile",
       "expected_agents": [],
       "expected_gates": [
-        "Optimistic Concurrency",
-        "Exact SHA Evidence"
+        "Lifecycle Convergence Gate",
+        "Verification Before Completion"
       ],
       "forbidden_execution": [
         "overwrite-newer-generation",
@@ -1240,13 +1240,13 @@
     {
       "id": "SPEC-HANDOFF-NO-FALSE-COMPLETE-001",
       "user_message": "มี completion.md และทุก section เป็น done แต่ deployment ที่ต้องทำยังไม่มี",
-      "expected_owner": "spec-handoff-policy",
-      "expected_route": "remain-validation-pending",
+      "expected_owner": "orchestra",
+      "expected_route": "canonical-handoff-policy",
       "expected_agents": [],
       "expected_gates": [
-        "Completion Kernel",
-        "Requirement Ledger Closure",
-        "Deployment Evidence"
+        "Lifecycle Convergence Gate",
+        "Unit Tests",
+        "Verification Before Completion"
       ],
       "forbidden_execution": [
         "completion-file-means-complete",

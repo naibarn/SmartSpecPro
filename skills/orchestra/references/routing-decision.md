@@ -15,6 +15,7 @@ This reference defines when orchestra should stay in its normal wave model and w
 | product help/tutorial/demo generated from code | `code-aware-help-flow` | Discover real behavior from code, generate help/script/outline, add GPT Image 2 visuals, and optionally build a web-video companion |
 | security-sensitive implementation or review | `security-gate` | Use normal implementation routing plus mandatory security specialists and pre-merge security gate |
 | user-facing behavior unclear | `product-ux-preflight` | Dispatch `product-ux`, then route to architecture/planning |
+| Spec-backed resume, stale handoff update, or completion dispute | `canonical-handoff-resume`, `canonical-handoff-reconcile`, or `canonical-handoff-policy` | Orchestra reads the canonical manifest and ledger first; stale writes reload/reconcile/recompute; completion claims use the shared completion kernel and exact-SHA evidence. |
 | visual polish / responsive / accessibility UI work | `visual-ui-flow` | Dispatch visual UI requirement/direction agents, then builder/review/refactor waves |
 | `large` | `deep-plan-chain` | Auto-run full `deep-plan`, then `deep-implement` |
 | `project` | `full-pipeline` | Auto-run `deep-project`, then per-split `deep-plan`, then `deep-implement` |

@@ -434,4 +434,4 @@ A section commit is a checkpoint, never completion. Close the outcome only when 
 
 ## Canonical Spec handoff
 
-For SmartSpecPro Specs, follow `skills/development-lifecycle/spec-handoff-contract.md`. Initialize the canonical manifest and requirement ledger after writing each normative split Spec and before planning. Map project WorkUnits to requirement IDs. Project manifests, interview notes, and section files are supporting evidence, not overall Spec status.
+For Specs in repositories with a configured canonical handoff root, follow `skills/development-lifecycle/spec-handoff-contract.md`. Initialize the canonical manifest and requirement ledger after writing each normative split Spec and before planning. Map project WorkUnits to requirement IDs. Project manifests, interview notes, and section files are supporting evidence, not overall Spec status.

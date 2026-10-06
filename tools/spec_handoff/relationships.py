@@ -14,6 +14,7 @@ _REQ_REF = re.compile(r"\b((?:REQ|FR|NFR|AC|R)[-_ ]?\d+[A-Z0-9._-]*)\b", re.I)
 
 
 def build_relationship_graph(repo: Path, discovered: dict[str, Any] | None = None) -> dict[str, Any]:
+    repo = repo.resolve()
     discovered = discovered or inventory(repo)
     canonical_ids = {str(row["spec_id"]) for row in discovered["records"] if row["root_kind"] == "CANONICAL" and row["record_kind"] == "CANONICAL_SPEC" and row.get("spec_id")}
     edges = []
@@ -42,7 +43,7 @@ def build_relationship_graph(repo: Path, discovered: dict[str, Any] | None = Non
                     from_id, to_id = str(record["spec_id"]), target_id
                     direction = "RELATIONSHIP_CANDIDATE"
                 source_digest = record.get("digest")
-                edges.append({"predecessor_spec_id": from_id, "referencing_spec_id": str(record["spec_id"]), "referenced_spec_id": target_id, "successor_spec_id": to_id if direction == "SUCCESSOR_CANDIDATE" else None, "direction": direction, "relation_text": relation, "requirement_ids": reqs, "source": f"{spec_path.as_posix()}#L{number}", "source_digest": source_digest, "confidence": "LOW"})
+                edges.append({"predecessor_spec_id": from_id, "referencing_spec_id": str(record["spec_id"]), "referenced_spec_id": target_id, "successor_spec_id": to_id if direction == "SUCCESSOR_CANDIDATE" else None, "direction": direction, "relation_text": relation, "requirement_ids": reqs, "source": f"{spec_path.relative_to(repo).as_posix()}#L{number}", "source_digest": source_digest, "confidence": "LOW"})
     unique = {(edge["source"], edge["referenced_spec_id"], edge["relation_text"]): edge for edge in edges}
     result = sorted(unique.values(), key=lambda edge: (edge["predecessor_spec_id"], edge["successor_spec_id"] or "", edge["source"]))
     return {"schema_version": 1, "canonical_spec_ids": sorted(canonical_ids), "edges": result, "edge_count": len(result), "authority_note": "Text matches are candidates only; no edge independently proves authority, current relevance, or requirement closure."}

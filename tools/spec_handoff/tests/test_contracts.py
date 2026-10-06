@@ -58,6 +58,14 @@ class ContractTests(unittest.TestCase):
         self.assertFalse(eligible)
         self.assertTrue(any("R-1" in reason for reason in reasons))
 
+    def test_all_sections_processed_cannot_close_an_open_requirement(self):
+        value = manifest()
+        value["lifecycle"]["current_state"] = "IMPLEMENTATION_COMPLETE"
+        value["implementation"]["status"] = "ALL_SECTIONS_COMPLETE"
+        eligible, reasons = completion_eligible(value, {"requirements": [{"requirement_id": "REQ-REMAINING", "final_state": "OPEN"}]})
+        self.assertFalse(eligible)
+        self.assertTrue(any("REQ-REMAINING" in reason for reason in reasons))
+
     def test_pass_requirement_requires_fresh_evidence_bound_to_canonical_sha(self):
         requirement = {"requirement_id": "R-2", "status": "PASS", "implementation_evidence": ["src/a.py"], "verification_evidence": ["test.log"], "evidence_freshness": "STALE", "evidence_sha": "old-sha"}
         eligible, reasons = completion_eligible(manifest(), {"requirements": [requirement]})

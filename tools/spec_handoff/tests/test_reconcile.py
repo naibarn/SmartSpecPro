@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.spec_handoff.reconcile import reconcile_one
+from tools.spec_handoff.reconcile import _normalize_repo_reference, reconcile_one
 
 
 class ReconciliationTests(unittest.TestCase):
@@ -13,6 +13,40 @@ class ReconciliationTests(unittest.TestCase):
         (spec / "spec.md").write_text(content, encoding="utf-8")
         (spec / "completion.md").write_text("All work completed", encoding="utf-8")
         return spec
+
+    def test_missing_implementation_mapping_stays_reconciliation_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            spec = self.make_spec(repo, "# Legacy\n\n## Requirements\n- The service must preserve audit evidence.\n")
+            result = reconcile_one(spec, repo, write=True)
+            self.assertEqual(result["manifest"]["implementation"]["mapping"], [])
+            self.assertEqual(result["manifest"]["continuation_assessment"]["decision"], "RECONCILIATION_REQUIRED")
+
+    def test_duplicate_spec_revision_surfaces_authority_conflict_without_selecting_winner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "specs/_config").mkdir(parents=True)
+            (repo / "specs/_config/handoff-roots.toml").write_text('[spec_handoff]\nschema_version=1\ncanonical_roots=["specs/feature"]\nalternate_roots=[]\n', encoding="utf-8")
+            self.make_spec(repo, "# First\nRevision: 4\nThe service must preserve audit evidence.\n")
+            duplicate = repo / "specs/feature/001-new-name"
+            duplicate.mkdir(parents=True)
+            (duplicate / "spec.md").write_text("# Second\nRevision: 4\nThe service must preserve audit evidence.\n", encoding="utf-8")
+            result = reconcile_one(duplicate, repo, write=True)
+            self.assertEqual(result["manifest"]["authority"]["status"], "AUTHORITY_CONFLICT")
+            conflict = next(row for row in result["manifest"]["authority"]["conflicts"] if row["kind"] == "DUPLICATE_SPEC_REVISION")
+            self.assertEqual(set(conflict["paths"]), {"specs/feature/001-legacy", "specs/feature/001-new-name"})
+            self.assertEqual(result["manifest"]["continuation_assessment"]["decision"], "RECONCILIATION_REQUIRED")
+
+    def test_old_worktree_reference_normalizes_only_when_repo_target_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            target = repo / "specs/feature/001-legacy/spec.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# Legacy\n", encoding="utf-8")
+            old_reference = "/home/dev/.codex/worktrees/old-checkout/specs/feature/001-legacy/spec.md#L1"
+            self.assertEqual(_normalize_repo_reference(old_reference, repo), "specs/feature/001-legacy/spec.md#L1")
+            external_reference = "/mnt/evidence/provider/approval.json"
+            self.assertEqual(_normalize_repo_reference(external_reference, repo), external_reference)
 
     def test_completion_artifact_never_auto_completes_and_emits_requirement_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -24,6 +58,16 @@ class ReconciliationTests(unittest.TestCase):
             self.assertEqual(manifest["continuation_assessment"]["decision"], "RECONCILIATION_REQUIRED")
             self.assertEqual(result["ledger"]["requirements"][0]["final_state"], "OPEN")
             self.assertEqual(len((spec / "handoff/history.jsonl").read_text().splitlines()), 1)
+
+    def test_reconciliation_evidence_paths_are_repository_relative(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            spec = self.make_spec(repo, "# Legacy\n\n## Requirements\n- The service must retain audit evidence.\n")
+            result = reconcile_one(spec, repo, write=True)
+            ledger = result["ledger"]
+            self.assertTrue(ledger["requirements"][0]["authority_source"].startswith("specs/feature/"))
+            self.assertTrue(all(not Path(row["path"]).is_absolute() for row in result["manifest"]["reconciliation"]["sources"] if row.get("path")))
+            self.assertTrue(all(not Path(row["path"]).is_absolute() for row in result["manifest"]["relevance_assessment"]["evidence"] if row.get("path")))
 
     def test_rerun_is_idempotent(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -99,6 +143,23 @@ class ReconciliationTests(unittest.TestCase):
             self.assertEqual(result["manifest"]["disposition"]["value"], "SUPERSEDED_FULL")
             self.assertEqual(result["manifest"]["implementation"]["status"], "PARTIAL_INTEGRATED")
             self.assertEqual(result["manifest"]["continuation_assessment"]["decision"], "DO_NOT_CONTINUE_SUPERSEDED")
+            self.assertTrue(all(row["final_state"] == "OPEN" for row in result["ledger"]["requirements"]))
+
+    def test_partial_supersession_retains_open_residual_scope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            spec = self.make_spec(repo, "# Legacy\n\n## Requirements\n- The service must preserve audit evidence.\n- The client must support safe resume.\n")
+            result = reconcile_one(spec, repo, write=True)
+            manifest = result["manifest"]
+            manifest["manual_decisions"] = {
+                "disposition": {"value": "SUPERSEDED_PARTIAL", "rationale": "Only the service-side requirement moved.", "confidence": "MEDIUM", "evidence": ["successor/spec.md#L4"]},
+                "continuation_assessment": {"decision": "CONTINUE_REQUIRED", "confidence": "MEDIUM", "rationale": "Client resume requirement remains unmapped.", "residual_requirements": ["REQ-RESUME"], "evidence": ["successor/spec.md#L4"], "next_action": "Map the remaining client resume requirement."},
+            }
+            (spec / "handoff/manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+            reconciled = reconcile_one(spec, repo, write=True)
+            self.assertEqual(reconciled["manifest"]["disposition"]["value"], "SUPERSEDED_PARTIAL")
+            self.assertEqual(reconciled["manifest"]["continuation_assessment"]["residual_requirements"], ["REQ-RESUME"])
+            self.assertTrue(all(row["final_state"] == "OPEN" for row in reconciled["ledger"]["requirements"]))
 
     def test_age_or_newness_does_not_choose_a_winner(self):
         with tempfile.TemporaryDirectory() as tmp:

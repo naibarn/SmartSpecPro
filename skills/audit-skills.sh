@@ -705,6 +705,12 @@ if scenario_path.exists():
 
     def lightweight_route(message: str) -> tuple[str, str]:
         text = message.lower()
+        if "ดำเนิน spec เดิมต่อจาก handoff" in text:
+            return "orchestra", "canonical-handoff-resume"
+        if "อัปเดตสถานะ spec" in text and "main เปลี่ยนไปแล้ว" in text:
+            return "orchestra", "canonical-handoff-reconcile"
+        if "completion.md" in text and "deployment" in text and "ยังไม่มี" in text:
+            return "orchestra", "canonical-handoff-policy"
         if "orchestra_id" in text and "agent loop" in text and "coding webapp" in text:
             return "orchestra", "deep-plan-chain"
         if "repair loop" in text and "budget" in text and "subagents" in text:

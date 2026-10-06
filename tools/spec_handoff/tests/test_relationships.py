@@ -19,6 +19,8 @@ class RelationshipTests(unittest.TestCase):
             edges = [edge for edge in graph["edges"] if edge["predecessor_spec_id"] == "001"]
             self.assertEqual({edge["successor_spec_id"] for edge in edges}, {"002", "003"})
             self.assertTrue(all(edge["confidence"] == "LOW" for edge in edges))
+            self.assertTrue(all(edge["source"].startswith("specs/feature/") for edge in edges))
+            self.assertTrue(all(str(repo) not in edge["source"] for edge in edges))
             self.assertTrue(any("R1" in edge["requirement_ids"] for edge in edges))
             self.assertIn("candidates only", graph["authority_note"])
 

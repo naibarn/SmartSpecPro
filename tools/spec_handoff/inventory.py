@@ -60,6 +60,21 @@ def _id_for(path: Path) -> str | None:
     return match.group("id") if match else None
 
 
+def _identical_spec_parent(path: Path, root: Path, repo: Path, spec_id: str | None, digest: str | None) -> str | None:
+    if not spec_id or not digest:
+        return None
+    for ancestor in path.parents:
+        if ancestor == root:
+            break
+        ancestor_spec = ancestor / "spec.md"
+        if _id_for(ancestor) != spec_id or not ancestor_spec.is_file() or ancestor_spec.is_symlink():
+            continue
+        _, ancestor_digest, _, _ = _read_spec(ancestor_spec)
+        if ancestor_digest == digest:
+            return ancestor.relative_to(repo).as_posix()
+    return None
+
+
 def inventory(repo: Path) -> dict[str, Any]:
     repo = repo.resolve()
     config = load_config(repo)
@@ -101,8 +116,11 @@ def inventory(repo: Path) -> dict[str, Any]:
             has_spec = spec_path.is_file() and not spec_path.is_symlink()
             spec_link = spec_path.is_symlink()
             title, digest, revision, problem = _read_spec(spec_path) if has_spec else (None, None, None, "SPEC_SYMLINK_NOT_FOLLOWED" if spec_link else None)
+            duplicate_parent = _identical_spec_parent(path, root, repo, _id_for(path), digest) if has_spec and root_kind == "CANONICAL" else None
             if root_kind == "ALTERNATE":
                 kind = "HISTORICAL_SPEC" if has_spec else "HISTORICAL_CANDIDATE"
+            elif duplicate_parent:
+                kind = "DUPLICATE_SPEC_COPY"
             elif has_spec:
                 kind = "CANONICAL_SPEC" if problem is None else "INVALID_SPEC"
             elif root_name in config["planning_roots"]:
@@ -122,7 +140,7 @@ def inventory(repo: Path) -> dict[str, Any]:
                 "record_kind": kind, "spec_id": _id_for(path),
                 "slug": path.name, "title": title or path.name,
                 "revision": revision, "digest": digest,
-                "problem": problem or ("MISSING_SPEC_MD" if not has_spec and kind == "MALFORMED_CANDIDATE" else None),
+                "problem": problem or (f"DUPLICATE_SPEC_COPY_OF:{duplicate_parent}" if duplicate_parent else "MISSING_SPEC_MD" if not has_spec and kind == "MALFORMED_CANDIDATE" else None),
                 "relationships": {"duplicate_ids": [], "duplicate_revisions": []},
             })
     records.sort(key=lambda row: (row["root_kind"], row["path"].casefold(), row["path"]))

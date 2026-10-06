@@ -556,4 +556,4 @@ A section commit is a checkpoint, never completion. Close the outcome only when 
 
 ## Canonical Spec handoff
 
-For SmartSpecPro Specs, follow `skills/development-lifecycle/spec-handoff-contract.md`. Load or reconcile the canonical manifest and ledger before planning; map every section to requirement IDs and plan only the unsatisfied delta. Initialize a handoff after creating a new normative Spec. Planning artifacts cannot assign overall status.
+For Specs in repositories with a configured canonical handoff root, follow `skills/development-lifecycle/spec-handoff-contract.md`. Load or reconcile the canonical manifest and ledger before planning; map every section to requirement IDs and plan only the unsatisfied delta. Initialize a handoff after creating a new normative Spec. Planning artifacts cannot assign overall status.
