@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
     "expected_spec_digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 1,
+  "generation": 2,
   "identity": {
     "canonical_path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
     "digest": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "integrated": true,
+    "integrated_at": "2026-10-06T04:36:24Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -203,7 +203,7 @@
     "unresolved": 44
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:27:58.200984Z",
+  "updated_at": "2026-10-06T04:37:58.499381Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

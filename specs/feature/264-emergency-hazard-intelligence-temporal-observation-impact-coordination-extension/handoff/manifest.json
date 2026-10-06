@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
     "expected_spec_digest": "34011fa4d9f1fa426ebdbcf05db2a0f8837336d892a8a502e7bbdcdfe8f3970d"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 1,
+  "generation": 2,
   "identity": {
     "canonical_path": "specs/feature/264-emergency-hazard-intelligence-temporal-observation-impact-coordination-extension/spec.md",
     "digest": "34011fa4d9f1fa426ebdbcf05db2a0f8837336d892a8a502e7bbdcdfe8f3970d",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "integrated": true,
+    "integrated_at": "2026-10-06T04:36:24Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -182,7 +182,7 @@
     "unresolved": 155
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:27:56.700177Z",
+  "updated_at": "2026-10-06T04:37:58.286488Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
