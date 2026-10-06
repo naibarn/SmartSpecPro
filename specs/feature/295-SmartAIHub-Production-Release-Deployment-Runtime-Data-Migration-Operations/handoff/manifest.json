@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2b38f6c6b77c1e58d4b9f388e2c1ce1f4970b808",
+    "expected_canonical_sha": "248af641f8670ef618cf17d906888b1a6346bc81",
     "expected_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814"
   },
   "continuation": {
-    "next_action": "Close cross-host authority and full project Mission Control workspace/status/actions; add authenticated runtime-produced receipts and SPEC-295 deployment/migration/Cloudflare/container convergence projections without duplicating worker_jobs/evidence authority. Keep seven simulation cases open until their real runtime adapters and acceptance evidence exist.",
+    "next_action": "Implement bounded event-driven retirement and periodic audit-only stale-worktree collection; build project-level Mission Control source/agent/session/integration/worktree summaries and safe actions from authority-backed snapshots; add authenticated runtime-produced evidence adapters for SPEC-295 migrations/deployments/Workers/Containers. Preserve the seven passing contract simulations as non-production evidence until real runtime collectors and acceptance checks exist.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
@@ -103,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2b38f6c6b77c1e58d4b9f388e2c1ce1f4970b808",
+    "canonical_sha": "248af641f8670ef618cf17d906888b1a6346bc81",
     "integrated": true,
-    "integrated_at": "2026-10-06T18:49:39Z"
+    "integrated_at": "2026-10-06T19:04:45Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -222,7 +222,7 @@
     "unresolved": 165
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T18:51:05.973283Z",
+  "updated_at": "2026-10-06T19:06:51.859423Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
