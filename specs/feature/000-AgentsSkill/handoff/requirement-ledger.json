@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L58"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L58"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L58",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L59"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L59"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L59",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L60"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L60"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L60",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L61"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L61"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L61",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L62"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L62"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L62",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L63"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L63"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L63",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L356"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L499"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L499"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L499",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L533"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L533"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L533",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L578"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L578"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L578",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L580"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L580"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L580",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L580",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L581"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L581"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L581",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L581",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L617"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L710"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L710"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L710",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L711"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L711"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L711",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L712"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L712"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L712",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L721"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L722"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L722"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L722",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L723"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L723"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L723",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L724"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L733"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L733"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L733",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L734"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L734"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L734",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L735"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L735"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L735",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L745"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L745"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L745",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L745",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L746"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L747"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L793"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L793"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L793",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L794"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L794"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L794",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L795"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L795"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L795",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L795",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L796"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L796"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L796",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L833"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L833"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L833",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L834"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L834"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L834",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L836"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L836"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L836",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L836",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L1317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1317"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L1317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L1429"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1429"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L1429",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L1676"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1676"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L1676",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L1942"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1942"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L1942",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L1957"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1957"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L1957",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L1980"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1980"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L1980",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L1980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2048"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2048"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2048",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2049"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2049"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2049",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2049",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2050"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2050"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2050",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2050",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2053"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2053"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2053",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2053",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2054"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2054"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2054",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2054",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2055"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2055"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2055",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2058"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2058"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2058",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2059"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2059"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2059",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2059",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2062"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2062"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2062",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2062",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2063"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2063"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2063",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2063",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2064"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2064"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2064",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2074"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2074"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2074",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2075"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2075"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2075",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2076"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2076"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2076",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2077"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2077"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2077",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2078"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2078"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2078",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2079"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2079"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2079",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2085"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2085"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2085",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2086"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2086"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2086",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2087"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2087"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2087",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2088"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2088"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2088",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2088",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2089"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2089"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2089",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2093"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2093"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2093",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2094"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2094"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2094",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2095"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2095"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2095",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2096"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2097"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2097"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2097",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2097",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2124"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2130"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2138"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2398"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2398"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2398",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2402"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2402"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2402",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2403"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2403"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2403",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/000-AgentsSkill/spec.md#L2616"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2616"
       ],
-      "authority_source": "specs/feature/000-AgentsSkill/spec.md#L2616",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/000-AgentsSkill/spec.md#L2616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

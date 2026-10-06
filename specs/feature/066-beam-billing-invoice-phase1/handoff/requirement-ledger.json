@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L29"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L29"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L29",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L30"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L30"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L30",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L31"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L32"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L32"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L32",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L36"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L36"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L36",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L37"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L37"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L37",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L38"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L38"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L38",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L42"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L42"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L42",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L42",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L43"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L44"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L44"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L44",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L45"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L45"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L45",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L45",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L46"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L46"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L46",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L50"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L50"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L50",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L51"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L51"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L51",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L52"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L85"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L85"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L85",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L96"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L104"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L110"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L117"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L127"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L138"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L168"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L174"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L174"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L174",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L175"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L175"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L175",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L179"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L185"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L185"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L185",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L187"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L188"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L189"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L189"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L189",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L190"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L191"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L192"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L192"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L192",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L196"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L196"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L196",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L221"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L223"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L223"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L223",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,10 +797,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L224",
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L224",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L237"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -820,10 +820,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L225",
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L225",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L238"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -843,9 +843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L226"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L226"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L226",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -865,10 +865,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L227",
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L227",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L240"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -888,9 +888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L228"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L228"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L228",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -910,9 +910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L229"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -932,9 +932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L230"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -954,9 +954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L231"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -976,9 +976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L232"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -998,9 +998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L234"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1020,9 +1020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L236"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1042,9 +1042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L239"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1064,9 +1064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L241"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1086,9 +1086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L242"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1108,9 +1108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L246"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L246"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L246",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1130,9 +1130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L248"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L248"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L248",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1152,9 +1152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L249"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1174,9 +1174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L250"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L250"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L250",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1196,9 +1196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L251"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1218,9 +1218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L252"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L252"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L252",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1240,9 +1240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L253"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L253"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L253",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1262,9 +1262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L254"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L254"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L254",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1284,9 +1284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L255"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1306,9 +1306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L256"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1328,9 +1328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L257"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1350,9 +1350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L258"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1372,9 +1372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L259"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1394,9 +1394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L260"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1416,9 +1416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L261"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L261"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L261",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1438,9 +1438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L262"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1460,9 +1460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L263"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L263"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L263",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1482,9 +1482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L264"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1504,9 +1504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L270"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1526,9 +1526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L271"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1548,9 +1548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L272"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1570,9 +1570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L273"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L273"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L273",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1592,9 +1592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L277"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1614,9 +1614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L278"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1636,9 +1636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L279"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L279"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L279",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1658,9 +1658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L280"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1680,9 +1680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L281"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1702,9 +1702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L282"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1724,9 +1724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L283"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L283"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L283",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1746,9 +1746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L284"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L284"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L284",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1768,9 +1768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L285"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1790,9 +1790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L289"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L289"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L289",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1812,9 +1812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L293"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1834,9 +1834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L295"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1856,9 +1856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L296"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L296"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L296",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1878,9 +1878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L297"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L297"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L297",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1900,9 +1900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L306"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L306"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L306",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1922,9 +1922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L317"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1944,9 +1944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L372"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1966,9 +1966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L376"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1988,9 +1988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L377"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2010,9 +2010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L378"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2032,9 +2032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L379"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2054,9 +2054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L381"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2076,9 +2076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L397"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L397"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L397",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2098,9 +2098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L436"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L436"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L436",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2120,9 +2120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L466"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L466"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L466",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2142,9 +2142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L467"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2164,9 +2164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L468"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2186,9 +2186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L474"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L474"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L474",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2208,10 +2208,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L502",
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L502",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L524"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L502",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L502",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2231,9 +2231,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L512"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L512"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L512",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2253,9 +2253,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L547"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L547"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L547",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2275,9 +2275,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L556"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L556"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L556",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L556",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2297,9 +2297,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L569"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L569"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L569",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2319,9 +2319,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L589"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L589"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L589",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2341,9 +2341,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L600"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2363,9 +2363,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L601"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L601"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L601",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2385,9 +2385,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L602"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2407,9 +2407,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L603"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2429,9 +2429,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L604"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L604"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L604",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2451,9 +2451,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L695"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L695"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L695",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2473,9 +2473,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L696"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L696"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L696",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2495,9 +2495,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L697"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L697"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L697",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2517,9 +2517,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L698"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L698"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L698",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2539,9 +2539,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L699"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2561,9 +2561,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L700"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L700"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L700",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2583,9 +2583,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L701"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L701"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L701",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2605,9 +2605,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L702"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L702"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L702",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2627,9 +2627,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L703"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L703"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L703",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2649,9 +2649,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L704"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L704"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L704",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2671,9 +2671,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L705"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L705"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L705",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2693,9 +2693,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L706"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L706",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2715,9 +2715,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L707"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2737,9 +2737,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L708"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L708"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L708",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2759,9 +2759,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L712"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L712"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L712",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2781,9 +2781,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L713"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L713"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L713",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2803,9 +2803,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L714"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L714",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2825,9 +2825,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L715"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L715"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L715",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L715",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2847,9 +2847,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L716"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L716"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L716",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2869,9 +2869,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L717"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L717"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L717",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2891,9 +2891,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L718"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L718"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L718",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2913,9 +2913,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L722"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L722"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L722",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2935,9 +2935,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L723"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L723"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L723",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2957,9 +2957,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L724"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2979,9 +2979,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L725"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L725"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L725",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3001,9 +3001,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L726"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L726"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L726",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3023,9 +3023,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L727"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L727"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L727",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3045,9 +3045,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L728"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L728"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L728",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3067,9 +3067,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L732"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L732"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L732",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3089,9 +3089,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L733"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L733"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L733",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3111,9 +3111,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L734"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L734"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L734",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3133,9 +3133,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L735"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L735"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L735",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3155,9 +3155,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L739"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3177,9 +3177,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L740"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L740"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L740",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3199,9 +3199,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L741"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L741"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L741",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3221,9 +3221,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L783"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L783"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L783",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3243,9 +3243,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L799"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L799"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L799",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3265,9 +3265,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L808"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L808"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L808",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3287,9 +3287,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L831"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L831"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L831",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3309,9 +3309,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L832"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L832"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L832",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3331,9 +3331,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L833"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L833"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L833",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3353,9 +3353,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L834"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L834"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L834",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3375,9 +3375,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L835"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L835"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L835",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L835",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3397,9 +3397,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L836"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L836"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L836",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L836",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3419,9 +3419,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L837"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3441,9 +3441,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L838"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L838"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L838",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L838",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3463,9 +3463,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L839"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L839"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L839",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L839",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3485,9 +3485,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L840"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L840"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L840",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L840",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3507,9 +3507,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L841"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L841"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L841",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L841",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3529,9 +3529,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L842"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L842"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L842",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3551,9 +3551,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L843"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L843"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L843",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3573,9 +3573,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L844"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L844"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L844",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3595,9 +3595,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L845"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L845"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L845",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3617,9 +3617,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L846"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L846"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L846",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3639,9 +3639,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L847"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L847"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L847",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3661,9 +3661,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L848"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L848"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L848",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L848",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3683,9 +3683,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L849"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L849"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L849",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3705,9 +3705,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/066-beam-billing-invoice-phase1/spec.md#L850"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L850"
       ],
-      "authority_source": "specs/feature/066-beam-billing-invoice-phase1/spec.md#L850",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/spec.md#L850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

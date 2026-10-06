@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L73"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L73"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L73",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L74"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L74"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L74",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L75"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L75"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L75",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L76"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L76"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L76",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L77"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L77"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L77",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L78"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L78"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L78",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L79"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L79"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L79",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L109"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L114"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L121"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L156"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L178"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L179"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L180"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L181"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L182"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L182"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L182",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L183"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L184"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L188"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L189"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L189"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L189",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L190"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L191"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L192"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L192"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L192",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L193"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L193"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L193",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L194"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L198"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L199"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L203"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L203"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L203",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L204"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L205"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L205"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L205",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L206"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L207"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L211"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L212"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L213"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L213"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L213",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L214"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L214"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L214",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L215"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L216"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L217"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L218"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L218"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L218",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L219"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L220"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L220"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L220",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L221"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L251"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L252"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L252"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L252",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L253"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L253"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L253",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L257"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L258"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L259"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L260"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L261"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L261"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L261",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/083-agent-registry-and-organization-model/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L262"
       ],
-      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/083-agent-registry-and-organization-model/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

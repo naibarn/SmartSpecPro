@@ -14,7 +14,7 @@
         "referencing_spec_id": "261",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L143",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L143",
         "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
         "successor_spec_id": "261"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "261",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L2813",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L2813",
         "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
         "successor_spec_id": "261"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "282",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       }
@@ -54,72 +54,72 @@
       {
         "digest": "69b5f64500d49658a4970c967821e5d6ed3c206d5500f6a60099e470d003d46a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
       },
       {
         "digest": "367f5cc84497e3a11fe033b4b51853030f8a864a4e74a7208c61b8b4ac9c74aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
       },
       {
         "digest": "4a196de7dba1f66f629a76e4ea7f22d5e3059ada123693087f1b7231bcbe97a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
       },
       {
         "digest": "8344a4636062dc9b39fe8d56e207787d25ed43a942c4ff02db44e054b53aed16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
       },
       {
         "digest": "31e4c377ec603d2a01a2673cfd1085120b6a4edd46c7e55cd73b13caf470a9e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
       },
       {
         "digest": "59300a95386f3e9be2b330d441acd941c15160d117535c2721a5cfab727e2d65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
       },
       {
         "digest": "b03f8fdd1dcacf64b5d8a0ccb43d826105319108d438fe5191b1d725ce0ae6d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
       },
       {
         "digest": "868f69f9baafee21e120e4fbff62b96e1c53de325513a3504ff4860a5fd155e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
       },
       {
         "digest": "d10145fa1e0047b6a76ad533e7f100e216ee476819b59381f866432702777f94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
       },
       {
         "digest": "18c722f94352c821620fb8b5cbe44a9810c5ea96161e150eda6825a96a2f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
       },
       {
         "digest": "79937b839d4581e31dd2f4d60abd776d2db2180fd83a5f7a628e4a2caed734bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
       },
       {
         "digest": "f2951a4b3ee093290190dfa3df90ad36184a694591326861e6102cfcdcbb2d2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
       },
       {
         "digest": "4fa4e252869ae5d15d45733529be4b2c1f7ced718d41f2c318644652a4a38378",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
       },
       {
         "digest": "157610e04556445cdf96e6f8765c9f6f6898035690a0c9a4ee4df34c0986ced9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
       }
     ],
     "predecessors": [],
@@ -150,72 +150,72 @@
       {
         "digest": "69b5f64500d49658a4970c967821e5d6ed3c206d5500f6a60099e470d003d46a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
       },
       {
         "digest": "367f5cc84497e3a11fe033b4b51853030f8a864a4e74a7208c61b8b4ac9c74aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
       },
       {
         "digest": "4a196de7dba1f66f629a76e4ea7f22d5e3059ada123693087f1b7231bcbe97a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
       },
       {
         "digest": "8344a4636062dc9b39fe8d56e207787d25ed43a942c4ff02db44e054b53aed16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
       },
       {
         "digest": "31e4c377ec603d2a01a2673cfd1085120b6a4edd46c7e55cd73b13caf470a9e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
       },
       {
         "digest": "59300a95386f3e9be2b330d441acd941c15160d117535c2721a5cfab727e2d65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
       },
       {
         "digest": "b03f8fdd1dcacf64b5d8a0ccb43d826105319108d438fe5191b1d725ce0ae6d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
       },
       {
         "digest": "868f69f9baafee21e120e4fbff62b96e1c53de325513a3504ff4860a5fd155e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
       },
       {
         "digest": "d10145fa1e0047b6a76ad533e7f100e216ee476819b59381f866432702777f94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
       },
       {
         "digest": "18c722f94352c821620fb8b5cbe44a9810c5ea96161e150eda6825a96a2f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
       },
       {
         "digest": "79937b839d4581e31dd2f4d60abd776d2db2180fd83a5f7a628e4a2caed734bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
       },
       {
         "digest": "f2951a4b3ee093290190dfa3df90ad36184a694591326861e6102cfcdcbb2d2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
       },
       {
         "digest": "4fa4e252869ae5d15d45733529be4b2c1f7ced718d41f2c318644652a4a38378",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
       },
       {
         "digest": "157610e04556445cdf96e6f8765c9f6f6898035690a0c9a4ee4df34c0986ced9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
       },
       {
         "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
@@ -261,78 +261,78 @@
       {
         "digest": "69b5f64500d49658a4970c967821e5d6ed3c206d5500f6a60099e470d003d46a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
       },
       {
         "digest": "367f5cc84497e3a11fe033b4b51853030f8a864a4e74a7208c61b8b4ac9c74aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
       },
       {
         "digest": "4a196de7dba1f66f629a76e4ea7f22d5e3059ada123693087f1b7231bcbe97a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
       },
       {
         "digest": "8344a4636062dc9b39fe8d56e207787d25ed43a942c4ff02db44e054b53aed16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
       },
       {
         "digest": "31e4c377ec603d2a01a2673cfd1085120b6a4edd46c7e55cd73b13caf470a9e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
       },
       {
         "digest": "59300a95386f3e9be2b330d441acd941c15160d117535c2721a5cfab727e2d65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
       },
       {
         "digest": "b03f8fdd1dcacf64b5d8a0ccb43d826105319108d438fe5191b1d725ce0ae6d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
       },
       {
         "digest": "868f69f9baafee21e120e4fbff62b96e1c53de325513a3504ff4860a5fd155e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
       },
       {
         "digest": "d10145fa1e0047b6a76ad533e7f100e216ee476819b59381f866432702777f94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
       },
       {
         "digest": "18c722f94352c821620fb8b5cbe44a9810c5ea96161e150eda6825a96a2f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
       },
       {
         "digest": "79937b839d4581e31dd2f4d60abd776d2db2180fd83a5f7a628e4a2caed734bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
       },
       {
         "digest": "f2951a4b3ee093290190dfa3df90ad36184a694591326861e6102cfcdcbb2d2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
       },
       {
         "digest": "4fa4e252869ae5d15d45733529be4b2c1f7ced718d41f2c318644652a4a38378",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
       },
       {
         "digest": "157610e04556445cdf96e6f8765c9f6f6898035690a0c9a4ee4df34c0986ced9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
     "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
@@ -385,72 +385,72 @@
       {
         "digest": "69b5f64500d49658a4970c967821e5d6ed3c206d5500f6a60099e470d003d46a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
       },
       {
         "digest": "367f5cc84497e3a11fe033b4b51853030f8a864a4e74a7208c61b8b4ac9c74aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
       },
       {
         "digest": "4a196de7dba1f66f629a76e4ea7f22d5e3059ada123693087f1b7231bcbe97a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
       },
       {
         "digest": "8344a4636062dc9b39fe8d56e207787d25ed43a942c4ff02db44e054b53aed16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
       },
       {
         "digest": "31e4c377ec603d2a01a2673cfd1085120b6a4edd46c7e55cd73b13caf470a9e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
       },
       {
         "digest": "59300a95386f3e9be2b330d441acd941c15160d117535c2721a5cfab727e2d65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
       },
       {
         "digest": "b03f8fdd1dcacf64b5d8a0ccb43d826105319108d438fe5191b1d725ce0ae6d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
       },
       {
         "digest": "868f69f9baafee21e120e4fbff62b96e1c53de325513a3504ff4860a5fd155e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
       },
       {
         "digest": "d10145fa1e0047b6a76ad533e7f100e216ee476819b59381f866432702777f94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
       },
       {
         "digest": "18c722f94352c821620fb8b5cbe44a9810c5ea96161e150eda6825a96a2f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
       },
       {
         "digest": "79937b839d4581e31dd2f4d60abd776d2db2180fd83a5f7a628e4a2caed734bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
       },
       {
         "digest": "f2951a4b3ee093290190dfa3df90ad36184a694591326861e6102cfcdcbb2d2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
       },
       {
         "digest": "4fa4e252869ae5d15d45733529be4b2c1f7ced718d41f2c318644652a4a38378",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
       },
       {
         "digest": "157610e04556445cdf96e6f8765c9f6f6898035690a0c9a4ee4df34c0986ced9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
       },
       {
         "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
@@ -718,72 +718,72 @@
       {
         "digest": "69b5f64500d49658a4970c967821e5d6ed3c206d5500f6a60099e470d003d46a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-plan.md"
       },
       {
         "digest": "367f5cc84497e3a11fe033b4b51853030f8a864a4e74a7208c61b8b4ac9c74aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/claude-spec.md"
       },
       {
         "digest": "4a196de7dba1f66f629a76e4ea7f22d5e3059ada123693087f1b7231bcbe97a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/deep_implement_config.json"
       },
       {
         "digest": "8344a4636062dc9b39fe8d56e207787d25ed43a942c4ff02db44e054b53aed16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds-2.md"
       },
       {
         "digest": "31e4c377ec603d2a01a2673cfd1085120b6a4edd46c7e55cd73b13caf470a9e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/implementation/gap-audit-10-rounds.md"
       },
       {
         "digest": "59300a95386f3e9be2b330d441acd941c15160d117535c2721a5cfab727e2d65",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/reviews/self-review-round-1.md"
       },
       {
         "digest": "b03f8fdd1dcacf64b5d8a0ccb43d826105319108d438fe5191b1d725ce0ae6d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/index.md"
       },
       {
         "digest": "868f69f9baafee21e120e4fbff62b96e1c53de325513a3504ff4860a5fd155e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-01-package-contract.md"
       },
       {
         "digest": "d10145fa1e0047b6a76ad533e7f100e216ee476819b59381f866432702777f94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-02-manifest-schema-parser.md"
       },
       {
         "digest": "18c722f94352c821620fb8b5cbe44a9810c5ea96161e150eda6825a96a2f6c0b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-03-package-structure.md"
       },
       {
         "digest": "79937b839d4581e31dd2f4d60abd776d2db2180fd83a5f7a628e4a2caed734bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-04-dependency-graph.md"
       },
       {
         "digest": "f2951a4b3ee093290190dfa3df90ad36184a694591326861e6102cfcdcbb2d2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-05-secret-scanning.md"
       },
       {
         "digest": "4fa4e252869ae5d15d45733529be4b2c1f7ced718d41f2c318644652a4a38378",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-06-package-digest.md"
       },
       {
         "digest": "157610e04556445cdf96e6f8765c9f6f6898035690a0c9a4ee4df34c0986ced9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

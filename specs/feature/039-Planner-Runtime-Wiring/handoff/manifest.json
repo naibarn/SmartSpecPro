@@ -17,42 +17,42 @@
       {
         "digest": "b850f033a44ba3b2fd26e5d2a8298b9fcf3f5bac190c6d09ff1a09d79d17a2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "c139989e0212fcc5b19481f542929fa2b1ede776540bce9fcd68276dbfca9f04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
       },
       {
         "digest": "e059d7a1bd1e72a7f19a7ea87a2ad83460c71efee27d84e8e41feaf7dd77794d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
       },
       {
         "digest": "daa59ff629091e631505b11f79c358d40145398c338a499b3d9d4d17931c2ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
       },
       {
         "digest": "9128eb2c6a8ff9dbe110962f09ad6bdc827cc254105013fb19e51a8a79b6d801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
       },
       {
         "digest": "894169ab7e365dfcb2436777852ce1080f959419fcbdd904ff37d1687eb4a05b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
       },
       {
         "digest": "7b9c35a691b15d01c2f7d974bea1662b2a46d8d8124fa333bc92365f9837ba1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
       },
       {
         "digest": "df712a72ebd926f03417a0a50ec4bc5399e87d153c32dbfdfe44ce121cc2a661",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
       }
     ],
     "predecessors": [],
@@ -83,42 +83,42 @@
       {
         "digest": "b850f033a44ba3b2fd26e5d2a8298b9fcf3f5bac190c6d09ff1a09d79d17a2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "c139989e0212fcc5b19481f542929fa2b1ede776540bce9fcd68276dbfca9f04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
       },
       {
         "digest": "e059d7a1bd1e72a7f19a7ea87a2ad83460c71efee27d84e8e41feaf7dd77794d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
       },
       {
         "digest": "daa59ff629091e631505b11f79c358d40145398c338a499b3d9d4d17931c2ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
       },
       {
         "digest": "9128eb2c6a8ff9dbe110962f09ad6bdc827cc254105013fb19e51a8a79b6d801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
       },
       {
         "digest": "894169ab7e365dfcb2436777852ce1080f959419fcbdd904ff37d1687eb4a05b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
       },
       {
         "digest": "7b9c35a691b15d01c2f7d974bea1662b2a46d8d8124fa333bc92365f9837ba1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
       },
       {
         "digest": "df712a72ebd926f03417a0a50ec4bc5399e87d153c32dbfdfe44ce121cc2a661",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -150,48 +150,48 @@
       {
         "digest": "b850f033a44ba3b2fd26e5d2a8298b9fcf3f5bac190c6d09ff1a09d79d17a2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "c139989e0212fcc5b19481f542929fa2b1ede776540bce9fcd68276dbfca9f04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
       },
       {
         "digest": "e059d7a1bd1e72a7f19a7ea87a2ad83460c71efee27d84e8e41feaf7dd77794d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
       },
       {
         "digest": "daa59ff629091e631505b11f79c358d40145398c338a499b3d9d4d17931c2ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
       },
       {
         "digest": "9128eb2c6a8ff9dbe110962f09ad6bdc827cc254105013fb19e51a8a79b6d801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
       },
       {
         "digest": "894169ab7e365dfcb2436777852ce1080f959419fcbdd904ff37d1687eb4a05b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
       },
       {
         "digest": "7b9c35a691b15d01c2f7d974bea1662b2a46d8d8124fa333bc92365f9837ba1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
       },
       {
         "digest": "df712a72ebd926f03417a0a50ec4bc5399e87d153c32dbfdfe44ce121cc2a661",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/039-Planner-Runtime-Wiring/spec.md",
     "digest": "2a66bae232fcf56313bdd3bc76c2ea2c9e2a6d49678259c23e7c0e0942ba2a90",
@@ -244,42 +244,42 @@
       {
         "digest": "b850f033a44ba3b2fd26e5d2a8298b9fcf3f5bac190c6d09ff1a09d79d17a2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "c139989e0212fcc5b19481f542929fa2b1ede776540bce9fcd68276dbfca9f04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
       },
       {
         "digest": "e059d7a1bd1e72a7f19a7ea87a2ad83460c71efee27d84e8e41feaf7dd77794d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
       },
       {
         "digest": "daa59ff629091e631505b11f79c358d40145398c338a499b3d9d4d17931c2ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
       },
       {
         "digest": "9128eb2c6a8ff9dbe110962f09ad6bdc827cc254105013fb19e51a8a79b6d801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
       },
       {
         "digest": "894169ab7e365dfcb2436777852ce1080f959419fcbdd904ff37d1687eb4a05b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
       },
       {
         "digest": "7b9c35a691b15d01c2f7d974bea1662b2a46d8d8124fa333bc92365f9837ba1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
       },
       {
         "digest": "df712a72ebd926f03417a0a50ec4bc5399e87d153c32dbfdfe44ce121cc2a661",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -443,42 +443,42 @@
       {
         "digest": "b850f033a44ba3b2fd26e5d2a8298b9fcf3f5bac190c6d09ff1a09d79d17a2b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "c139989e0212fcc5b19481f542929fa2b1ede776540bce9fcd68276dbfca9f04",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/implementation/usage.md"
       },
       {
         "digest": "e059d7a1bd1e72a7f19a7ea87a2ad83460c71efee27d84e8e41feaf7dd77794d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/index.md"
       },
       {
         "digest": "daa59ff629091e631505b11f79c358d40145398c338a499b3d9d4d17931c2ac2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-01-planner-middleware-and-chat-wiring.md"
       },
       {
         "digest": "9128eb2c6a8ff9dbe110962f09ad6bdc827cc254105013fb19e51a8a79b6d801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-02-skill-execution-and-structured-llm-wiring.md"
       },
       {
         "digest": "894169ab7e365dfcb2436777852ce1080f959419fcbdd904ff37d1687eb4a05b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-03-artifact-routing-and-presentation-wiring.md"
       },
       {
         "digest": "7b9c35a691b15d01c2f7d974bea1662b2a46d8d8124fa333bc92365f9837ba1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-04-agency-escalation-and-telemetry.md"
       },
       {
         "digest": "df712a72ebd926f03417a0a50ec4bc5399e87d153c32dbfdfe44ce121cc2a661",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/sections/section-05-active-mode-cutover-and-cleanup.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

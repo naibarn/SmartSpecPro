@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L125"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L153"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L153"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L153",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L154"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L154"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L154",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L155"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L156"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L157"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L157"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L157",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L161"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L162"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L163"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L164"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L165"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L169"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L170"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L170"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L170",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L171"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L171"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L171",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L172"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L172"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L172",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L173"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L173"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L173",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L177"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L177"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L177",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L178"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L179"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L180"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L181"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L213"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L213"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L213",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L217"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L219"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L221"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L223"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L223"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L223",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L224"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L224"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L225"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L227"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L228"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L228"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L228",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L231"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L232"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L304"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L304"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L304",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L310"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L325"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L325"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L325",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L333"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L333"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L333",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L343"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L355"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L355"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L355",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L368"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,14 +863,14 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L370",
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L389",
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L429",
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L442",
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L454",
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L465"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L370",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L389",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L429",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L442",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L454",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L465"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -890,9 +890,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L372"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -912,9 +912,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L373"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L373"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L373",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -934,9 +934,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L374"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L374"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L374",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -956,9 +956,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L375"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -978,9 +978,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L376"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1000,9 +1000,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L377"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1022,9 +1022,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L381"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1044,9 +1044,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L382"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1066,9 +1066,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L383"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L383"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L383",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1088,9 +1088,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L387"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L387"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L387",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1110,9 +1110,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L391"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L391"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L391",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1132,9 +1132,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L392"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1154,9 +1154,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L393"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L393"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L393",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1176,9 +1176,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L394"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1198,9 +1198,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L395"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L395"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L395",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1220,9 +1220,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L399"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1242,9 +1242,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L400"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L400"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L400",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1264,9 +1264,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L401"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1286,9 +1286,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L402"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L402"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L402",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1308,9 +1308,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L406"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L406"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L406",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L406",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1330,9 +1330,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L408"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1352,9 +1352,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L410"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L410"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L410",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1374,9 +1374,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L411"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L411"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L411",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L411",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1396,9 +1396,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L412"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L412"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L412",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1418,9 +1418,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L413"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L413"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L413",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1440,9 +1440,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L414"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L414"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L414",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1462,9 +1462,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L416"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L416"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L416",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1484,9 +1484,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L418"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L418"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L418",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1506,9 +1506,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L419"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L419"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L419",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1528,9 +1528,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L420"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L420"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L420",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1550,9 +1550,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L421"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L421"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L421",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L421",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1572,9 +1572,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L422"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L422"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L422",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1594,9 +1594,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L423"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L423"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L423",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1616,9 +1616,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L427"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L427"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L427",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1638,9 +1638,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L431"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1660,9 +1660,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L432"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L432"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L432",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1682,9 +1682,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L433"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1704,9 +1704,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L434"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L434"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L434",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L434",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1726,9 +1726,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L435"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L435"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L435",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L435",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1748,9 +1748,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L436"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L436"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L436",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1770,9 +1770,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L440"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L440"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L440",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L440",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1792,9 +1792,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L444"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L444"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L444",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1814,9 +1814,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L445"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L445"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L445",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1836,9 +1836,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L446"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1858,9 +1858,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L447"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L447"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L447",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1880,9 +1880,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L448"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L448"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L448",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1902,9 +1902,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L452"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L452"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L452",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1924,9 +1924,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L456"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L456"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L456",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L456",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1946,9 +1946,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L457"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L457"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L457",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L457",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1968,9 +1968,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L458"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L458"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L458",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1990,9 +1990,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L459"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2012,9 +2012,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L463"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2034,9 +2034,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L467"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2056,9 +2056,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L468"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2078,9 +2078,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L469"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L469"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L469",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2100,9 +2100,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L470"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L470"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L470",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2122,9 +2122,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L471"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L471"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L471",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2144,9 +2144,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L492"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L492"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L492",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L492",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2166,9 +2166,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L518"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L518"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L518",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2188,9 +2188,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L529"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2210,9 +2210,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L582"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L582"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L582",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2232,9 +2232,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L594"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L594"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L594",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2254,9 +2254,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L618"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2276,9 +2276,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L619"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2298,9 +2298,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L620"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2320,9 +2320,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L621"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2342,9 +2342,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L629"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2364,9 +2364,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L633"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2386,9 +2386,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L638"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L638"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L638",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2408,9 +2408,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L660"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L660"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L660",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2430,9 +2430,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L661"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2452,9 +2452,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L662"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L662"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L662",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L662",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2474,9 +2474,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L663"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L663"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L663",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2496,9 +2496,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L664"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L664"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L664",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2518,9 +2518,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L665"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L665"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L665",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2540,9 +2540,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L666"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2562,9 +2562,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L677"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L677"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L677",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2584,9 +2584,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L680"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L680"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L680",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2606,9 +2606,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L681"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2628,9 +2628,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L684"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L684"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L684",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2650,9 +2650,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L771"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L771"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L771",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L771",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2672,9 +2672,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L772"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L772"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L772",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L772",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2694,9 +2694,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L773"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2716,9 +2716,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L774"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2738,9 +2738,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L775"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L775"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L775",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2760,9 +2760,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L779"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2782,9 +2782,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L780"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L780"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L780",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2804,9 +2804,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L781"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2826,9 +2826,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L782"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L782"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L782",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2848,9 +2848,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L786"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L786"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L786",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2870,9 +2870,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L787"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L787"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L787",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2892,9 +2892,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L788"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L788",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2914,9 +2914,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L789"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2936,9 +2936,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L793"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L793"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L793",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2958,9 +2958,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L794"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L794"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L794",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2980,9 +2980,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L795"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L795"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L795",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L795",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3002,9 +3002,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L796"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L796"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L796",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3024,9 +3024,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L800"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L800"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L800",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3046,9 +3046,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L801"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L801"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L801",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L801",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3068,9 +3068,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L802"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L802"
       ],
-      "authority_source": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L802",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md#L802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

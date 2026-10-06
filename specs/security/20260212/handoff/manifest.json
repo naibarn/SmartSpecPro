@@ -17,57 +17,57 @@
       {
         "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
       },
       {
         "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
       },
       {
         "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
       },
       {
         "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
       },
       {
         "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
       },
       {
         "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
       },
       {
         "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
       },
       {
         "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
       },
       {
         "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
       },
       {
         "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
       }
     ],
     "predecessors": [],
@@ -98,57 +98,57 @@
       {
         "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
       },
       {
         "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
       },
       {
         "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
       },
       {
         "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
       },
       {
         "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
       },
       {
         "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
       },
       {
         "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
       },
       {
         "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
       },
       {
         "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
       },
       {
         "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -180,63 +180,63 @@
       {
         "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
       },
       {
         "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
       },
       {
         "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
       },
       {
         "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
       },
       {
         "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
       },
       {
         "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
       },
       {
         "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
       },
       {
         "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
       },
       {
         "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
       },
       {
         "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/security/20260212/spec.md",
     "digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
@@ -289,57 +289,57 @@
       {
         "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
       },
       {
         "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
       },
       {
         "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
       },
       {
         "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
       },
       {
         "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
       },
       {
         "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
       },
       {
         "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
       },
       {
         "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
       },
       {
         "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
       },
       {
         "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
       }
     ],
     "stale_fields": [],
@@ -367,57 +367,57 @@
       {
         "digest": "3ce47ce1c34e6b6276570c24ebc7355fcea3c05888422cc33c2cf413f487317b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "51f6ca6c65aa84e8a5b22482aaa5f4cadd0dde8192f8b862d9c327f3425884d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/reviews/iteration-1-summary.md"
       },
       {
         "digest": "f4a0575b074682f6ca683143858d1596906c300a1f165873772faee8aab7a065",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/index.md"
       },
       {
         "digest": "636c24eee060991aa770a6bc72afa86e9a120dfd9e62de80aff5f850e853234e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-01-baseline-and-reporting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-01-baseline-and-reporting.md"
       },
       {
         "digest": "4f145c2916b12d395f2315b8cf14464fb1600afbe5dc74491c33e8612c042748",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-02-tsconfig-alias-foundation.md"
       },
       {
         "digest": "0d7f4cd5102a45f97ca690794fa9692d5b1a7a1c7ac1214b380e945babc210ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-03-contract-fixes-import-env-deps.md"
       },
       {
         "digest": "9d451a3ecdf868bb037cc1bc7f9e88a72c98009d43768d604566922cf3374e96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-04-tenant-normalization-contract.md"
       },
       {
         "digest": "443c996538263ce538203b7c46ffd2cf85c04bc61200092ae5004eba8569c07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-05-trpc-ui-type-recovery.md"
       },
       {
         "digest": "f957119d0368bdd395702fb87abd84ae2cea837b2e8e956da812ec398870dfb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-06-strict-cleanup-client-hotspots.md"
       },
       {
         "digest": "1d2521c394744935c5941744d535ab3fb26e1ed66af79cdc8b1b9aad91ae9d43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-07-strict-cleanup-server-hotspots.md"
       },
       {
         "digest": "765fedf1c5778f54ba579cc8d2e24ee8b63725d504ed3e7bc1c8e3d52aec2e23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/security/20260212/sections/section-08-regression-gates-and-finalization.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

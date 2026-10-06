@@ -17,77 +17,77 @@
       {
         "digest": "d5720bfb11d23ecdd81f28a865c8195f411aa17b919452644f2f8d8dd8b59a2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
       },
       {
         "digest": "0e68bda83bcbf4429a4f2c1fab8ef66b8d62369ffa9ae976d2b770fd0a05e10f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
       },
       {
         "digest": "669caf48806e45ef566ff2c293138459b315fcf045ff903efa1d06a6b607b50c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
       },
       {
         "digest": "78857399cacee400e0de859b8221da6c4b9bbe31675d1597c44689a1b2801af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
       },
       {
         "digest": "c7e1f3b6de3688a72ba2e3e84a39404fdc1b049e4944bd0e1c3415eada0848d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
       },
       {
         "digest": "9ddf852fa35ecfff992f5e2ca83b0015fd520e42fe7f6959a987d4cebde0f076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
       },
       {
         "digest": "2f7cfb5e410cca34f6eba0e0da62db089ea0cf071f046dfbf42a9cd2cb075d60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
       },
       {
         "digest": "ed7037fd789d37bbb7198ca2477850edb08911e0fa74da91be00ce7a5f301fbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
       },
       {
         "digest": "c4bc38776092691584ba8c923ba66f905d61e3791456097a31fb5205036ad9ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
       },
       {
         "digest": "7243bc242d8bb360d48beb3e87a497c1c25766f60b4a0c9237589fca2cab580f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
       },
       {
         "digest": "75927db88ee66bd9a544cfb57b4cca2f1ff58a2748a43b228083d6fa041ba843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
       },
       {
         "digest": "ece8b2a660ee384f4e29866adfa16a04becd5f19a12084c792e8bfbe6a8748d3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
       },
       {
         "digest": "b857163383c42038dd0e1dcf5c62a798a78bec4a17d126cd3c768a2d00b4b7c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
       },
       {
         "digest": "7f4a4ec665588dbe59e124651b80c07cfc5d4b8ea9e14f4a16bab6a966e81f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
       },
       {
         "digest": "864e59ecf82cccad539eb16f451615fab2fec7f7ab3cb00d5bdf1e6299873faa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "d5720bfb11d23ecdd81f28a865c8195f411aa17b919452644f2f8d8dd8b59a2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
       },
       {
         "digest": "0e68bda83bcbf4429a4f2c1fab8ef66b8d62369ffa9ae976d2b770fd0a05e10f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
       },
       {
         "digest": "669caf48806e45ef566ff2c293138459b315fcf045ff903efa1d06a6b607b50c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
       },
       {
         "digest": "78857399cacee400e0de859b8221da6c4b9bbe31675d1597c44689a1b2801af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
       },
       {
         "digest": "c7e1f3b6de3688a72ba2e3e84a39404fdc1b049e4944bd0e1c3415eada0848d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
       },
       {
         "digest": "9ddf852fa35ecfff992f5e2ca83b0015fd520e42fe7f6959a987d4cebde0f076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
       },
       {
         "digest": "2f7cfb5e410cca34f6eba0e0da62db089ea0cf071f046dfbf42a9cd2cb075d60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
       },
       {
         "digest": "ed7037fd789d37bbb7198ca2477850edb08911e0fa74da91be00ce7a5f301fbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
       },
       {
         "digest": "c4bc38776092691584ba8c923ba66f905d61e3791456097a31fb5205036ad9ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
       },
       {
         "digest": "7243bc242d8bb360d48beb3e87a497c1c25766f60b4a0c9237589fca2cab580f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
       },
       {
         "digest": "75927db88ee66bd9a544cfb57b4cca2f1ff58a2748a43b228083d6fa041ba843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
       },
       {
         "digest": "ece8b2a660ee384f4e29866adfa16a04becd5f19a12084c792e8bfbe6a8748d3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
       },
       {
         "digest": "b857163383c42038dd0e1dcf5c62a798a78bec4a17d126cd3c768a2d00b4b7c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
       },
       {
         "digest": "7f4a4ec665588dbe59e124651b80c07cfc5d4b8ea9e14f4a16bab6a966e81f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
       },
       {
         "digest": "864e59ecf82cccad539eb16f451615fab2fec7f7ab3cb00d5bdf1e6299873faa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,83 +220,83 @@
       {
         "digest": "d5720bfb11d23ecdd81f28a865c8195f411aa17b919452644f2f8d8dd8b59a2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
       },
       {
         "digest": "0e68bda83bcbf4429a4f2c1fab8ef66b8d62369ffa9ae976d2b770fd0a05e10f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
       },
       {
         "digest": "669caf48806e45ef566ff2c293138459b315fcf045ff903efa1d06a6b607b50c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
       },
       {
         "digest": "78857399cacee400e0de859b8221da6c4b9bbe31675d1597c44689a1b2801af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
       },
       {
         "digest": "c7e1f3b6de3688a72ba2e3e84a39404fdc1b049e4944bd0e1c3415eada0848d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
       },
       {
         "digest": "9ddf852fa35ecfff992f5e2ca83b0015fd520e42fe7f6959a987d4cebde0f076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
       },
       {
         "digest": "2f7cfb5e410cca34f6eba0e0da62db089ea0cf071f046dfbf42a9cd2cb075d60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
       },
       {
         "digest": "ed7037fd789d37bbb7198ca2477850edb08911e0fa74da91be00ce7a5f301fbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
       },
       {
         "digest": "c4bc38776092691584ba8c923ba66f905d61e3791456097a31fb5205036ad9ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
       },
       {
         "digest": "7243bc242d8bb360d48beb3e87a497c1c25766f60b4a0c9237589fca2cab580f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
       },
       {
         "digest": "75927db88ee66bd9a544cfb57b4cca2f1ff58a2748a43b228083d6fa041ba843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
       },
       {
         "digest": "ece8b2a660ee384f4e29866adfa16a04becd5f19a12084c792e8bfbe6a8748d3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
       },
       {
         "digest": "b857163383c42038dd0e1dcf5c62a798a78bec4a17d126cd3c768a2d00b4b7c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
       },
       {
         "digest": "7f4a4ec665588dbe59e124651b80c07cfc5d4b8ea9e14f4a16bab6a966e81f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
       },
       {
         "digest": "864e59ecf82cccad539eb16f451615fab2fec7f7ab3cb00d5bdf1e6299873faa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/spec.md",
     "digest": "17970815143490cf263457a4f9ef80c9285f570ba400b63427c7f0f8acd31ee3",
@@ -349,77 +349,77 @@
       {
         "digest": "d5720bfb11d23ecdd81f28a865c8195f411aa17b919452644f2f8d8dd8b59a2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
       },
       {
         "digest": "0e68bda83bcbf4429a4f2c1fab8ef66b8d62369ffa9ae976d2b770fd0a05e10f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
       },
       {
         "digest": "669caf48806e45ef566ff2c293138459b315fcf045ff903efa1d06a6b607b50c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
       },
       {
         "digest": "78857399cacee400e0de859b8221da6c4b9bbe31675d1597c44689a1b2801af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
       },
       {
         "digest": "c7e1f3b6de3688a72ba2e3e84a39404fdc1b049e4944bd0e1c3415eada0848d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
       },
       {
         "digest": "9ddf852fa35ecfff992f5e2ca83b0015fd520e42fe7f6959a987d4cebde0f076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
       },
       {
         "digest": "2f7cfb5e410cca34f6eba0e0da62db089ea0cf071f046dfbf42a9cd2cb075d60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
       },
       {
         "digest": "ed7037fd789d37bbb7198ca2477850edb08911e0fa74da91be00ce7a5f301fbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
       },
       {
         "digest": "c4bc38776092691584ba8c923ba66f905d61e3791456097a31fb5205036ad9ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
       },
       {
         "digest": "7243bc242d8bb360d48beb3e87a497c1c25766f60b4a0c9237589fca2cab580f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
       },
       {
         "digest": "75927db88ee66bd9a544cfb57b4cca2f1ff58a2748a43b228083d6fa041ba843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
       },
       {
         "digest": "ece8b2a660ee384f4e29866adfa16a04becd5f19a12084c792e8bfbe6a8748d3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
       },
       {
         "digest": "b857163383c42038dd0e1dcf5c62a798a78bec4a17d126cd3c768a2d00b4b7c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
       },
       {
         "digest": "7f4a4ec665588dbe59e124651b80c07cfc5d4b8ea9e14f4a16bab6a966e81f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
       },
       {
         "digest": "864e59ecf82cccad539eb16f451615fab2fec7f7ab3cb00d5bdf1e6299873faa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
       }
     ],
     "stale_fields": [],
@@ -447,77 +447,77 @@
       {
         "digest": "d5720bfb11d23ecdd81f28a865c8195f411aa17b919452644f2f8d8dd8b59a2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-plan.md"
       },
       {
         "digest": "0e68bda83bcbf4429a4f2c1fab8ef66b8d62369ffa9ae976d2b770fd0a05e10f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/claude-spec.md"
       },
       {
         "digest": "669caf48806e45ef566ff2c293138459b315fcf045ff903efa1d06a6b607b50c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/implementation/deep_implement_config.json"
       },
       {
         "digest": "78857399cacee400e0de859b8221da6c4b9bbe31675d1597c44689a1b2801af1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-10-rounds-20260908.md"
       },
       {
         "digest": "c7e1f3b6de3688a72ba2e3e84a39404fdc1b049e4944bd0e1c3415eada0848d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/implementation-gap-audit-20-rounds-20260908.md"
       },
       {
         "digest": "9ddf852fa35ecfff992f5e2ca83b0015fd520e42fe7f6959a987d4cebde0f076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/reviews/plan-review.md"
       },
       {
         "digest": "2f7cfb5e410cca34f6eba0e0da62db089ea0cf071f046dfbf42a9cd2cb075d60",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/index.md"
       },
       {
         "digest": "ed7037fd789d37bbb7198ca2477850edb08911e0fa74da91be00ce7a5f301fbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-01-contracts-and-mapping.md"
       },
       {
         "digest": "c4bc38776092691584ba8c923ba66f905d61e3791456097a31fb5205036ad9ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-02-lifecycle-security-admission.md"
       },
       {
         "digest": "7243bc242d8bb360d48beb3e87a497c1c25766f60b4a0c9237589fca2cab580f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-03-runtime-packs-and-readiness.md"
       },
       {
         "digest": "75927db88ee66bd9a544cfb57b4cca2f1ff58a2748a43b228083d6fa041ba843",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-04-faster-whisper-whisperx.md"
       },
       {
         "digest": "ece8b2a660ee384f4e29866adfa16a04becd5f19a12084c792e8bfbe6a8748d3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-05-vibevoice-asr.md"
       },
       {
         "digest": "b857163383c42038dd0e1dcf5c62a798a78bec4a17d126cd3c768a2d00b4b7c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-06-script-alignment-and-subtitles.md"
       },
       {
         "digest": "7f4a4ec665588dbe59e124651b80c07cfc5d4b8ea9e14f4a16bab6a966e81f15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-07-workspace-skills-drama-integration.md"
       },
       {
         "digest": "864e59ecf82cccad539eb16f451615fab2fec7f7ab3cb00d5bdf1e6299873faa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment/sections/section-08-verification-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

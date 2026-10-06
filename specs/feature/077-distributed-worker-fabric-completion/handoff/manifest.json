@@ -17,57 +17,57 @@
       {
         "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
         "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
       {
         "digest": "a4b606ffeb560b51085ef27bcf4aa5b2ab164e4a266a458afbb97af83dc2a9b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "a20fc66b1ac46c10b9a7dc6254dd86a8b271d8b8ae112b83f20fd66dfe6b42c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
       },
       {
         "digest": "a26f2aa20abc80a6cc0bf33c1c24d79ff437955ba0dc0d90cb9e072b57c5ec93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "b7445be12e60eedad298cff371aafd1328bf13f578351dfacf5a8b2f67618d5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
       },
       {
         "digest": "af8445a463df1421dfbaa322e3c75fcf7775f2c84b14f1edcf6a41491ca98b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
         "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
       {
         "digest": "6c386b080be615d1307f5cec5da4c0b5eabd934f53f1a103dc34b24ac9ed9212",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
       },
       {
         "digest": "7a49badc19fdd0edce0a7aaf0f44f18c0eb1d6d4ce66239b9616d57df1e57f48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
         "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
     ],
     "predecessors": [],
@@ -98,57 +98,57 @@
       {
         "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
         "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
       {
         "digest": "a4b606ffeb560b51085ef27bcf4aa5b2ab164e4a266a458afbb97af83dc2a9b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "a20fc66b1ac46c10b9a7dc6254dd86a8b271d8b8ae112b83f20fd66dfe6b42c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
       },
       {
         "digest": "a26f2aa20abc80a6cc0bf33c1c24d79ff437955ba0dc0d90cb9e072b57c5ec93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "b7445be12e60eedad298cff371aafd1328bf13f578351dfacf5a8b2f67618d5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
       },
       {
         "digest": "af8445a463df1421dfbaa322e3c75fcf7775f2c84b14f1edcf6a41491ca98b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
         "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
       {
         "digest": "6c386b080be615d1307f5cec5da4c0b5eabd934f53f1a103dc34b24ac9ed9212",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
       },
       {
         "digest": "7a49badc19fdd0edce0a7aaf0f44f18c0eb1d6d4ce66239b9616d57df1e57f48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
         "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -180,63 +180,63 @@
       {
         "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
         "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
       {
         "digest": "a4b606ffeb560b51085ef27bcf4aa5b2ab164e4a266a458afbb97af83dc2a9b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "a20fc66b1ac46c10b9a7dc6254dd86a8b271d8b8ae112b83f20fd66dfe6b42c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
       },
       {
         "digest": "a26f2aa20abc80a6cc0bf33c1c24d79ff437955ba0dc0d90cb9e072b57c5ec93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "b7445be12e60eedad298cff371aafd1328bf13f578351dfacf5a8b2f67618d5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
       },
       {
         "digest": "af8445a463df1421dfbaa322e3c75fcf7775f2c84b14f1edcf6a41491ca98b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
         "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
       {
         "digest": "6c386b080be615d1307f5cec5da4c0b5eabd934f53f1a103dc34b24ac9ed9212",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
       },
       {
         "digest": "7a49badc19fdd0edce0a7aaf0f44f18c0eb1d6d4ce66239b9616d57df1e57f48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
         "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
     "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
@@ -289,57 +289,57 @@
       {
         "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
         "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
       {
         "digest": "a4b606ffeb560b51085ef27bcf4aa5b2ab164e4a266a458afbb97af83dc2a9b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "a20fc66b1ac46c10b9a7dc6254dd86a8b271d8b8ae112b83f20fd66dfe6b42c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
       },
       {
         "digest": "a26f2aa20abc80a6cc0bf33c1c24d79ff437955ba0dc0d90cb9e072b57c5ec93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "b7445be12e60eedad298cff371aafd1328bf13f578351dfacf5a8b2f67618d5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
       },
       {
         "digest": "af8445a463df1421dfbaa322e3c75fcf7775f2c84b14f1edcf6a41491ca98b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
         "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
       {
         "digest": "6c386b080be615d1307f5cec5da4c0b5eabd934f53f1a103dc34b24ac9ed9212",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
       },
       {
         "digest": "7a49badc19fdd0edce0a7aaf0f44f18c0eb1d6d4ce66239b9616d57df1e57f48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
         "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -450,57 +450,57 @@
       {
         "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
         "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
       {
         "digest": "a4b606ffeb560b51085ef27bcf4aa5b2ab164e4a266a458afbb97af83dc2a9b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "a20fc66b1ac46c10b9a7dc6254dd86a8b271d8b8ae112b83f20fd66dfe6b42c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/final-quality-pass.md"
       },
       {
         "digest": "a26f2aa20abc80a6cc0bf33c1c24d79ff437955ba0dc0d90cb9e072b57c5ec93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "b7445be12e60eedad298cff371aafd1328bf13f578351dfacf5a8b2f67618d5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/index.md"
       },
       {
         "digest": "af8445a463df1421dfbaa322e3c75fcf7775f2c84b14f1edcf6a41491ca98b94",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
         "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
       {
         "digest": "6c386b080be615d1307f5cec5da4c0b5eabd934f53f1a103dc34b24ac9ed9212",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-03-local-workspaces-video-assembly-and-media-adapters.md"
       },
       {
         "digest": "7a49badc19fdd0edce0a7aaf0f44f18c0eb1d6d4ce66239b9616d57df1e57f48",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
         "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

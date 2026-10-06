@@ -54,20 +54,6 @@
         "kind": "SOURCE",
         "line": 59,
         "path": "python-backend/app/models/asset.py"
-      },
-      {
-        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 59,
-        "path": "python-backend/app/models/asset.py"
-      },
-      {
-        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 59,
-        "path": "python-backend/app/models/asset.py"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -100,7 +86,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/04-agency-flow-composer/spec.md",
     "digest": "2998e16eea1784f74dc2e101c5a46167f4155ffc692a8fcca41dd9e70830de0c",
@@ -156,20 +142,6 @@
         "kind": "SOURCE",
         "line": 59,
         "path": "python-backend/app/models/asset.py"
-      },
-      {
-        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 59,
-        "path": "python-backend/app/models/asset.py"
-      },
-      {
-        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 59,
-        "path": "python-backend/app/models/asset.py"
       }
     ],
     "stale_fields": [],
@@ -182,20 +154,6 @@
   },
   "relevance_assessment": {
     "active_references": [
-      {
-        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 59,
-        "path": "python-backend/app/models/asset.py"
-      },
-      {
-        "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 59,
-        "path": "python-backend/app/models/asset.py"
-      },
       {
         "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
         "identity_ambiguous": true,

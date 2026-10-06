@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L69"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L69"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L69",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L70"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L71"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L71"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L71",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L72"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L72"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L72",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L73"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L73"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L73",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L74"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L74"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L74",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L75"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L75"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L75",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L76"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L76"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L76",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L77"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L77"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L77",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,11 +203,11 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L78",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L355",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L769"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L78",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L355",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L769"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L78",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -227,9 +227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L79"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L79"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L79",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -249,9 +249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L80"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -271,9 +271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L81"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L81"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L81",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -293,9 +293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L82"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L82"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L82",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -315,9 +315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L83"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -337,9 +337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L84"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -359,9 +359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L191"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -381,9 +381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L193"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L193"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L193",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -403,9 +403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L194"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -425,9 +425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L195"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -447,9 +447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L196"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L196"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L196",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -469,9 +469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L197"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L197"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L197",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -491,9 +491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L198"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -513,9 +513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L199"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -535,9 +535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L200"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -557,9 +557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L201"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L201"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L201",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -579,9 +579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L202"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L202"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L202",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -601,9 +601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L203"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L203"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L203",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -623,9 +623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L204"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -645,9 +645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L208"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L208"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L208",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -667,9 +667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L210"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L210"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L210",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -689,9 +689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L211"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -711,10 +711,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L212",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L212",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L788"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -734,9 +734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L213"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L213"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L213",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -756,9 +756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L214"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L214"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L214",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -778,9 +778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L215"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -800,9 +800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L216"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -822,9 +822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L220"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L220"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L220",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -844,9 +844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L222"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L222"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L222",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -866,9 +866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L224"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L224"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -888,9 +888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L225"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -910,9 +910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L226"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L226"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L226",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -932,9 +932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L227"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -954,9 +954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L228"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L228"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L228",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -976,9 +976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L229"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -998,9 +998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L233"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L233"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L233",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1020,9 +1020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L235"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L235"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L235",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1042,9 +1042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L236"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1064,9 +1064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L237"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1086,9 +1086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L238"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1108,9 +1108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L239"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1130,9 +1130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L240"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L240",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1152,9 +1152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L241"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1174,9 +1174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L242"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1196,9 +1196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L246"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L246"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L246",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1218,9 +1218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L248"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L248"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L248",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1240,9 +1240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L249"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1262,9 +1262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L250"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L250"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L250",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1284,9 +1284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L251"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1306,9 +1306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L252"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L252"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L252",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1328,9 +1328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L256"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1350,9 +1350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L258"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1372,9 +1372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L259"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1394,9 +1394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L260"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1416,9 +1416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L261"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L261"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L261",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1438,9 +1438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L262"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1460,9 +1460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L264"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1482,9 +1482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L266"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1504,9 +1504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L267"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1526,9 +1526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L268"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1548,9 +1548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L269"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1570,9 +1570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L270"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1592,9 +1592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L271"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1614,9 +1614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L275"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1636,9 +1636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L277"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1658,9 +1658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L278"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1680,9 +1680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L279"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L279"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L279",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1702,9 +1702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L280"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1724,9 +1724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L282"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1746,9 +1746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L288"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1768,9 +1768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L300"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L300"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L300",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1790,9 +1790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L319"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L319"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L319",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1812,10 +1812,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L321",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L712"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L321",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L712"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L321",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1835,10 +1835,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L323",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L323",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L714"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1858,9 +1858,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L332"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1880,9 +1880,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L334"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L334"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L334",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1902,9 +1902,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L335"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L335"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L335",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1924,9 +1924,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L336"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1946,9 +1946,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L337"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1968,9 +1968,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L339"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L339"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L339",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1990,9 +1990,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L341"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2012,9 +2012,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L342"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2034,9 +2034,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L343"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2056,9 +2056,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L344"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2078,9 +2078,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L345"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L345"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L345",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2100,10 +2100,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L356",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L356",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L770"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2123,10 +2123,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L357",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L771"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L357",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L771"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L357",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2146,9 +2146,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L363"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2168,9 +2168,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L364"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L364"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L364",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2190,9 +2190,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L365"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L365"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L365",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2212,9 +2212,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L366"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2234,9 +2234,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L367"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L367"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L367",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L367",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2256,9 +2256,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L368"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2278,9 +2278,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L369"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2300,9 +2300,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L373"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L373"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L373",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2322,9 +2322,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L375"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2344,9 +2344,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L376"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2366,9 +2366,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L377"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2388,9 +2388,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L378"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2410,10 +2410,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L379",
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L804"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L379",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L804"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2433,9 +2433,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L380"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L380"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L380",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2455,9 +2455,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L462"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L462"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L462",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2477,9 +2477,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L463"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2499,9 +2499,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L464"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L464"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L464",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2521,9 +2521,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L465"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L465"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L465",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L465",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2543,9 +2543,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L466"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L466"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L466",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2565,9 +2565,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L467"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2587,9 +2587,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L468"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2609,9 +2609,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L469"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L469"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L469",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2631,9 +2631,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L470"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L470"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L470",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2653,9 +2653,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L522"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L522"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L522",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2675,9 +2675,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L535"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L535"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L535",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2697,9 +2697,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L545"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L545"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L545",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2719,9 +2719,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L557"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L557"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L557",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2741,9 +2741,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L710"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L710"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L710",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2763,9 +2763,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L737"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L737"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L737",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2785,9 +2785,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L739"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2807,9 +2807,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L740"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L740"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L740",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2829,9 +2829,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L741"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L741"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L741",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2851,9 +2851,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L742"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L742"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L742",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2873,9 +2873,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L743"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L743"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L743",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2895,9 +2895,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L744"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L744"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L744",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2917,9 +2917,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L745"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L745"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L745",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L745",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2939,9 +2939,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L746"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2961,9 +2961,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L747"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2983,9 +2983,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L748"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3005,9 +3005,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L749"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L749"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L749",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3027,9 +3027,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L751"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L751"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L751",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3049,9 +3049,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L753"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L753"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L753",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L753",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3071,9 +3071,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L754"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L754"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L754",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3093,9 +3093,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L755"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3115,9 +3115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L756"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L756"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L756",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3137,9 +3137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L757"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L757"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L757",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3159,9 +3159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L759"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L759"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L759",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3181,9 +3181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L777"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3203,9 +3203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L778"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L778"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L778",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3225,9 +3225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L779"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3247,9 +3247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L780"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L780"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L780",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3269,9 +3269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L781"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3291,9 +3291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L787"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L787"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L787",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3313,9 +3313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L789"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3335,9 +3335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L790"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L790"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L790",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3357,9 +3357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L791"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3379,9 +3379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L792"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L792"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L792",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3401,9 +3401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L793"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L793"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L793",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3423,9 +3423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L799"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L799"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L799",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3445,9 +3445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L800"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L800"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L800",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3467,9 +3467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L801"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L801"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L801",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L801",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3489,9 +3489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L802"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L802"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L802",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3511,9 +3511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L803"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L803"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L803",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3533,9 +3533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L814"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L814"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L814",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3555,9 +3555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L815"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L815"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L815",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3577,9 +3577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L816"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L816"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L816",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L816",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3599,9 +3599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L817"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L817"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L817",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L817",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3621,9 +3621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L818"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L818"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L818",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3643,9 +3643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L819"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L819"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L819",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3665,9 +3665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L820"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L820"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L820",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L820",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3687,9 +3687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L821"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L821"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L821",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3709,9 +3709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L822"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L822"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L822",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L822",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3731,9 +3731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L828"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L828"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L828",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L828",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3753,9 +3753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L829"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L829"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L829",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3775,9 +3775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L830"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L830"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L830",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3797,9 +3797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L831"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L831"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L831",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3819,9 +3819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L832"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L832"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L832",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3841,9 +3841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L836"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L836"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L836",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L836",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3863,9 +3863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L837"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3885,9 +3885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L838"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L838"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L838",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L838",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3907,9 +3907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L839"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L839"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L839",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L839",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3929,9 +3929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L845"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L845"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L845",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3951,9 +3951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L846"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L846"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L846",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3973,9 +3973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L847"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L847"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L847",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3995,9 +3995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L848"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L848"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L848",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L848",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4017,9 +4017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L849"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L849"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L849",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4039,9 +4039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L850"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L850"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L850",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4061,9 +4061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L856"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L856"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L856",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L856",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4083,9 +4083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L857"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L857"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L857",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4105,9 +4105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L858"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L858"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L858",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L858",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4127,9 +4127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L859"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L859"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L859",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4149,9 +4149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L860"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L860"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L860",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4171,9 +4171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L861"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L861"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L861",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L861",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4193,9 +4193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L862"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L862"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L862",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L862",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4215,9 +4215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L863"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L863"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L863",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4237,9 +4237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L864"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L864"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L864",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4259,9 +4259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/064-skill-maintenance-lifecycle/spec.md#L912"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L912"
       ],
-      "authority_source": "specs/feature/064-skill-maintenance-lifecycle/spec.md#L912",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/064-skill-maintenance-lifecycle/spec.md#L912",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

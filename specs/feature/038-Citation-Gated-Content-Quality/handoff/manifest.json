@@ -90,7 +90,7 @@
     "rationale": "Current server APIs, dashboard, staleness services and skill-upgrade tests remain present on canonical main. The focused verification also exposes unmet upgrade criteria, so this Spec remains current work.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/038-Citation-Gated-Content-Quality/spec.md",
     "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
@@ -343,62 +343,62 @@
       {
         "digest": "3c6facad067f810de5941a6e852018e7bd1b8fc4ff62f202d43b4ff19a8451ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/implementation/deep_implement_config.json"
       },
       {
         "digest": "907777d4d8c3117807c7ac8186f34ac5b49660439d50bf579e089f7f0663bb42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/index.md"
       },
       {
         "digest": "9579f8eef8067ea04b1c1dc07a14bcc96476bbd4622ccd5fcd241f6a00b961dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-01-skill-schema-enhancement.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-01-skill-schema-enhancement.md"
       },
       {
         "digest": "da815d5eb2cffb6abfc72760439e67c3671cc4aee3aec1b3348ae8f88356ed4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-02-cms-output-schemas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-02-cms-output-schemas.md"
       },
       {
         "digest": "0e902273be1f932492a62600087f882fecf5f4454d5a0b1ec2e4cb8358519a37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-03-web-search-grounding.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-03-web-search-grounding.md"
       },
       {
         "digest": "c9be7f09e3ccdd31c46657085346e3fcbd30b43fcbfc44c960f4ab1b3ff8b036",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-04-thinking-reasoning-controls.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-04-thinking-reasoning-controls.md"
       },
       {
         "digest": "38e01c0c697556cee4c84b6ad19058779edd71653d1c48b1ca8ed45f4dc8018d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-05-output-processing-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-05-output-processing-pipeline.md"
       },
       {
         "digest": "231096a68c5358f3776e9641c2b1bf015f683a5ee6134acde8304dff8f47471c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-06-seo-jsonld-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-06-seo-jsonld-generator.md"
       },
       {
         "digest": "b9265319270dd36d74ab8d64e2afc28d14d6b9153303df7373b002891e2be4a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-07-reviewer-skills-upgrade.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-07-reviewer-skills-upgrade.md"
       },
       {
         "digest": "19d660e8484a3e542e0a95b35c77718e5fbc2b1a44b164c1791dd5475fc3ebb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-08-article-writer-skills-upgrade.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-08-article-writer-skills-upgrade.md"
       },
       {
         "digest": "5de8b7eebf8b819de962c2d02678824e5dcfd0403f2296a733762b27d19d0ecf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-09-refresh-cadence-system.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-09-refresh-cadence-system.md"
       },
       {
         "digest": "01a49ae2c07dabc293751195ba5b6c35269b5c7ad66586711440ab1893e08b2d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-10-quality-dashboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-10-quality-dashboard.md"
       },
       {
         "excerpt": "// Spec 038 fields",
@@ -1237,62 +1237,62 @@
       {
         "digest": "3c6facad067f810de5941a6e852018e7bd1b8fc4ff62f202d43b4ff19a8451ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/implementation/deep_implement_config.json"
       },
       {
         "digest": "907777d4d8c3117807c7ac8186f34ac5b49660439d50bf579e089f7f0663bb42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/index.md"
       },
       {
         "digest": "9579f8eef8067ea04b1c1dc07a14bcc96476bbd4622ccd5fcd241f6a00b961dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-01-skill-schema-enhancement.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-01-skill-schema-enhancement.md"
       },
       {
         "digest": "da815d5eb2cffb6abfc72760439e67c3671cc4aee3aec1b3348ae8f88356ed4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-02-cms-output-schemas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-02-cms-output-schemas.md"
       },
       {
         "digest": "0e902273be1f932492a62600087f882fecf5f4454d5a0b1ec2e4cb8358519a37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-03-web-search-grounding.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-03-web-search-grounding.md"
       },
       {
         "digest": "c9be7f09e3ccdd31c46657085346e3fcbd30b43fcbfc44c960f4ab1b3ff8b036",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-04-thinking-reasoning-controls.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-04-thinking-reasoning-controls.md"
       },
       {
         "digest": "38e01c0c697556cee4c84b6ad19058779edd71653d1c48b1ca8ed45f4dc8018d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-05-output-processing-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-05-output-processing-pipeline.md"
       },
       {
         "digest": "231096a68c5358f3776e9641c2b1bf015f683a5ee6134acde8304dff8f47471c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-06-seo-jsonld-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-06-seo-jsonld-generator.md"
       },
       {
         "digest": "b9265319270dd36d74ab8d64e2afc28d14d6b9153303df7373b002891e2be4a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-07-reviewer-skills-upgrade.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-07-reviewer-skills-upgrade.md"
       },
       {
         "digest": "19d660e8484a3e542e0a95b35c77718e5fbc2b1a44b164c1791dd5475fc3ebb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-08-article-writer-skills-upgrade.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-08-article-writer-skills-upgrade.md"
       },
       {
         "digest": "5de8b7eebf8b819de962c2d02678824e5dcfd0403f2296a733762b27d19d0ecf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-09-refresh-cadence-system.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-09-refresh-cadence-system.md"
       },
       {
         "digest": "01a49ae2c07dabc293751195ba5b6c35269b5c7ad66586711440ab1893e08b2d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/038-Citation-Gated-Content-Quality/sections/section-10-quality-dashboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/sections/section-10-quality-dashboard.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -1301,7 +1301,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 3,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 3,
     "not_applicable": 0,
@@ -1310,7 +1310,7 @@
     "unresolved": 102
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T01:41:22.033459Z",
+  "updated_at": "2026-10-06T00:42:59.576942Z",
   "verification": {
     "baseline_issues": [
       "39 focused Spec 038 test failures in canonical source; 78 assertions passed."

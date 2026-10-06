@@ -16,7 +16,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -30,7 +30,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -44,7 +44,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -60,7 +60,7 @@
           "R1.1",
           "R2.0"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L15",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L15",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -74,7 +74,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -90,7 +90,7 @@
           "R2",
           "R20"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -104,7 +104,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -118,7 +118,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -132,7 +132,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -148,7 +148,7 @@
           "R2",
           "R20"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       }
@@ -218,7 +218,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/239-External Personal Agent Interoperability/spec.md",
     "digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",

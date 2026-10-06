@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L32"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L32"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L32",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L59"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L59"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L59",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L60"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L60"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L60",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L61"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L61"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L61",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L62"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L62"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L62",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L63"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L63"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L63",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L63",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L64"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L64"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L64",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L93"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L93"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L93",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L114"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L147"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L148"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L149"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L149"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L149",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L150"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L150"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L150",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L151"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L151"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L151",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L152"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L156"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L157"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L157"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L157",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L158"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L159"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L159"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L159",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L160"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L161"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L162"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L166"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L167"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L167"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L167",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L168"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L169"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L170"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L170"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L170",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L171"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L171"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L171",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L175"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L175"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L175",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L176"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L176"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L176",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L177"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L177"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L177",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L178"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L188"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L193"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L193"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L193",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L194"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L198"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L199"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L200"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L204"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L205"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L205"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L205",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L206"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L207"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L208"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L208"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L208",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L209"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L209"
       ],
-      "authority_source": "specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L209",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/085-autonomy-ladder-and-hitl-control-plane/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

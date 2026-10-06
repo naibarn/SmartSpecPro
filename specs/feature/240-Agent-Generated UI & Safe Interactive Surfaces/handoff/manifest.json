@@ -18,7 +18,7 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L17",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L17",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -30,7 +30,7 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -44,7 +44,7 @@
         "requirement_ids": [
           "R0.5"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L983",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L983",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -56,7 +56,7 @@
         "referencing_spec_id": "240",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -68,7 +68,7 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -80,7 +80,7 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -92,7 +92,7 @@
         "referencing_spec_id": "240",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -106,7 +106,7 @@
         "requirement_ids": [
           "R0.2"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -118,7 +118,7 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -130,7 +130,7 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1126",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1126",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -142,7 +142,7 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -154,7 +154,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -169,7 +169,7 @@
           "R1.1",
           "R1.2"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -183,7 +183,7 @@
         "requirement_ids": [
           "R1.2"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L213",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L213",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -197,7 +197,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L24",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L24",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -209,7 +209,7 @@
         "referencing_spec_id": "246",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L301",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L301",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -221,7 +221,7 @@
         "referencing_spec_id": "246",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L339",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L339",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -233,7 +233,7 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       }
@@ -303,7 +303,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
     "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",

@@ -103,7 +103,7 @@
       "record_key": "canonical:specs/feature/014-Core-Funnel-Dashboard",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 6,
+        "SOURCE": 3,
         "TEST": 0
       },
       "spec_id": "014"
@@ -314,7 +314,7 @@
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
-        "TEST": 6
+        "TEST": 2
       },
       "spec_id": "01"
     },
@@ -358,7 +358,7 @@
       "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/04-agency-flow-composer",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 3,
+        "SOURCE": 1,
         "TEST": 0
       },
       "spec_id": "04"
@@ -388,7 +388,7 @@
       "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/06-chat-control-plane-ux",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 3,
+        "SOURCE": 1,
         "TEST": 0
       },
       "spec_id": "06"
@@ -404,7 +404,7 @@
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
-        "TEST": 6
+        "TEST": 2
       },
       "spec_id": "01"
     },
@@ -448,7 +448,7 @@
       "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 3,
+        "SOURCE": 1,
         "TEST": 0
       },
       "spec_id": "04"
@@ -478,7 +478,7 @@
       "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/06-feature-200-external-agent-control-plane",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 3,
+        "SOURCE": 1,
         "TEST": 0
       },
       "spec_id": "06"
@@ -494,7 +494,7 @@
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
-        "TEST": 6
+        "TEST": 2
       },
       "spec_id": "01"
     },
@@ -538,7 +538,7 @@
       "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 3,
+        "SOURCE": 1,
         "TEST": 0
       },
       "spec_id": "04"
@@ -562,13 +562,13 @@
       "authority": "AUTHORITY_CONFLICT",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Continue requirement-level reconciliation and aggregate ambiguity review. Migration is partial; no completion claim is supported.",
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
       "priority": "R1_IDENTITY_CONFLICT",
       "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 3,
+        "SOURCE": 1,
         "TEST": 0
       },
       "spec_id": "06"
@@ -583,7 +583,7 @@
       "record_key": "canonical:specs/quick/014-presentation-ai-layout-intelligence",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 6,
+        "SOURCE": 3,
         "TEST": 0
       },
       "spec_id": "014"
@@ -972,9 +972,9 @@
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
       "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 4,
-        "SOURCE": 41,
-        "TEST": 119
+        "DOCUMENTATION_OR_CONFIG": 3,
+        "SOURCE": 40,
+        "TEST": 118
       },
       "spec_id": "224"
     },
@@ -1048,7 +1048,7 @@
       "record_key": "canonical:specs/feature/245-Full-System Cloudflare Migration Master Plan",
       "reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 2,
-        "SOURCE": 2,
+        "SOURCE": 1,
         "TEST": 2
       },
       "spec_id": "245"

@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L65"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L65"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L65",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L66"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L66"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L66",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L67"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L67"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L67",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L68"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L68"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L68",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L69"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L69"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L69",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L70"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L86"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L100"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L106"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L107"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L108"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L109"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L114"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,10 +291,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L122",
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L122",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L541"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -314,9 +314,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L131"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -336,12 +336,12 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L147",
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L158",
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L169",
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L147",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L158",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L169",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L180"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -361,9 +361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L178"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -383,9 +383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L188"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -405,9 +405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L204"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -427,9 +427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L220"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L220"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L220",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -449,9 +449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L224"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L224"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -471,9 +471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L251"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -493,9 +493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L282"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -515,9 +515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L288"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -537,9 +537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L340"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -559,9 +559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L342"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -581,9 +581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L379"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -603,9 +603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L454"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L454"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L454",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L454",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -625,9 +625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L511"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -647,9 +647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L523"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L523"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L523",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -669,9 +669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L524"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L524",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -691,9 +691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L525"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -713,9 +713,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L526"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L526"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L526",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -735,9 +735,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L527"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L527"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L527",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -757,9 +757,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L528"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L528"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L528",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -779,9 +779,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L529"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -801,9 +801,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L530"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L530"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L530",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -823,9 +823,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L536"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L536"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L536",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -845,9 +845,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L537"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -867,9 +867,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L538"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L538"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L538",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -889,9 +889,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L539"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L539"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L539",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -911,9 +911,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L540"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L540"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L540",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -933,9 +933,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L542"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L542"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L542",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -955,9 +955,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L543"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L543"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L543",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -977,9 +977,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L544"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L544"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L544",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -999,9 +999,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L545"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L545"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L545",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1021,9 +1021,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L546"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L546"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L546",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1043,9 +1043,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L547"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L547"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L547",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1065,9 +1065,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L548"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L548"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L548",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1087,9 +1087,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L549"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L549"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L549",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1109,9 +1109,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L550"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L550"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L550",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1131,9 +1131,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L551"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L551"
       ],
-      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L551",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

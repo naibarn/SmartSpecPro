@@ -17,67 +17,67 @@
       {
         "digest": "288ab53c861d8860af3dd74444a1ee30ce5614f70ae5a8cdf6144c06b886d4c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
       },
       {
         "digest": "db610baf0bfb813babfe7222f69e457eadb3b642899b2d9acdec81c53f8fdf86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
       },
       {
         "digest": "535ccaabb30e762a4e90d05fcc655ffa97f747e8ccb412b75dfd9e52a08817e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
       },
       {
         "digest": "e56672d9d409ab59bd98d5c9ddf9b65f949998b39fcc4c496bc405f295b3db45",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
       },
       {
         "digest": "c4ef938f3903933e7821545c4d9c4fdcce3a08315098657b22a5eca2f325b6f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
       },
       {
         "digest": "f4116d473b98155e9983621d815f59d7a7380309662e794cd6e78db834c2604e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
       },
       {
         "digest": "eafd809373449647fdf25ea29064e25e143cf736a3d66e86cbc751aa888198fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
       },
       {
         "digest": "e3aad39e13831a68e2c5db7bcfb237e6d291cb232e137e41519de5bc69686ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
       },
       {
         "digest": "4e6503a3bc037bbb815cb391fe94eeabc44db74647d4c2d5e30b8b980d2c07cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
       },
       {
         "digest": "eaf69bba252628dcd2011858ea9bd501f50ee0d7100c6597b770adadf2fa13e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
       },
       {
         "digest": "646e90416b6b0f25c82cfb45d20e219b368b47728284775f6a0b137c9a0418e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
       },
       {
         "digest": "440df12e972a3eacd6a6ddf6c7feea919e247eec2683cb69fbcf81db7aa58008",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
       },
       {
         "digest": "d0d16a4ad2b5d408180f4b75414cd8adf80725f7641320886bc14f0c354959ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "288ab53c861d8860af3dd74444a1ee30ce5614f70ae5a8cdf6144c06b886d4c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
       },
       {
         "digest": "db610baf0bfb813babfe7222f69e457eadb3b642899b2d9acdec81c53f8fdf86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
       },
       {
         "digest": "535ccaabb30e762a4e90d05fcc655ffa97f747e8ccb412b75dfd9e52a08817e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
       },
       {
         "digest": "e56672d9d409ab59bd98d5c9ddf9b65f949998b39fcc4c496bc405f295b3db45",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
       },
       {
         "digest": "c4ef938f3903933e7821545c4d9c4fdcce3a08315098657b22a5eca2f325b6f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
       },
       {
         "digest": "f4116d473b98155e9983621d815f59d7a7380309662e794cd6e78db834c2604e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
       },
       {
         "digest": "eafd809373449647fdf25ea29064e25e143cf736a3d66e86cbc751aa888198fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
       },
       {
         "digest": "e3aad39e13831a68e2c5db7bcfb237e6d291cb232e137e41519de5bc69686ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
       },
       {
         "digest": "4e6503a3bc037bbb815cb391fe94eeabc44db74647d4c2d5e30b8b980d2c07cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
       },
       {
         "digest": "eaf69bba252628dcd2011858ea9bd501f50ee0d7100c6597b770adadf2fa13e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
       },
       {
         "digest": "646e90416b6b0f25c82cfb45d20e219b368b47728284775f6a0b137c9a0418e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
       },
       {
         "digest": "440df12e972a3eacd6a6ddf6c7feea919e247eec2683cb69fbcf81db7aa58008",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
       },
       {
         "digest": "d0d16a4ad2b5d408180f4b75414cd8adf80725f7641320886bc14f0c354959ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,73 +200,73 @@
       {
         "digest": "288ab53c861d8860af3dd74444a1ee30ce5614f70ae5a8cdf6144c06b886d4c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
       },
       {
         "digest": "db610baf0bfb813babfe7222f69e457eadb3b642899b2d9acdec81c53f8fdf86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
       },
       {
         "digest": "535ccaabb30e762a4e90d05fcc655ffa97f747e8ccb412b75dfd9e52a08817e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
       },
       {
         "digest": "e56672d9d409ab59bd98d5c9ddf9b65f949998b39fcc4c496bc405f295b3db45",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
       },
       {
         "digest": "c4ef938f3903933e7821545c4d9c4fdcce3a08315098657b22a5eca2f325b6f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
       },
       {
         "digest": "f4116d473b98155e9983621d815f59d7a7380309662e794cd6e78db834c2604e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
       },
       {
         "digest": "eafd809373449647fdf25ea29064e25e143cf736a3d66e86cbc751aa888198fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
       },
       {
         "digest": "e3aad39e13831a68e2c5db7bcfb237e6d291cb232e137e41519de5bc69686ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
       },
       {
         "digest": "4e6503a3bc037bbb815cb391fe94eeabc44db74647d4c2d5e30b8b980d2c07cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
       },
       {
         "digest": "eaf69bba252628dcd2011858ea9bd501f50ee0d7100c6597b770adadf2fa13e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
       },
       {
         "digest": "646e90416b6b0f25c82cfb45d20e219b368b47728284775f6a0b137c9a0418e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
       },
       {
         "digest": "440df12e972a3eacd6a6ddf6c7feea919e247eec2683cb69fbcf81db7aa58008",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
       },
       {
         "digest": "d0d16a4ad2b5d408180f4b75414cd8adf80725f7641320886bc14f0c354959ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md",
     "digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
@@ -319,67 +319,67 @@
       {
         "digest": "288ab53c861d8860af3dd74444a1ee30ce5614f70ae5a8cdf6144c06b886d4c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
       },
       {
         "digest": "db610baf0bfb813babfe7222f69e457eadb3b642899b2d9acdec81c53f8fdf86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
       },
       {
         "digest": "535ccaabb30e762a4e90d05fcc655ffa97f747e8ccb412b75dfd9e52a08817e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
       },
       {
         "digest": "e56672d9d409ab59bd98d5c9ddf9b65f949998b39fcc4c496bc405f295b3db45",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
       },
       {
         "digest": "c4ef938f3903933e7821545c4d9c4fdcce3a08315098657b22a5eca2f325b6f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
       },
       {
         "digest": "f4116d473b98155e9983621d815f59d7a7380309662e794cd6e78db834c2604e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
       },
       {
         "digest": "eafd809373449647fdf25ea29064e25e143cf736a3d66e86cbc751aa888198fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
       },
       {
         "digest": "e3aad39e13831a68e2c5db7bcfb237e6d291cb232e137e41519de5bc69686ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
       },
       {
         "digest": "4e6503a3bc037bbb815cb391fe94eeabc44db74647d4c2d5e30b8b980d2c07cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
       },
       {
         "digest": "eaf69bba252628dcd2011858ea9bd501f50ee0d7100c6597b770adadf2fa13e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
       },
       {
         "digest": "646e90416b6b0f25c82cfb45d20e219b368b47728284775f6a0b137c9a0418e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
       },
       {
         "digest": "440df12e972a3eacd6a6ddf6c7feea919e247eec2683cb69fbcf81db7aa58008",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
       },
       {
         "digest": "d0d16a4ad2b5d408180f4b75414cd8adf80725f7641320886bc14f0c354959ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -429,67 +429,67 @@
       {
         "digest": "288ab53c861d8860af3dd74444a1ee30ce5614f70ae5a8cdf6144c06b886d4c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-plan.md"
       },
       {
         "digest": "db610baf0bfb813babfe7222f69e457eadb3b642899b2d9acdec81c53f8fdf86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/claude-spec.md"
       },
       {
         "digest": "535ccaabb30e762a4e90d05fcc655ffa97f747e8ccb412b75dfd9e52a08817e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/implementation/deep_implement_config.json"
       },
       {
         "digest": "e56672d9d409ab59bd98d5c9ddf9b65f949998b39fcc4c496bc405f295b3db45",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/reviews/self-review-round-1.md"
       },
       {
         "digest": "c4ef938f3903933e7821545c4d9c4fdcce3a08315098657b22a5eca2f325b6f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/index.md"
       },
       {
         "digest": "f4116d473b98155e9983621d815f59d7a7380309662e794cd6e78db834c2604e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-01-queue-registration.md"
       },
       {
         "digest": "eafd809373449647fdf25ea29064e25e143cf736a3d66e86cbc751aa888198fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-02-model-resolver.md"
       },
       {
         "digest": "e3aad39e13831a68e2c5db7bcfb237e6d291cb232e137e41519de5bc69686ccd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-03-review-adapter.md"
       },
       {
         "digest": "4e6503a3bc037bbb815cb391fe94eeabc44db74647d4c2d5e30b8b980d2c07cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-04-stage-wiring-credits.md"
       },
       {
         "digest": "eaf69bba252628dcd2011858ea9bd501f50ee0d7100c6597b770adadf2fa13e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-05-scene-planner.md"
       },
       {
         "digest": "646e90416b6b0f25c82cfb45d20e219b368b47728284775f6a0b137c9a0418e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-06-repair-applier.md"
       },
       {
         "digest": "440df12e972a3eacd6a6ddf6c7feea919e247eec2683cb69fbcf81db7aa58008",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-07-client-surfaces.md"
       },
       {
         "digest": "d0d16a4ad2b5d408180f4b75414cd8adf80725f7641320886bc14f0c354959ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/142-video-intelligence-structured-planning-qa-engine/sections/section-08-guards-observability.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

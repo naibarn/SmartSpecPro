@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L44"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L44"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L44",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,32 +27,32 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L115",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L173",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L282",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L353",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L455",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L498",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L534",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L568",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L610",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L636",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L666",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L685",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L710",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L782",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L822",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L850",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L920",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L988",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1078",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1165",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1221",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1352",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1448",
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1711"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L115",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L173",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L282",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L353",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L455",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L498",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L534",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L568",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L610",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L636",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L666",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L685",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L710",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L782",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L822",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L850",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L920",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L988",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1078",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1165",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1221",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1352",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1448",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1711"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -72,9 +72,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L252"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L252"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L252",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -94,9 +94,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L525"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -116,9 +116,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L526"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L526"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L526",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -138,9 +138,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1135"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L1135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -160,9 +160,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1228"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1228"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L1228",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L1228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -182,9 +182,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2757"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2757"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2757",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -204,9 +204,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2824"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2824"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2824",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -226,9 +226,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2827"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2827"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2827",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -248,9 +248,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2839"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2839"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2839",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2839",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -270,9 +270,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2949"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2949"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2949",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2949",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -292,9 +292,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2970"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2970"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2970",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -314,9 +314,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2996"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2996"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2996",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L2996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -336,9 +336,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L3104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L3104"
       ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L3104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/spec.md#L3104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

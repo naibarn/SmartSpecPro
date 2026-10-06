@@ -17,67 +17,67 @@
       {
         "digest": "629255dff2b4cdd1f7b402b7b8168a415285df2bbe37d195262732d7ef10dfed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
       },
       {
         "digest": "8e3f20a88c76f4f69b8a7793d2735e47d435a963494a4d3c25baaa16a03b84a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
       },
       {
         "digest": "99e6b4c8558c1d1cd55fc3094ac14552f546265bb4375580c8a5251ab3d193fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
       },
       {
         "digest": "9dc1f0bdb883dc49001b9850c34746da09782bc157686360ffee048f02872803",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
       },
       {
         "digest": "e5543f6eca078aa332f39dee450cfa1193e46823b560b64cdb49ca70fbeae3a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
       },
       {
         "digest": "ddb7e930551478d4554f6b6cf78cdfaf6ba75663ea6238bab8d9c89e2fb92e31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
       },
       {
         "digest": "6426aa8a27956af4b9c7f79835655ed584c81559f8e1a073ff07d815ba7c6602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
       },
       {
         "digest": "95f85d8a87938796b0cb8b83897aa8dcab16bb8e168eca1a72fea2f2504b294a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
       },
       {
         "digest": "1d54727369cb964a1f182f36a41e55986345ed3dd35350a8381beacde7322f25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
       },
       {
         "digest": "fc60675fbb4f1f0201d273382508f25de807fac1c3b04299fddf023fcbf1f9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
       },
       {
         "digest": "c26986a0492389d325ada8ee4ff7015e3aaa879092230b05830ca2ab7127dc56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
       },
       {
         "digest": "2d6a7c003c2cb2daf134baad1632d27f9fca55c9062617b758b4efe5b39884fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
       },
       {
         "digest": "157211414a0b4d4851211bffa129e6e8ed0b6e6deafbabf7c9725ae553ac332a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "629255dff2b4cdd1f7b402b7b8168a415285df2bbe37d195262732d7ef10dfed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
       },
       {
         "digest": "8e3f20a88c76f4f69b8a7793d2735e47d435a963494a4d3c25baaa16a03b84a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
       },
       {
         "digest": "99e6b4c8558c1d1cd55fc3094ac14552f546265bb4375580c8a5251ab3d193fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
       },
       {
         "digest": "9dc1f0bdb883dc49001b9850c34746da09782bc157686360ffee048f02872803",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
       },
       {
         "digest": "e5543f6eca078aa332f39dee450cfa1193e46823b560b64cdb49ca70fbeae3a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
       },
       {
         "digest": "ddb7e930551478d4554f6b6cf78cdfaf6ba75663ea6238bab8d9c89e2fb92e31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
       },
       {
         "digest": "6426aa8a27956af4b9c7f79835655ed584c81559f8e1a073ff07d815ba7c6602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
       },
       {
         "digest": "95f85d8a87938796b0cb8b83897aa8dcab16bb8e168eca1a72fea2f2504b294a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
       },
       {
         "digest": "1d54727369cb964a1f182f36a41e55986345ed3dd35350a8381beacde7322f25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
       },
       {
         "digest": "fc60675fbb4f1f0201d273382508f25de807fac1c3b04299fddf023fcbf1f9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
       },
       {
         "digest": "c26986a0492389d325ada8ee4ff7015e3aaa879092230b05830ca2ab7127dc56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
       },
       {
         "digest": "2d6a7c003c2cb2daf134baad1632d27f9fca55c9062617b758b4efe5b39884fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
       },
       {
         "digest": "157211414a0b4d4851211bffa129e6e8ed0b6e6deafbabf7c9725ae553ac332a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,73 +200,73 @@
       {
         "digest": "629255dff2b4cdd1f7b402b7b8168a415285df2bbe37d195262732d7ef10dfed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
       },
       {
         "digest": "8e3f20a88c76f4f69b8a7793d2735e47d435a963494a4d3c25baaa16a03b84a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
       },
       {
         "digest": "99e6b4c8558c1d1cd55fc3094ac14552f546265bb4375580c8a5251ab3d193fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
       },
       {
         "digest": "9dc1f0bdb883dc49001b9850c34746da09782bc157686360ffee048f02872803",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
       },
       {
         "digest": "e5543f6eca078aa332f39dee450cfa1193e46823b560b64cdb49ca70fbeae3a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
       },
       {
         "digest": "ddb7e930551478d4554f6b6cf78cdfaf6ba75663ea6238bab8d9c89e2fb92e31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
       },
       {
         "digest": "6426aa8a27956af4b9c7f79835655ed584c81559f8e1a073ff07d815ba7c6602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
       },
       {
         "digest": "95f85d8a87938796b0cb8b83897aa8dcab16bb8e168eca1a72fea2f2504b294a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
       },
       {
         "digest": "1d54727369cb964a1f182f36a41e55986345ed3dd35350a8381beacde7322f25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
       },
       {
         "digest": "fc60675fbb4f1f0201d273382508f25de807fac1c3b04299fddf023fcbf1f9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
       },
       {
         "digest": "c26986a0492389d325ada8ee4ff7015e3aaa879092230b05830ca2ab7127dc56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
       },
       {
         "digest": "2d6a7c003c2cb2daf134baad1632d27f9fca55c9062617b758b4efe5b39884fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
       },
       {
         "digest": "157211414a0b4d4851211bffa129e6e8ed0b6e6deafbabf7c9725ae553ac332a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
     "digest": "821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
@@ -319,67 +319,67 @@
       {
         "digest": "629255dff2b4cdd1f7b402b7b8168a415285df2bbe37d195262732d7ef10dfed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
       },
       {
         "digest": "8e3f20a88c76f4f69b8a7793d2735e47d435a963494a4d3c25baaa16a03b84a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
       },
       {
         "digest": "99e6b4c8558c1d1cd55fc3094ac14552f546265bb4375580c8a5251ab3d193fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
       },
       {
         "digest": "9dc1f0bdb883dc49001b9850c34746da09782bc157686360ffee048f02872803",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
       },
       {
         "digest": "e5543f6eca078aa332f39dee450cfa1193e46823b560b64cdb49ca70fbeae3a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
       },
       {
         "digest": "ddb7e930551478d4554f6b6cf78cdfaf6ba75663ea6238bab8d9c89e2fb92e31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
       },
       {
         "digest": "6426aa8a27956af4b9c7f79835655ed584c81559f8e1a073ff07d815ba7c6602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
       },
       {
         "digest": "95f85d8a87938796b0cb8b83897aa8dcab16bb8e168eca1a72fea2f2504b294a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
       },
       {
         "digest": "1d54727369cb964a1f182f36a41e55986345ed3dd35350a8381beacde7322f25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
       },
       {
         "digest": "fc60675fbb4f1f0201d273382508f25de807fac1c3b04299fddf023fcbf1f9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
       },
       {
         "digest": "c26986a0492389d325ada8ee4ff7015e3aaa879092230b05830ca2ab7127dc56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
       },
       {
         "digest": "2d6a7c003c2cb2daf134baad1632d27f9fca55c9062617b758b4efe5b39884fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
       },
       {
         "digest": "157211414a0b4d4851211bffa129e6e8ed0b6e6deafbabf7c9725ae553ac332a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -429,67 +429,67 @@
       {
         "digest": "629255dff2b4cdd1f7b402b7b8168a415285df2bbe37d195262732d7ef10dfed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-plan.md"
       },
       {
         "digest": "8e3f20a88c76f4f69b8a7793d2735e47d435a963494a4d3c25baaa16a03b84a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/claude-spec.md"
       },
       {
         "digest": "99e6b4c8558c1d1cd55fc3094ac14552f546265bb4375580c8a5251ab3d193fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation/deep_implement_config.json"
       },
       {
         "digest": "9dc1f0bdb883dc49001b9850c34746da09782bc157686360ffee048f02872803",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/cross-consistency-review.md"
       },
       {
         "digest": "e5543f6eca078aa332f39dee450cfa1193e46823b560b64cdb49ca70fbeae3a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/reviews/self-review-round-1.md"
       },
       {
         "digest": "ddb7e930551478d4554f6b6cf78cdfaf6ba75663ea6238bab8d9c89e2fb92e31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/index.md"
       },
       {
         "digest": "6426aa8a27956af4b9c7f79835655ed584c81559f8e1a073ff07d815ba7c6602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-01-shared-planner-contracts.md"
       },
       {
         "digest": "95f85d8a87938796b0cb8b83897aa8dcab16bb8e168eca1a72fea2f2504b294a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-02-prompt-builder-and-creative-brief.md"
       },
       {
         "digest": "1d54727369cb964a1f182f36a41e55986345ed3dd35350a8381beacde7322f25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-03-marketplace-auto-review-integration.md"
       },
       {
         "digest": "fc60675fbb4f1f0201d273382508f25de807fac1c3b04299fddf023fcbf1f9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-04-auto-overrides-and-preview-ui.md"
       },
       {
         "digest": "c26986a0492389d325ada8ee4ff7015e3aaa879092230b05830ca2ab7127dc56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-05-storyboard-review-segment-state.md"
       },
       {
         "digest": "2d6a7c003c2cb2daf134baad1632d27f9fca55c9062617b758b4efe5b39884fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-06-access-observability-and-rollout.md"
       },
       {
         "digest": "157211414a0b4d4851211bffa129e6e8ed0b6e6deafbabf7c9725ae553ac332a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

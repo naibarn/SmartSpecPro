@@ -17,97 +17,97 @@
       {
         "digest": "12c2ba008ca1d9975f7fc63b2ee95d9a0964da9d82e4d7b1b7c702d206f6a15f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
       },
       {
         "digest": "044dfa880a9f5bd2529970e0080833ab7b1f3ccb5232cd42a9f35f2f47274638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
       },
       {
         "digest": "5604483e644fca3bafa9d8b39543e008ce47dcdca561462749551b4f12924e3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "417babf33d887f261b00b5a3d48bf17f4eda9adeea34016eadb21fcd8a3ef2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
       },
       {
         "digest": "08e202e6e1703a63851963af0f465c916df92d7758ac8579f78fe98a7b806809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
       },
       {
         "digest": "8e687358473526f1d6703319e80f757f4426820629a69075aed08ee1bb858cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
       },
       {
         "digest": "cb79d81c79ad8f19b025373a246a4a709b492bccfd7cdf7db32bbb3eaa869312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
       },
       {
         "digest": "19665ae5cffa9ecd01ecb38f302a1febfe8d5bf5ee34b4c413b6d2bd1e181806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
       },
       {
         "digest": "23e22e7a6a9e6e89312113c1873cd2ceb43d864929ed373f328b191bfe0a25cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
       },
       {
         "digest": "6a8639760f460a9f4c45d1c0a3de027ea2e96288cd66b501dcd026fbe88df700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
       },
       {
         "digest": "7e8606153be85e11c487a1ebcf42b815e2fcef2079b9f66b1052b6b8fbd92606",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
       },
       {
         "digest": "ea31e629482f146356c8a7bbc9278e658b910f5efd3ecdaf44a50598a6da55d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
       },
       {
         "digest": "6772d2c75f353f03d19caf39bec094e75858632dc0ffaca061fc975119ad5a31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
       },
       {
         "digest": "77153c85df5db5276b16711d5c159e282981c4f1bebc9700bc1d8f7ffa7bedd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
       },
       {
         "digest": "5da83f46aaf14a76784948ab0d4cc76a28410211b737c008f79422f457333539",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
       },
       {
         "digest": "f570b8c80db9f63025470875405ff53e84a954bf4fa01599fdab474b90f25ed2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
       },
       {
         "digest": "7d61fd66f5b99010b5e95af5756c665a0c7812bbde75b46bec0a5f9ed3f61ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
       },
       {
         "digest": "43a19102848c94a88391c1c15508cf5ec5f6a6012c1613596dbdcda05635beed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
       },
       {
         "digest": "f51b4dfde27803c7c6f85d669d818b6b7ddc1c55fc41e7708af327619d91b4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "12c2ba008ca1d9975f7fc63b2ee95d9a0964da9d82e4d7b1b7c702d206f6a15f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
       },
       {
         "digest": "044dfa880a9f5bd2529970e0080833ab7b1f3ccb5232cd42a9f35f2f47274638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
       },
       {
         "digest": "5604483e644fca3bafa9d8b39543e008ce47dcdca561462749551b4f12924e3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "417babf33d887f261b00b5a3d48bf17f4eda9adeea34016eadb21fcd8a3ef2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
       },
       {
         "digest": "08e202e6e1703a63851963af0f465c916df92d7758ac8579f78fe98a7b806809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
       },
       {
         "digest": "8e687358473526f1d6703319e80f757f4426820629a69075aed08ee1bb858cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
       },
       {
         "digest": "cb79d81c79ad8f19b025373a246a4a709b492bccfd7cdf7db32bbb3eaa869312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
       },
       {
         "digest": "19665ae5cffa9ecd01ecb38f302a1febfe8d5bf5ee34b4c413b6d2bd1e181806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
       },
       {
         "digest": "23e22e7a6a9e6e89312113c1873cd2ceb43d864929ed373f328b191bfe0a25cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
       },
       {
         "digest": "6a8639760f460a9f4c45d1c0a3de027ea2e96288cd66b501dcd026fbe88df700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
       },
       {
         "digest": "7e8606153be85e11c487a1ebcf42b815e2fcef2079b9f66b1052b6b8fbd92606",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
       },
       {
         "digest": "ea31e629482f146356c8a7bbc9278e658b910f5efd3ecdaf44a50598a6da55d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
       },
       {
         "digest": "6772d2c75f353f03d19caf39bec094e75858632dc0ffaca061fc975119ad5a31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
       },
       {
         "digest": "77153c85df5db5276b16711d5c159e282981c4f1bebc9700bc1d8f7ffa7bedd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
       },
       {
         "digest": "5da83f46aaf14a76784948ab0d4cc76a28410211b737c008f79422f457333539",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
       },
       {
         "digest": "f570b8c80db9f63025470875405ff53e84a954bf4fa01599fdab474b90f25ed2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
       },
       {
         "digest": "7d61fd66f5b99010b5e95af5756c665a0c7812bbde75b46bec0a5f9ed3f61ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
       },
       {
         "digest": "43a19102848c94a88391c1c15508cf5ec5f6a6012c1613596dbdcda05635beed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
       },
       {
         "digest": "f51b4dfde27803c7c6f85d669d818b6b7ddc1c55fc41e7708af327619d91b4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "12c2ba008ca1d9975f7fc63b2ee95d9a0964da9d82e4d7b1b7c702d206f6a15f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
       },
       {
         "digest": "044dfa880a9f5bd2529970e0080833ab7b1f3ccb5232cd42a9f35f2f47274638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
       },
       {
         "digest": "5604483e644fca3bafa9d8b39543e008ce47dcdca561462749551b4f12924e3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "417babf33d887f261b00b5a3d48bf17f4eda9adeea34016eadb21fcd8a3ef2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
       },
       {
         "digest": "08e202e6e1703a63851963af0f465c916df92d7758ac8579f78fe98a7b806809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
       },
       {
         "digest": "8e687358473526f1d6703319e80f757f4426820629a69075aed08ee1bb858cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
       },
       {
         "digest": "cb79d81c79ad8f19b025373a246a4a709b492bccfd7cdf7db32bbb3eaa869312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
       },
       {
         "digest": "19665ae5cffa9ecd01ecb38f302a1febfe8d5bf5ee34b4c413b6d2bd1e181806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
       },
       {
         "digest": "23e22e7a6a9e6e89312113c1873cd2ceb43d864929ed373f328b191bfe0a25cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
       },
       {
         "digest": "6a8639760f460a9f4c45d1c0a3de027ea2e96288cd66b501dcd026fbe88df700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
       },
       {
         "digest": "7e8606153be85e11c487a1ebcf42b815e2fcef2079b9f66b1052b6b8fbd92606",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
       },
       {
         "digest": "ea31e629482f146356c8a7bbc9278e658b910f5efd3ecdaf44a50598a6da55d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
       },
       {
         "digest": "6772d2c75f353f03d19caf39bec094e75858632dc0ffaca061fc975119ad5a31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
       },
       {
         "digest": "77153c85df5db5276b16711d5c159e282981c4f1bebc9700bc1d8f7ffa7bedd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
       },
       {
         "digest": "5da83f46aaf14a76784948ab0d4cc76a28410211b737c008f79422f457333539",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
       },
       {
         "digest": "f570b8c80db9f63025470875405ff53e84a954bf4fa01599fdab474b90f25ed2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
       },
       {
         "digest": "7d61fd66f5b99010b5e95af5756c665a0c7812bbde75b46bec0a5f9ed3f61ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
       },
       {
         "digest": "43a19102848c94a88391c1c15508cf5ec5f6a6012c1613596dbdcda05635beed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
       },
       {
         "digest": "f51b4dfde27803c7c6f85d669d818b6b7ddc1c55fc41e7708af327619d91b4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md",
     "digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
@@ -409,97 +409,97 @@
       {
         "digest": "12c2ba008ca1d9975f7fc63b2ee95d9a0964da9d82e4d7b1b7c702d206f6a15f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
       },
       {
         "digest": "044dfa880a9f5bd2529970e0080833ab7b1f3ccb5232cd42a9f35f2f47274638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
       },
       {
         "digest": "5604483e644fca3bafa9d8b39543e008ce47dcdca561462749551b4f12924e3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "417babf33d887f261b00b5a3d48bf17f4eda9adeea34016eadb21fcd8a3ef2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
       },
       {
         "digest": "08e202e6e1703a63851963af0f465c916df92d7758ac8579f78fe98a7b806809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
       },
       {
         "digest": "8e687358473526f1d6703319e80f757f4426820629a69075aed08ee1bb858cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
       },
       {
         "digest": "cb79d81c79ad8f19b025373a246a4a709b492bccfd7cdf7db32bbb3eaa869312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
       },
       {
         "digest": "19665ae5cffa9ecd01ecb38f302a1febfe8d5bf5ee34b4c413b6d2bd1e181806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
       },
       {
         "digest": "23e22e7a6a9e6e89312113c1873cd2ceb43d864929ed373f328b191bfe0a25cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
       },
       {
         "digest": "6a8639760f460a9f4c45d1c0a3de027ea2e96288cd66b501dcd026fbe88df700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
       },
       {
         "digest": "7e8606153be85e11c487a1ebcf42b815e2fcef2079b9f66b1052b6b8fbd92606",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
       },
       {
         "digest": "ea31e629482f146356c8a7bbc9278e658b910f5efd3ecdaf44a50598a6da55d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
       },
       {
         "digest": "6772d2c75f353f03d19caf39bec094e75858632dc0ffaca061fc975119ad5a31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
       },
       {
         "digest": "77153c85df5db5276b16711d5c159e282981c4f1bebc9700bc1d8f7ffa7bedd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
       },
       {
         "digest": "5da83f46aaf14a76784948ab0d4cc76a28410211b737c008f79422f457333539",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
       },
       {
         "digest": "f570b8c80db9f63025470875405ff53e84a954bf4fa01599fdab474b90f25ed2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
       },
       {
         "digest": "7d61fd66f5b99010b5e95af5756c665a0c7812bbde75b46bec0a5f9ed3f61ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
       },
       {
         "digest": "43a19102848c94a88391c1c15508cf5ec5f6a6012c1613596dbdcda05635beed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
       },
       {
         "digest": "f51b4dfde27803c7c6f85d669d818b6b7ddc1c55fc41e7708af327619d91b4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -900,97 +900,97 @@
       {
         "digest": "12c2ba008ca1d9975f7fc63b2ee95d9a0964da9d82e4d7b1b7c702d206f6a15f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-plan.md"
       },
       {
         "digest": "044dfa880a9f5bd2529970e0080833ab7b1f3ccb5232cd42a9f35f2f47274638",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/claude-spec.md"
       },
       {
         "digest": "5604483e644fca3bafa9d8b39543e008ce47dcdca561462749551b4f12924e3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "417babf33d887f261b00b5a3d48bf17f4eda9adeea34016eadb21fcd8a3ef2bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation/usage.md"
       },
       {
         "digest": "08e202e6e1703a63851963af0f465c916df92d7758ac8579f78fe98a7b806809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/reviews/iteration-1-opus.md"
       },
       {
         "digest": "8e687358473526f1d6703319e80f757f4426820629a69075aed08ee1bb858cee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/index.md"
       },
       {
         "digest": "cb79d81c79ad8f19b025373a246a4a709b492bccfd7cdf7db32bbb3eaa869312",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-01-database-schema.md"
       },
       {
         "digest": "19665ae5cffa9ecd01ecb38f302a1febfe8d5bf5ee34b4c413b6d2bd1e181806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-02-api-key-service.md"
       },
       {
         "digest": "23e22e7a6a9e6e89312113c1873cd2ceb43d864929ed373f328b191bfe0a25cc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-03-auth-extension.md"
       },
       {
         "digest": "6a8639760f460a9f4c45d1c0a3de027ea2e96288cd66b501dcd026fbe88df700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-04-rate-limiter-audit.md"
       },
       {
         "digest": "7e8606153be85e11c487a1ebcf42b815e2fcef2079b9f66b1052b6b8fbd92606",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-05-skill-api.md"
       },
       {
         "digest": "ea31e629482f146356c8a7bbc9278e658b910f5efd3ecdaf44a50598a6da55d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-06-agency-api.md"
       },
       {
         "digest": "6772d2c75f353f03d19caf39bec094e75858632dc0ffaca061fc975119ad5a31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-07-presentation-api.md"
       },
       {
         "digest": "77153c85df5db5276b16711d5c159e282981c4f1bebc9700bc1d8f7ffa7bedd1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-08-video-media-api.md"
       },
       {
         "digest": "5da83f46aaf14a76784948ab0d4cc76a28410211b737c008f79422f457333539",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-09-mcp-server.md"
       },
       {
         "digest": "f570b8c80db9f63025470875405ff53e84a954bf4fa01599fdab474b90f25ed2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-10-job-automation.md"
       },
       {
         "digest": "7d61fd66f5b99010b5e95af5756c665a0c7812bbde75b46bec0a5f9ed3f61ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-11-webhooks-events.md"
       },
       {
         "digest": "43a19102848c94a88391c1c15508cf5ec5f6a6012c1613596dbdcda05635beed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-12-admin-ui.md"
       },
       {
         "digest": "f51b4dfde27803c7c6f85d669d818b6b7ddc1c55fc41e7708af327619d91b4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/sections/section-13-sdk-documentation.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

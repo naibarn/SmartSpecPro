@@ -17,97 +17,97 @@
       {
         "digest": "a91578b905e4ab6f0436515a6c928320c6c11e1d2235d218207ec5a73b6afce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
       },
       {
         "digest": "c9f633858c1089d482e08c77d39f30bdffa561e5fca692ea790a2f0f827da350",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
       },
       {
         "digest": "bce972b4c03d80baeb68594ad7b730e3cd06579fc1ce680adea26bcc8670aab1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
       },
       {
         "digest": "08b1a4932fb94c5ac87bf32ca39c817e15270c38b127dd7e160fe850de40380a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
       },
       {
         "digest": "31ec7478cc08c3eaaeab6b6618b8f36e0965bac35c145ac4ffb36a37b2ccfdb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
       },
       {
         "digest": "02697b32af6152230545318e0c5f08803e372fcda4c8321b2e41c53cc90d271b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
       },
       {
         "digest": "4a4ec4bd782ff9a1cf2a1dcf357d1fc3cb8cab782093e96074fa25f9cce3ec69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
       },
       {
         "digest": "5f85278306e20ca75ea93c409b30fe33b4438599d724ec8a95ccaef8e774ffa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
       },
       {
         "digest": "13debb057aa0715b09680ca07c5382a97ad637e8c6f170c487d79753d352153b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
       },
       {
         "digest": "5557b6df49c0f723fe5297d7d05979a646dd7fe2d1b8ed166649f5566f87a7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
       },
       {
         "digest": "139d808083aa4302e5cd6652989e0f24e71520e8fea7dad4dfc43747b834f267",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
       },
       {
         "digest": "d1ac295d50c099369559a04f05e6d9bd660a7189dc6ff66c228828bc77b15662",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
       },
       {
         "digest": "38a40c8f97ac9508058f7cf35f48bee51cf7d2731c7daa8b33ed18e74dc35aaf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
       },
       {
         "digest": "5a2d84f94d357e9900057eb8f3fbf94f8271e8751c4080bc8f48ea58b423a7ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
       },
       {
         "digest": "eda40832704906aeb62b6d2e0103aac00493f5e913badc855dc07cf592125396",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
       },
       {
         "digest": "58f70e1fae6766de76cd0da1a1ae2c4c42bdac24843b5e9300f924f63fec5faf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
       },
       {
         "digest": "345eddb45e31fdd2f6c2c19ebcd33d7a3bf29e5951700caad4daf0edfaef3244",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
       },
       {
         "digest": "104a1f8829ca538c6744140483217b0fad44b046e051846cfab40477d7d970a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
       },
       {
         "digest": "eaa00e8d53b1e088708c4217ef7170f687088bc0cb6250215ed30343aabc2dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "a91578b905e4ab6f0436515a6c928320c6c11e1d2235d218207ec5a73b6afce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
       },
       {
         "digest": "c9f633858c1089d482e08c77d39f30bdffa561e5fca692ea790a2f0f827da350",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
       },
       {
         "digest": "bce972b4c03d80baeb68594ad7b730e3cd06579fc1ce680adea26bcc8670aab1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
       },
       {
         "digest": "08b1a4932fb94c5ac87bf32ca39c817e15270c38b127dd7e160fe850de40380a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
       },
       {
         "digest": "31ec7478cc08c3eaaeab6b6618b8f36e0965bac35c145ac4ffb36a37b2ccfdb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
       },
       {
         "digest": "02697b32af6152230545318e0c5f08803e372fcda4c8321b2e41c53cc90d271b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
       },
       {
         "digest": "4a4ec4bd782ff9a1cf2a1dcf357d1fc3cb8cab782093e96074fa25f9cce3ec69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
       },
       {
         "digest": "5f85278306e20ca75ea93c409b30fe33b4438599d724ec8a95ccaef8e774ffa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
       },
       {
         "digest": "13debb057aa0715b09680ca07c5382a97ad637e8c6f170c487d79753d352153b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
       },
       {
         "digest": "5557b6df49c0f723fe5297d7d05979a646dd7fe2d1b8ed166649f5566f87a7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
       },
       {
         "digest": "139d808083aa4302e5cd6652989e0f24e71520e8fea7dad4dfc43747b834f267",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
       },
       {
         "digest": "d1ac295d50c099369559a04f05e6d9bd660a7189dc6ff66c228828bc77b15662",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
       },
       {
         "digest": "38a40c8f97ac9508058f7cf35f48bee51cf7d2731c7daa8b33ed18e74dc35aaf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
       },
       {
         "digest": "5a2d84f94d357e9900057eb8f3fbf94f8271e8751c4080bc8f48ea58b423a7ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
       },
       {
         "digest": "eda40832704906aeb62b6d2e0103aac00493f5e913badc855dc07cf592125396",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
       },
       {
         "digest": "58f70e1fae6766de76cd0da1a1ae2c4c42bdac24843b5e9300f924f63fec5faf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
       },
       {
         "digest": "345eddb45e31fdd2f6c2c19ebcd33d7a3bf29e5951700caad4daf0edfaef3244",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
       },
       {
         "digest": "104a1f8829ca538c6744140483217b0fad44b046e051846cfab40477d7d970a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
       },
       {
         "digest": "eaa00e8d53b1e088708c4217ef7170f687088bc0cb6250215ed30343aabc2dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "a91578b905e4ab6f0436515a6c928320c6c11e1d2235d218207ec5a73b6afce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
       },
       {
         "digest": "c9f633858c1089d482e08c77d39f30bdffa561e5fca692ea790a2f0f827da350",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
       },
       {
         "digest": "bce972b4c03d80baeb68594ad7b730e3cd06579fc1ce680adea26bcc8670aab1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
       },
       {
         "digest": "08b1a4932fb94c5ac87bf32ca39c817e15270c38b127dd7e160fe850de40380a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
       },
       {
         "digest": "31ec7478cc08c3eaaeab6b6618b8f36e0965bac35c145ac4ffb36a37b2ccfdb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
       },
       {
         "digest": "02697b32af6152230545318e0c5f08803e372fcda4c8321b2e41c53cc90d271b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
       },
       {
         "digest": "4a4ec4bd782ff9a1cf2a1dcf357d1fc3cb8cab782093e96074fa25f9cce3ec69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
       },
       {
         "digest": "5f85278306e20ca75ea93c409b30fe33b4438599d724ec8a95ccaef8e774ffa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
       },
       {
         "digest": "13debb057aa0715b09680ca07c5382a97ad637e8c6f170c487d79753d352153b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
       },
       {
         "digest": "5557b6df49c0f723fe5297d7d05979a646dd7fe2d1b8ed166649f5566f87a7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
       },
       {
         "digest": "139d808083aa4302e5cd6652989e0f24e71520e8fea7dad4dfc43747b834f267",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
       },
       {
         "digest": "d1ac295d50c099369559a04f05e6d9bd660a7189dc6ff66c228828bc77b15662",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
       },
       {
         "digest": "38a40c8f97ac9508058f7cf35f48bee51cf7d2731c7daa8b33ed18e74dc35aaf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
       },
       {
         "digest": "5a2d84f94d357e9900057eb8f3fbf94f8271e8751c4080bc8f48ea58b423a7ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
       },
       {
         "digest": "eda40832704906aeb62b6d2e0103aac00493f5e913badc855dc07cf592125396",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
       },
       {
         "digest": "58f70e1fae6766de76cd0da1a1ae2c4c42bdac24843b5e9300f924f63fec5faf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
       },
       {
         "digest": "345eddb45e31fdd2f6c2c19ebcd33d7a3bf29e5951700caad4daf0edfaef3244",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
       },
       {
         "digest": "104a1f8829ca538c6744140483217b0fad44b046e051846cfab40477d7d970a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
       },
       {
         "digest": "eaa00e8d53b1e088708c4217ef7170f687088bc0cb6250215ed30343aabc2dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/spec.md",
     "digest": "7a070024c3fcf1af70488ffd3359db1a93f6838f236293899b128519292d95d0",
@@ -409,112 +409,112 @@
       {
         "digest": "a91578b905e4ab6f0436515a6c928320c6c11e1d2235d218207ec5a73b6afce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
       },
       {
         "digest": "c9f633858c1089d482e08c77d39f30bdffa561e5fca692ea790a2f0f827da350",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
       },
       {
         "digest": "bce972b4c03d80baeb68594ad7b730e3cd06579fc1ce680adea26bcc8670aab1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
       },
       {
         "digest": "08b1a4932fb94c5ac87bf32ca39c817e15270c38b127dd7e160fe850de40380a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
       },
       {
         "digest": "31ec7478cc08c3eaaeab6b6618b8f36e0965bac35c145ac4ffb36a37b2ccfdb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
       },
       {
         "digest": "02697b32af6152230545318e0c5f08803e372fcda4c8321b2e41c53cc90d271b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
       },
       {
         "digest": "4a4ec4bd782ff9a1cf2a1dcf357d1fc3cb8cab782093e96074fa25f9cce3ec69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
       },
       {
         "digest": "5f85278306e20ca75ea93c409b30fe33b4438599d724ec8a95ccaef8e774ffa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
       },
       {
         "digest": "13debb057aa0715b09680ca07c5382a97ad637e8c6f170c487d79753d352153b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
       },
       {
         "digest": "5557b6df49c0f723fe5297d7d05979a646dd7fe2d1b8ed166649f5566f87a7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
       },
       {
         "digest": "139d808083aa4302e5cd6652989e0f24e71520e8fea7dad4dfc43747b834f267",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
       },
       {
         "digest": "d1ac295d50c099369559a04f05e6d9bd660a7189dc6ff66c228828bc77b15662",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
       },
       {
         "digest": "38a40c8f97ac9508058f7cf35f48bee51cf7d2731c7daa8b33ed18e74dc35aaf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
       },
       {
         "digest": "5a2d84f94d357e9900057eb8f3fbf94f8271e8751c4080bc8f48ea58b423a7ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
       },
       {
         "digest": "eda40832704906aeb62b6d2e0103aac00493f5e913badc855dc07cf592125396",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
       },
       {
         "digest": "58f70e1fae6766de76cd0da1a1ae2c4c42bdac24843b5e9300f924f63fec5faf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
       },
       {
         "digest": "345eddb45e31fdd2f6c2c19ebcd33d7a3bf29e5951700caad4daf0edfaef3244",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
       },
       {
         "digest": "104a1f8829ca538c6744140483217b0fad44b046e051846cfab40477d7d970a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
       },
       {
         "digest": "eaa00e8d53b1e088708c4217ef7170f687088bc0cb6250215ed30343aabc2dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
       },
       {
         "digest": "04631f69f143b00b8b454703f14163f5f1e79d652d0b4f8c9d3ca5586c76ea08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-04-server-worker-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-04-server-worker-integration.md"
       },
       {
         "digest": "fbddc1e4b9d4a9909e198b822205eacf573650640bd20cd834d1d2926538a917",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-05-storyboard-multimodal-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-05-storyboard-multimodal-ui.md"
       },
       {
         "digest": "674ea99c0d612f1cc015038c20b3ef6d98382e2b12273e03809fcc728ec52542",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-06-integration-gap-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-06-integration-gap-review.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -564,112 +564,112 @@
       {
         "digest": "a91578b905e4ab6f0436515a6c928320c6c11e1d2235d218207ec5a73b6afce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-plan.md"
       },
       {
         "digest": "c9f633858c1089d482e08c77d39f30bdffa561e5fca692ea790a2f0f827da350",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/claude-spec.md"
       },
       {
         "digest": "bce972b4c03d80baeb68594ad7b730e3cd06579fc1ce680adea26bcc8670aab1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/deep_implement_config.json"
       },
       {
         "digest": "08b1a4932fb94c5ac87bf32ca39c817e15270c38b127dd7e160fe850de40380a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-1-contract-persistence.md"
       },
       {
         "digest": "31ec7478cc08c3eaaeab6b6618b8f36e0965bac35c145ac4ffb36a37b2ccfdb4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-10-terminal-prompt-and-transport.md"
       },
       {
         "digest": "02697b32af6152230545318e0c5f08803e372fcda4c8321b2e41c53cc90d271b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-2-provider-capability.md"
       },
       {
         "digest": "4a4ec4bd782ff9a1cf2a1dcf357d1fc3cb8cab782093e96074fa25f9cce3ec69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-3-skill-finalizer.md"
       },
       {
         "digest": "5f85278306e20ca75ea93c409b30fe33b4438599d724ec8a95ccaef8e774ffa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-4-ui-upload.md"
       },
       {
         "digest": "13debb057aa0715b09680ca07c5382a97ad637e8c6f170c487d79753d352153b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-5-cross-section-proof.md"
       },
       {
         "digest": "5557b6df49c0f723fe5297d7d05979a646dd7fe2d1b8ed166649f5566f87a7d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-6-worker-dispatch.md"
       },
       {
         "digest": "139d808083aa4302e5cd6652989e0f24e71520e8fea7dad4dfc43747b834f267",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-7-media-import-and-bulk.md"
       },
       {
         "digest": "d1ac295d50c099369559a04f05e6d9bd660a7189dc6ff66c228828bc77b15662",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-8-ui-and-multimodal-selection.md"
       },
       {
         "digest": "38a40c8f97ac9508058f7cf35f48bee51cf7d2731c7daa8b33ed18e74dc35aaf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/implementation/reviews/gap-round-9-provider-profile-and-order.md"
       },
       {
         "digest": "5a2d84f94d357e9900057eb8f3fbf94f8271e8751c4080bc8f48ea58b423a7ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-1.md"
       },
       {
         "digest": "eda40832704906aeb62b6d2e0103aac00493f5e913badc855dc07cf592125396",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/reviews/self-review-round-2.md"
       },
       {
         "digest": "58f70e1fae6766de76cd0da1a1ae2c4c42bdac24843b5e9300f924f63fec5faf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/index.md"
       },
       {
         "digest": "345eddb45e31fdd2f6c2c19ebcd33d7a3bf29e5951700caad4daf0edfaef3244",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-01-bundle-persistence.md"
       },
       {
         "digest": "104a1f8829ca538c6744140483217b0fad44b046e051846cfab40477d7d970a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-02-provider-capabilities.md"
       },
       {
         "digest": "eaa00e8d53b1e088708c4217ef7170f687088bc0cb6250215ed30343aabc2dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-03-skills-prompt-finalizer.md"
       },
       {
         "digest": "04631f69f143b00b8b454703f14163f5f1e79d652d0b4f8c9d3ca5586c76ea08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-04-server-worker-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-04-server-worker-integration.md"
       },
       {
         "digest": "fbddc1e4b9d4a9909e198b822205eacf573650640bd20cd834d1d2926538a917",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-05-storyboard-multimodal-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-05-storyboard-multimodal-ui.md"
       },
       {
         "digest": "674ea99c0d612f1cc015038c20b3ef6d98382e2b12273e03809fcc728ec52542",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-06-integration-gap-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/sections/section-06-integration-gap-review.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/057-mcp-security-context-optimization/spec.md#L40"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L40"
       ],
-      "authority_source": "specs/feature/057-mcp-security-context-optimization/spec.md#L40",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/057-mcp-security-context-optimization/spec.md#L95"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L95"
       ],
-      "authority_source": "specs/feature/057-mcp-security-context-optimization/spec.md#L95",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/057-mcp-security-context-optimization/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L96"
       ],
-      "authority_source": "specs/feature/057-mcp-security-context-optimization/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/057-mcp-security-context-optimization/spec.md#L102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L102"
       ],
-      "authority_source": "specs/feature/057-mcp-security-context-optimization/spec.md#L102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/057-mcp-security-context-optimization/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L109"
       ],
-      "authority_source": "specs/feature/057-mcp-security-context-optimization/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

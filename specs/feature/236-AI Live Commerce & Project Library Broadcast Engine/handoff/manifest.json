@@ -18,7 +18,7 @@
           "R2",
           "R3"
         ],
-        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L415",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L415",
         "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
         "successor_spec_id": "237"
       },
@@ -30,7 +30,7 @@
         "referencing_spec_id": "237",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L522",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L522",
         "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
         "successor_spec_id": "237"
       },
@@ -44,7 +44,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       }
@@ -114,7 +114,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md",
     "digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",

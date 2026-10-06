@@ -14,7 +14,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1259",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1259",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1449",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1449",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1524",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1524",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L441",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L441",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "250",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L640",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L640",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "250",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1092",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1092",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -122,7 +122,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -134,7 +134,7 @@
         "referencing_spec_id": "250",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1092",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1092",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -146,7 +146,7 @@
         "referencing_spec_id": "250",
         "relation_text": "superseding",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1366",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1366",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -158,7 +158,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -170,7 +170,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1528",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1528",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -186,7 +186,7 @@
           "R0.7",
           "R1.3"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L19",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L19",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -202,7 +202,7 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L23",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L23",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -219,7 +219,7 @@
           "R0.4",
           "R0.5"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L27",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L27",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -233,7 +233,7 @@
         "requirement_ids": [
           "R0.4"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L30",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L30",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -247,7 +247,7 @@
         "requirement_ids": [
           "R0.8"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L40",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -259,7 +259,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L489",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L489",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -271,7 +271,7 @@
         "referencing_spec_id": "250",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L533",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L533",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -283,7 +283,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -295,7 +295,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1537",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1537",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -311,7 +311,7 @@
           "R0.7",
           "R1.3"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L19",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L19",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -327,7 +327,7 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L23",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L23",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -341,7 +341,7 @@
         "requirement_ids": [
           "R0.8"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L40",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       }
@@ -411,7 +411,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/250-Development-Reliability/spec.md",
     "digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",

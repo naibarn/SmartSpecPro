@@ -17,97 +17,97 @@
       {
         "digest": "41bb25174d664511e42d25d6a3aa0b61f490e2f18d0516a95f0185f3accfb818",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
       },
       {
         "digest": "035d8c637117baf02e711cab6a9dc4020675491920a2fbbb2f43fbb7afa869ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
       },
       {
         "digest": "87a74620596fa940530d95560a9dd2b996b455feb4773c72774dd4ac50842108",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
       },
       {
         "digest": "91df384d2e40be4aa3e858201416e4ec149640cdd3ed5d6ca7cf39e9a984a084",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "309d2fc12553d777b918cdca2d9ae1bac8651447e29dc0c710eb1ed5aa84b660",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
       },
       {
         "digest": "b26cf35cb6c3d33a2e1c3ec29c92d27c5273ca1b1723a4b84b8cf33a949466de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
       },
       {
         "digest": "9d6cadddda576b3f23a0edfb1c359335c9dcc365195024f837c0723c9d124615",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
       },
       {
         "digest": "4ca7599e400c2252528d55ac3a7ebf0362fdcdbc774183cf142043e61a0ce4e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
       },
       {
         "digest": "a79593060bdb96c1ab943e583ea1bbf93f80eece9954d6485a25937bba7a0f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
       },
       {
         "digest": "61d25e8c1be10ebd13f02df11593405d4650d503d892de697841fca7c69d90a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
       },
       {
         "digest": "220efca84486ad1f21215a4bd514e31c61818d690ac0c1488d181d000884e9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
       },
       {
         "digest": "8ddb5e07ee3f425c549c3c8cfe9a911c72693d68466c32a47596bf01f5d7642a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
       },
       {
         "digest": "e37549b698fbbc55b7761f698e919a037b32224e86b2064cc1301924246762c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
       },
       {
         "digest": "3456905d31598c55dad0efa00c91e19d057c7b4776a3ef048642609649a9427c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
       },
       {
         "digest": "138907cd99a332f2f47711135ea2820fff8d39c308657473b7ce2791ed0db10c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
       },
       {
         "digest": "c06e86a3754282155b61cf5c01c4b54df4d6ee11ec28c7e4c8882292b2d7c9df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
       },
       {
         "digest": "9e8d065154854a22e59fe4877ed7bfe2f07660073053310a6ce8d3d8426682a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
       },
       {
         "digest": "d88a153d5775f703b77ad95882c8ffde6822045b1e8704b8fe8a2292692b4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "24b22b2b71dcf37d734d89833a2b6607e7b6f1ba0b16a7c2b83f4dd24731320d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "41bb25174d664511e42d25d6a3aa0b61f490e2f18d0516a95f0185f3accfb818",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
       },
       {
         "digest": "035d8c637117baf02e711cab6a9dc4020675491920a2fbbb2f43fbb7afa869ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
       },
       {
         "digest": "87a74620596fa940530d95560a9dd2b996b455feb4773c72774dd4ac50842108",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
       },
       {
         "digest": "91df384d2e40be4aa3e858201416e4ec149640cdd3ed5d6ca7cf39e9a984a084",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "309d2fc12553d777b918cdca2d9ae1bac8651447e29dc0c710eb1ed5aa84b660",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
       },
       {
         "digest": "b26cf35cb6c3d33a2e1c3ec29c92d27c5273ca1b1723a4b84b8cf33a949466de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
       },
       {
         "digest": "9d6cadddda576b3f23a0edfb1c359335c9dcc365195024f837c0723c9d124615",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
       },
       {
         "digest": "4ca7599e400c2252528d55ac3a7ebf0362fdcdbc774183cf142043e61a0ce4e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
       },
       {
         "digest": "a79593060bdb96c1ab943e583ea1bbf93f80eece9954d6485a25937bba7a0f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
       },
       {
         "digest": "61d25e8c1be10ebd13f02df11593405d4650d503d892de697841fca7c69d90a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
       },
       {
         "digest": "220efca84486ad1f21215a4bd514e31c61818d690ac0c1488d181d000884e9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
       },
       {
         "digest": "8ddb5e07ee3f425c549c3c8cfe9a911c72693d68466c32a47596bf01f5d7642a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
       },
       {
         "digest": "e37549b698fbbc55b7761f698e919a037b32224e86b2064cc1301924246762c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
       },
       {
         "digest": "3456905d31598c55dad0efa00c91e19d057c7b4776a3ef048642609649a9427c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
       },
       {
         "digest": "138907cd99a332f2f47711135ea2820fff8d39c308657473b7ce2791ed0db10c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
       },
       {
         "digest": "c06e86a3754282155b61cf5c01c4b54df4d6ee11ec28c7e4c8882292b2d7c9df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
       },
       {
         "digest": "9e8d065154854a22e59fe4877ed7bfe2f07660073053310a6ce8d3d8426682a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
       },
       {
         "digest": "d88a153d5775f703b77ad95882c8ffde6822045b1e8704b8fe8a2292692b4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "24b22b2b71dcf37d734d89833a2b6607e7b6f1ba0b16a7c2b83f4dd24731320d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "41bb25174d664511e42d25d6a3aa0b61f490e2f18d0516a95f0185f3accfb818",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
       },
       {
         "digest": "035d8c637117baf02e711cab6a9dc4020675491920a2fbbb2f43fbb7afa869ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
       },
       {
         "digest": "87a74620596fa940530d95560a9dd2b996b455feb4773c72774dd4ac50842108",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
       },
       {
         "digest": "91df384d2e40be4aa3e858201416e4ec149640cdd3ed5d6ca7cf39e9a984a084",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "309d2fc12553d777b918cdca2d9ae1bac8651447e29dc0c710eb1ed5aa84b660",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
       },
       {
         "digest": "b26cf35cb6c3d33a2e1c3ec29c92d27c5273ca1b1723a4b84b8cf33a949466de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
       },
       {
         "digest": "9d6cadddda576b3f23a0edfb1c359335c9dcc365195024f837c0723c9d124615",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
       },
       {
         "digest": "4ca7599e400c2252528d55ac3a7ebf0362fdcdbc774183cf142043e61a0ce4e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
       },
       {
         "digest": "a79593060bdb96c1ab943e583ea1bbf93f80eece9954d6485a25937bba7a0f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
       },
       {
         "digest": "61d25e8c1be10ebd13f02df11593405d4650d503d892de697841fca7c69d90a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
       },
       {
         "digest": "220efca84486ad1f21215a4bd514e31c61818d690ac0c1488d181d000884e9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
       },
       {
         "digest": "8ddb5e07ee3f425c549c3c8cfe9a911c72693d68466c32a47596bf01f5d7642a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
       },
       {
         "digest": "e37549b698fbbc55b7761f698e919a037b32224e86b2064cc1301924246762c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
       },
       {
         "digest": "3456905d31598c55dad0efa00c91e19d057c7b4776a3ef048642609649a9427c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
       },
       {
         "digest": "138907cd99a332f2f47711135ea2820fff8d39c308657473b7ce2791ed0db10c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
       },
       {
         "digest": "c06e86a3754282155b61cf5c01c4b54df4d6ee11ec28c7e4c8882292b2d7c9df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
       },
       {
         "digest": "9e8d065154854a22e59fe4877ed7bfe2f07660073053310a6ce8d3d8426682a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
       },
       {
         "digest": "d88a153d5775f703b77ad95882c8ffde6822045b1e8704b8fe8a2292692b4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "24b22b2b71dcf37d734d89833a2b6607e7b6f1ba0b16a7c2b83f4dd24731320d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
     "digest": "8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
@@ -409,142 +409,142 @@
       {
         "digest": "41bb25174d664511e42d25d6a3aa0b61f490e2f18d0516a95f0185f3accfb818",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
       },
       {
         "digest": "035d8c637117baf02e711cab6a9dc4020675491920a2fbbb2f43fbb7afa869ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
       },
       {
         "digest": "87a74620596fa940530d95560a9dd2b996b455feb4773c72774dd4ac50842108",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
       },
       {
         "digest": "91df384d2e40be4aa3e858201416e4ec149640cdd3ed5d6ca7cf39e9a984a084",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "309d2fc12553d777b918cdca2d9ae1bac8651447e29dc0c710eb1ed5aa84b660",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
       },
       {
         "digest": "b26cf35cb6c3d33a2e1c3ec29c92d27c5273ca1b1723a4b84b8cf33a949466de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
       },
       {
         "digest": "9d6cadddda576b3f23a0edfb1c359335c9dcc365195024f837c0723c9d124615",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
       },
       {
         "digest": "4ca7599e400c2252528d55ac3a7ebf0362fdcdbc774183cf142043e61a0ce4e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
       },
       {
         "digest": "a79593060bdb96c1ab943e583ea1bbf93f80eece9954d6485a25937bba7a0f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
       },
       {
         "digest": "61d25e8c1be10ebd13f02df11593405d4650d503d892de697841fca7c69d90a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
       },
       {
         "digest": "220efca84486ad1f21215a4bd514e31c61818d690ac0c1488d181d000884e9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
       },
       {
         "digest": "8ddb5e07ee3f425c549c3c8cfe9a911c72693d68466c32a47596bf01f5d7642a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
       },
       {
         "digest": "e37549b698fbbc55b7761f698e919a037b32224e86b2064cc1301924246762c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
       },
       {
         "digest": "3456905d31598c55dad0efa00c91e19d057c7b4776a3ef048642609649a9427c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
       },
       {
         "digest": "138907cd99a332f2f47711135ea2820fff8d39c308657473b7ce2791ed0db10c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
       },
       {
         "digest": "c06e86a3754282155b61cf5c01c4b54df4d6ee11ec28c7e4c8882292b2d7c9df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
       },
       {
         "digest": "9e8d065154854a22e59fe4877ed7bfe2f07660073053310a6ce8d3d8426682a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
       },
       {
         "digest": "d88a153d5775f703b77ad95882c8ffde6822045b1e8704b8fe8a2292692b4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "24b22b2b71dcf37d734d89833a2b6607e7b6f1ba0b16a7c2b83f4dd24731320d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
       },
       {
         "digest": "3bb94010410a65389710426f9789d7a0d74ec3ff2488f6e7e981a39a3a134639",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/index.md"
       },
       {
         "digest": "feeb3039d6419f66e588baad9462c1d29fca75562afc17a68e15dba08a8668ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-01-contracts-and-edit-map.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-01-contracts-and-edit-map.md"
       },
       {
         "digest": "6056afd278e677de040e0cede4a6c74be92a1ec1d44ef0e25f9b3b94a0e748fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-02-adapter-policy-and-preflight.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-02-adapter-policy-and-preflight.md"
       },
       {
         "digest": "671798690cacafe41ba8dbc741c419b5ff3a399f2b4950eb79dcc100600f3f0d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-03-subtitle-vad-diarization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-03-subtitle-vad-diarization.md"
       },
       {
         "digest": "672e862879bc3b37127a6a9c31251226470911d684c685991383b12238f3a139",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-04-visual-tracks-and-active-speaker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-04-visual-tracks-and-active-speaker.md"
       },
       {
         "digest": "e44f270d12cef1e21863d279884a23f82d717e418ecbf36d8ddc09964089edaf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-05-durable-scan-and-edit-plan-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-05-durable-scan-and-edit-plan-jobs.md"
       },
       {
         "digest": "0ba0625c2c87f71f2eb0e578c1eb0fe7ec539403044b04299372d9ef8cd56212",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-06-render-map-ffmpeg-remotion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-06-render-map-ffmpeg-remotion.md"
       },
       {
         "digest": "aa1a7e201dd82ed1e3c1d30625a144dd4e2242a6ffc72fbf4690811b4abe49df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-07-worker-and-web-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-07-worker-and-web-ui.md"
       },
       {
         "digest": "dcd480edffd48b49373ecba299ccbc7265caaf09d7a94c73dc0a0a40a29db0da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-08-verification-rollout-and-runbook.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-08-verification-rollout-and-runbook.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -594,142 +594,142 @@
       {
         "digest": "41bb25174d664511e42d25d6a3aa0b61f490e2f18d0516a95f0185f3accfb818",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-plan.md"
       },
       {
         "digest": "035d8c637117baf02e711cab6a9dc4020675491920a2fbbb2f43fbb7afa869ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/claude-spec.md"
       },
       {
         "digest": "87a74620596fa940530d95560a9dd2b996b455feb4773c72774dd4ac50842108",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/audit-50-rounds.md"
       },
       {
         "digest": "91df384d2e40be4aa3e858201416e4ec149640cdd3ed5d6ca7cf39e9a984a084",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "309d2fc12553d777b918cdca2d9ae1bac8651447e29dc0c710eb1ed5aa84b660",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/final-review.md"
       },
       {
         "digest": "b26cf35cb6c3d33a2e1c3ec29c92d27c5273ca1b1723a4b84b8cf33a949466de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/gap-closure.md"
       },
       {
         "digest": "9d6cadddda576b3f23a0edfb1c359335c9dcc365195024f837c0723c9d124615",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-01.md"
       },
       {
         "digest": "4ca7599e400c2252528d55ac3a7ebf0362fdcdbc774183cf142043e61a0ce4e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-02.md"
       },
       {
         "digest": "a79593060bdb96c1ab943e583ea1bbf93f80eece9954d6485a25937bba7a0f3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-03.md"
       },
       {
         "digest": "61d25e8c1be10ebd13f02df11593405d4650d503d892de697841fca7c69d90a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-04.md"
       },
       {
         "digest": "220efca84486ad1f21215a4bd514e31c61818d690ac0c1488d181d000884e9be",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-05.md"
       },
       {
         "digest": "8ddb5e07ee3f425c549c3c8cfe9a911c72693d68466c32a47596bf01f5d7642a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-06.md"
       },
       {
         "digest": "e37549b698fbbc55b7761f698e919a037b32224e86b2064cc1301924246762c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-07.md"
       },
       {
         "digest": "3456905d31598c55dad0efa00c91e19d057c7b4776a3ef048642609649a9427c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-08.md"
       },
       {
         "digest": "138907cd99a332f2f47711135ea2820fff8d39c308657473b7ce2791ed0db10c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-09.md"
       },
       {
         "digest": "c06e86a3754282155b61cf5c01c4b54df4d6ee11ec28c7e4c8882292b2d7c9df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/review-round-10.md"
       },
       {
         "digest": "9e8d065154854a22e59fe4877ed7bfe2f07660073053310a6ce8d3d8426682a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/section-state.md"
       },
       {
         "digest": "d88a153d5775f703b77ad95882c8ffde6822045b1e8704b8fe8a2292692b4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "24b22b2b71dcf37d734d89833a2b6607e7b6f1ba0b16a7c2b83f4dd24731320d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/reviews/self-review-round-1.md"
       },
       {
         "digest": "3bb94010410a65389710426f9789d7a0d74ec3ff2488f6e7e981a39a3a134639",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/index.md"
       },
       {
         "digest": "feeb3039d6419f66e588baad9462c1d29fca75562afc17a68e15dba08a8668ca",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-01-contracts-and-edit-map.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-01-contracts-and-edit-map.md"
       },
       {
         "digest": "6056afd278e677de040e0cede4a6c74be92a1ec1d44ef0e25f9b3b94a0e748fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-02-adapter-policy-and-preflight.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-02-adapter-policy-and-preflight.md"
       },
       {
         "digest": "671798690cacafe41ba8dbc741c419b5ff3a399f2b4950eb79dcc100600f3f0d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-03-subtitle-vad-diarization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-03-subtitle-vad-diarization.md"
       },
       {
         "digest": "672e862879bc3b37127a6a9c31251226470911d684c685991383b12238f3a139",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-04-visual-tracks-and-active-speaker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-04-visual-tracks-and-active-speaker.md"
       },
       {
         "digest": "e44f270d12cef1e21863d279884a23f82d717e418ecbf36d8ddc09964089edaf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-05-durable-scan-and-edit-plan-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-05-durable-scan-and-edit-plan-jobs.md"
       },
       {
         "digest": "0ba0625c2c87f71f2eb0e578c1eb0fe7ec539403044b04299372d9ef8cd56212",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-06-render-map-ffmpeg-remotion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-06-render-map-ffmpeg-remotion.md"
       },
       {
         "digest": "aa1a7e201dd82ed1e3c1d30625a144dd4e2242a6ffc72fbf4690811b4abe49df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-07-worker-and-web-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-07-worker-and-web-ui.md"
       },
       {
         "digest": "dcd480edffd48b49373ecba299ccbc7265caaf09d7a94c73dc0a0a40a29db0da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-08-verification-rollout-and-runbook.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-08-verification-rollout-and-runbook.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

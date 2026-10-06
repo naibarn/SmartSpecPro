@@ -14,7 +14,7 @@
         "referencing_spec_id": "212",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L66",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L66",
         "source_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
         "successor_spec_id": "212"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -43,7 +43,7 @@
           "R20",
           "R21"
         ],
-        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
         "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
         "successor_spec_id": "233"
       },
@@ -58,7 +58,7 @@
           "R20",
           "R21-LIVING-USE-CASE-DEMAND-ALIGNMENT.MD"
         ],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -73,7 +73,7 @@
           "R1",
           "R2"
         ],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -85,7 +85,7 @@
         "referencing_spec_id": "234",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L261",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L261",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -97,7 +97,7 @@
         "referencing_spec_id": "234",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L38",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L38",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -109,7 +109,7 @@
         "referencing_spec_id": "238",
         "relation_text": "merged",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -123,7 +123,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -139,7 +139,7 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L17",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L17",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -151,7 +151,7 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -165,7 +165,7 @@
         "requirement_ids": [
           "R0.5"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L983",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L983",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -177,7 +177,7 @@
         "referencing_spec_id": "242",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L659",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L659",
         "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "successor_spec_id": "242"
       }
@@ -310,7 +310,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md",
     "digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",

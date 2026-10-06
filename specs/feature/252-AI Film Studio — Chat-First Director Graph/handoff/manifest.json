@@ -16,7 +16,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -30,7 +30,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -44,7 +44,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -56,7 +56,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       },
@@ -68,7 +68,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       }
@@ -138,7 +138,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md",
     "digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",

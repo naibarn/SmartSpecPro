@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L31"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L46"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L46"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L46",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L47"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L47"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L47",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L48"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L49"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L49"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L49",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L50"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L50"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L50",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L51"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L51"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L51",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L52"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L53"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L53"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L53",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L54"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L54"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L54",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L55"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L55"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L55",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L56"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L56"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L56",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L57"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L57"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L57",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L58"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L58"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L58",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L117"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L128"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L161"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L164"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L168"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L169"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L278"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L399"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L628"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L633"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L634"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L648"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L648"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L648",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L693"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L693"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L693",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L695"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L695"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L695",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L696"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L696"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L696",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L697"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L697"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L697",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L698"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L698"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L698",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L699"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L700"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L700"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L700",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L701"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L701"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L701",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L702"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L702"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L702",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L703"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L703"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L703",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L704"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L704"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L704",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L705"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L705"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L705",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L706"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L706",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L707"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L708"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L708"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L708",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L709"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L709"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L709",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L710"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L710"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L710",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L711"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L711"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L711",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L712"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L712"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L712",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L713"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L713"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L713",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L714"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L714",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L816"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L816"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L816",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L816",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L828"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L828"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L828",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L828",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L829"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L829"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L829",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L837"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L838"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L838"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L838",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L838",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L856"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L856"
       ],
-      "authority_source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L856",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/111-presentation-builder-split-layer-video-editor/spec.md#L856",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L14"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L14"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L14",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L14",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L16"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L16"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L16",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L16",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L28"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L28"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L28",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L58"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L58"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L58",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L64"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L64"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L64",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L65"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L65"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L65",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L66"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L66"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L66",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L67"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L67"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L67",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L68"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L68"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L68",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L69"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L69"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L69",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L70"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L71"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L71"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L71",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L72"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L72"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L72",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L73"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L73"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L73",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L74"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L74"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L74",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L75"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L75"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L75",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L76"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L76"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L76",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L77"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L77"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L77",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L78"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L78"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L78",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L79"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L79"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L79",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L86"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L92"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L92"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L92",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L100"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L102"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L113"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L195"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L208"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L208"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L208",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L210"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L210"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L210",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L249"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L255"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L390"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L394"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L401"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L437"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L481"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L481"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L481",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L483"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L483"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L483",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L500"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L504"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L504"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L504",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L508"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L508"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L508",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L508",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L553"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L553"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L553",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L554"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L554"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L554",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L560"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L560"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L560",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L571"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L571"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L571",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L666"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L671"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L671"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L671",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L679"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L679"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L679",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L683"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L683"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L683",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L690"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L690"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L690",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L693"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L693"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L693",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L699"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L706"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L706",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L708"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L708"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L708",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L715"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L715"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L715",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L715",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L721"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L730"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L730"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L730",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L731"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L731"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L731",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L742"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L742"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L742",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L826"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L826"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L826",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L834"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L834"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L834",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L841"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L841"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L841",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L841",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L842"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L842"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L842",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L844"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L844"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L844",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L913"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L913"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L913",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L913",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L931"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L931"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L931",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L935"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L935"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L935",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L941"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L941"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L941",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L941",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L942"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L942"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L942",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L943"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L943"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L943",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L980"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L980"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L980",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L985"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L985"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L985",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L985",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L986"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L986"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L986",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L986",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L987"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L987"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L987",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L987",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1000"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1000"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1000",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1018"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1020"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1020"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1020",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1020",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1039"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1039"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1039",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1039",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1047"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1047"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1047",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1047",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1085"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1085"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1085",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1096"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1105"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1107"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1111"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1123"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1152"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1155"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1232"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1273"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1273"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1273",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1306"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1306"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1306",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1328"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1328"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1328",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1329"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1329"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1329",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1330"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1331"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1331"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1331",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1332"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1333"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1333"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1333",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1334"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1334"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1334",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1335"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1335"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1335",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1336"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1340"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1341"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1342"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1346"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1346"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1346",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1347"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1348"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1354"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1354"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1354",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1355"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1355"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1355",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1356"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1358"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1358"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1358",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1360"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1360"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1360",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1360",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1361"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1361"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1361",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1361",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1362"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1362"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1362",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1363"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1364"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1364"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1364",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1368"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1369"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1370"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1371"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1371"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1371",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1377"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1378"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1379"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1380"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1380"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1380",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1381"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1382"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1383"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1383"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1383",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1384"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1384"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1384",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1385"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1385"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1385",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1393"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1393"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1393",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1394"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1395"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1395"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1395",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1396"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1397"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1397"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1397",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1444"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1444"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1444",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1445"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1445"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1445",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1446"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1447"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1447"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1447",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1448"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1448"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1448",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1449"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1451"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1452"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1452"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1452",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1481"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1481"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1481",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1483"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1483"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1483",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1487"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1487"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1487",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1494"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1494"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1494",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1498"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1498"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1498",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1511"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1529"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1535"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1535"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1535",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1539"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1539"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1539",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1559"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1559"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1559",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1567"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1567"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1567",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1567",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1571"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1571"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1571",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1572"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1572"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1572",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1595"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1595"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1595",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1595",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1695"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1695"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1695",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1696"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1696"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1696",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1697"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1697"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1697",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1701"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1701"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1701",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1702"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1702"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1702",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1703"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1703"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1703",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1704"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1704"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1704",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1705"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1705"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1705",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1709"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1709"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1709",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1721"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1728"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1728"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1728",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1747"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1748"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1749"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1749"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1749",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1750"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1750"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1750",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1788"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1788",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1789"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1791"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1818"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1818"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1818",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1824"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1824"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1824",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1825"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1825"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1825",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1885"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1885"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1885",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1885",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1886"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1886"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1886",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1886",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1887"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1887"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1887",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1887",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1888"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1888"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1888",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1888",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1889"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1889"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1889",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1889",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1890"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1890"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1890",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1891"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1891"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1891",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1891",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1892"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1892"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1892",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1893"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1893"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1893",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1894"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1894"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1894",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1895"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1895"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1895",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1896"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1896"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1896",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1897"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1897"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1897",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1897",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1898"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1898"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1898",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1898",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1899"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1899"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1899",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1900"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1900"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1900",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1900",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1901"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1901"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1901",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4185,9 +4185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1902"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1902"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1902",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1902",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4207,9 +4207,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1903"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1903"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1903",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4229,9 +4229,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1904"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1904"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1904",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4251,9 +4251,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1905"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1905"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1905",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1905",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4273,9 +4273,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1906"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1906"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1906",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1906",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4295,9 +4295,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1907"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1907"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1907",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1907",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4317,9 +4317,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1908"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1908"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1908",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1908",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4339,9 +4339,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1909"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1909",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4361,9 +4361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1910"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1910"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1910",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1910",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4383,9 +4383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1911"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1911"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1911",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4405,9 +4405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1912"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1912"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1912",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1912",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4427,9 +4427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1913"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1913"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1913",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1913",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4449,9 +4449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1914"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1914"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1914",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4471,9 +4471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1915"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4493,9 +4493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1916"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1916"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1916",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1916",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4515,9 +4515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1917"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1917"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1917",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4537,9 +4537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1918"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1918"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1918",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1918",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4559,9 +4559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1919"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1919"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1919",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4581,9 +4581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1920"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1920"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1920",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1920",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4603,9 +4603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1921"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1921"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1921",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1921",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4625,9 +4625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1922"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1922"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1922",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1922",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4647,9 +4647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1923"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1923"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1923",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1923",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4669,9 +4669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1924"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1924"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1924",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1924",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4691,9 +4691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1925"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1925"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1925",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4713,9 +4713,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1926"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1926"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1926",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4735,9 +4735,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1927"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1927"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1927",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1927",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4757,9 +4757,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1928"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4779,9 +4779,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1929"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1929"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1929",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4801,9 +4801,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1930"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1930"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1930",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4823,9 +4823,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1931"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1931"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1931",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4845,9 +4845,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1932"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1932"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1932",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4867,9 +4867,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1933"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1933"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1933",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4889,9 +4889,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1934"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1934"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1934",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1934",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4911,9 +4911,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1935"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1935"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1935",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4933,9 +4933,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1936"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1936"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1936",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1936",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4955,9 +4955,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1937"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1937"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1937",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4977,9 +4977,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1938"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1938"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1938",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4999,9 +4999,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1939"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1939"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1939",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5021,9 +5021,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1940"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1940"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1940",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5043,9 +5043,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1941"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1941"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1941",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1941",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5065,9 +5065,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1942"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1942"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1942",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5087,9 +5087,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1943"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1943"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1943",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5109,9 +5109,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1944"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1944"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1944",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1944",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5131,9 +5131,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1945"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1945"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1945",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5153,9 +5153,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1946"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1946"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1946",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1946",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5175,9 +5175,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1947"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1947"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1947",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1947",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5197,9 +5197,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1948"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1948"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1948",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5219,9 +5219,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1949"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1949"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1949",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1949",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5241,9 +5241,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L1963"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1963"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L1963",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L1963",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5263,9 +5263,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2012"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2012"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2012",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2012",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5285,9 +5285,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2016"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2016"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2016",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5307,9 +5307,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2028"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2028"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2028",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2028",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5329,9 +5329,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2032"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2032"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2032",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5351,9 +5351,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2038"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2038"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2038",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2038",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5373,9 +5373,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2042"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2042"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2042",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2042",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5395,9 +5395,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2048"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2048"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2048",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5417,9 +5417,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2050"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2050"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2050",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2050",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5439,9 +5439,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2054"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2054"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2054",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2054",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5461,9 +5461,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2062"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2062"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2062",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2062",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5483,9 +5483,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2076"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2076"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2076",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5505,9 +5505,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2086"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2086"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2086",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5527,9 +5527,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2092"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2092"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2092",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5549,9 +5549,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2101"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5571,9 +5571,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2119"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2119"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2119",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5593,9 +5593,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2131"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5615,9 +5615,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/128-age-aware-safety-policy/spec.md#L2133"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2133"
       ],
-      "authority_source": "specs/feature/128-age-aware-safety-policy/spec.md#L2133",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/128-age-aware-safety-policy/spec.md#L2133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

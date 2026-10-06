@@ -17,7 +17,7 @@
       {
         "digest": "4f47aa4b61d0c8203d344a407955b7d01f5437368bb40d4235ec7d977a6e8a77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/007-python-backend-service/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/007-python-backend-service/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "4f47aa4b61d0c8203d344a407955b7d01f5437368bb40d4235ec7d977a6e8a77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/007-python-backend-service/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/007-python-backend-service/plan.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -80,13 +80,13 @@
       {
         "digest": "4f47aa4b61d0c8203d344a407955b7d01f5437368bb40d4235ec7d977a6e8a77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/007-python-backend-service/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/007-python-backend-service/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/007-python-backend-service/spec.md",
     "digest": "dcbb6fa5985b9d3b24fe3cb0ddf966bfd670d66342160d0f511a106097b46940",
@@ -139,7 +139,7 @@
       {
         "digest": "4f47aa4b61d0c8203d344a407955b7d01f5437368bb40d4235ec7d977a6e8a77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/007-python-backend-service/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/007-python-backend-service/plan.md"
       }
     ],
     "stale_fields": [],
@@ -167,7 +167,7 @@
       {
         "digest": "4f47aa4b61d0c8203d344a407955b7d01f5437368bb40d4235ec7d977a6e8a77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/007-python-backend-service/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/007-python-backend-service/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

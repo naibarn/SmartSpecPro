@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L19"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L19"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L19",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L19",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L36"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L36"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L36",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L37"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L37"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L37",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L52"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L53"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L53"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L53",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L54"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L54"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L54",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L55"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L55"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L55",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L56"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L56"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L56",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L117"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L134"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L185"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L185"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L185",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L186"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L186"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L186",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L187"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L188"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L189"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L189"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L189",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L518"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L518"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L518",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L615"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L615"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L615",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L615",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L770"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L788"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L788",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L789"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1070"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1070"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1070",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1071"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1071"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1071",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1072"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1072"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1072",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1073"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1073"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1073",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1074"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1074"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1074",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1075"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1075"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1075",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1076"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1076"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1076",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1077"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1077"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1077",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1078"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1078"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1078",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1079"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1079"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1079",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1080"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1080"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1080",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/028-Chat-Bridge/spec.md#L1081"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1081"
       ],
-      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L1081",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/028-Chat-Bridge/spec.md#L1081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

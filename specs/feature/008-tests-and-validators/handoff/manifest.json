@@ -17,7 +17,7 @@
       {
         "digest": "1c75ee1010ba09daec8dae280112a688bd909e77641d81957f2b6a4a329ad15e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/008-tests-and-validators/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "1c75ee1010ba09daec8dae280112a688bd909e77641d81957f2b6a4a329ad15e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/008-tests-and-validators/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/plan.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -80,13 +80,13 @@
       {
         "digest": "1c75ee1010ba09daec8dae280112a688bd909e77641d81957f2b6a4a329ad15e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/008-tests-and-validators/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/008-tests-and-validators/spec.md",
     "digest": "862da08e8e544862edfaa08639d9119005b81a534e31bd42b9eb70c15a012ca4",
@@ -139,7 +139,7 @@
       {
         "digest": "1c75ee1010ba09daec8dae280112a688bd909e77641d81957f2b6a4a329ad15e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/008-tests-and-validators/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/plan.md"
       }
     ],
     "stale_fields": [],
@@ -167,7 +167,7 @@
       {
         "digest": "1c75ee1010ba09daec8dae280112a688bd909e77641d81957f2b6a4a329ad15e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/008-tests-and-validators/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/008-tests-and-validators/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L105"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L108"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L110"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L112"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L114"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L116"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L118"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L121"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L123"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L148"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L149"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L149"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L149",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L158"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L260"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L269"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L346"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L346"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L346",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L370"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L372"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L420"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L420"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L420",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L422"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L422"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L422",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L427"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L427"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L427",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L469"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L469"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L469",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L486"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L486"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L486",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L495"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L495"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L495",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L508"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L508"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L508",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L508",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L524"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L524",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L533"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L533"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L533",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L541"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L541",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L553"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L553"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L553",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L568"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L569"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L569"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L569",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L570"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L572"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L572"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L572",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L575"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L575"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L575",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L577"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L577"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L577",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L577",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L590"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L590"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L590",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L590",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L600"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L607"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L607"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L607",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L613"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L613"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L613",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L620"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L642"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L659"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L686"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L686"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L686",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L693"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L693"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L693",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L731"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L731"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L731",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L738"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L752"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L752"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L752",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L755"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L791"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L819"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L819"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L819",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L865"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L865"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L865",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L868"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L868"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L868",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L871"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L871"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L871",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L873"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L873"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L873",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L873",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L876"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L876"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L876",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L879"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L879"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L879",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L882"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L882"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L882",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L887"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L887"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L887",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L887",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L890"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L890"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L890",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L891"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L891"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L891",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L891",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L894"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L894"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L894",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L896"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L896"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L896",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L898"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L898"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L898",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L898",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L900"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L900"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L900",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L900",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L903"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L903"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L903",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L905"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L905"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L905",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L905",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L907"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L907"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L907",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L907",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L909"
       ],
-      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L909",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/143-video-studio-layer-timeline-editor/spec.md#L909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

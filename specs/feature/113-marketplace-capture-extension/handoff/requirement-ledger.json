@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L59"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L59"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L59",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L65"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L65"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L65",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L66"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L66"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L66",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L67"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L67"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L67",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L68"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L68"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L68",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L69"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L69"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L69",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L70"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L71"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L71"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L71",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L72"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L72"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L72",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L125"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L271"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L329"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L329"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L329",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L330"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L331"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L331"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L331",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L332"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L333"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L333"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L333",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L334"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L334"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L334",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L335"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L335"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L335",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L339"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L339"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L339",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L340"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L341"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L342"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L343"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L347"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L348"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L349"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L349"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L349",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L350"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L350"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L350",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L351"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L352"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L352"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L352",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L353"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L353"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L353",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L354"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L354"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L354",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L355"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L355"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L355",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L356"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,10 +731,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L362",
-        "specs/feature/113-marketplace-capture-extension/spec.md#L706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L362",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L706"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L362",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -754,9 +754,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L364"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L364"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L364",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -776,9 +776,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L365"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L365"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L365",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -798,9 +798,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L366"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -820,9 +820,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L367"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L367"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L367",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L367",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -842,9 +842,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L368"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -864,9 +864,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L369"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -886,9 +886,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L370"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -908,9 +908,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L371"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L371"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L371",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -930,9 +930,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L372"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -952,9 +952,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L373"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L373"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L373",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -974,9 +974,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L374"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L374"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L374",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -996,9 +996,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L375"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1018,9 +1018,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L381"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1040,9 +1040,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L600"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1062,9 +1062,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L672"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1084,9 +1084,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L676"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L676"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L676",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1106,9 +1106,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L720"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L720"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L720",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1128,9 +1128,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L724"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1150,9 +1150,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L734"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L734"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L734",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1172,9 +1172,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L769"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L769"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L769",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L769",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1194,9 +1194,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L773"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1216,9 +1216,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L774"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1238,9 +1238,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L790"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L790"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L790",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1260,9 +1260,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L791"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1282,9 +1282,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L871"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L871"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L871",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1304,9 +1304,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L904"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L904"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L904",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1326,9 +1326,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L917"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L917"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L917",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1348,9 +1348,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L966"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L966"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L966",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L966",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1370,9 +1370,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L982"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L982"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L982",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L982",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1392,9 +1392,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L983"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L983"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L983",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L983",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1414,9 +1414,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L984"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L984"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L984",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L984",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1436,9 +1436,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L985"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L985"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L985",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L985",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1458,9 +1458,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L986"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L986"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L986",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L986",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1480,9 +1480,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L987"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L987"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L987",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L987",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1502,9 +1502,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L988"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L988"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L988",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1524,9 +1524,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L989"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L989"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L989",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1546,9 +1546,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L990"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L990"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L990",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1568,9 +1568,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L991"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L991"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L991",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L991",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1590,9 +1590,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L993"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L993"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L993",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1612,9 +1612,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L994"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L994"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L994",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L994",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1634,9 +1634,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1002"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1002"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1002",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1656,9 +1656,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1087"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1087"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1087",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1678,9 +1678,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1090"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1090"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1090",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1090",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1700,9 +1700,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1091"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1091"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1091",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1722,9 +1722,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1094"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1094"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1094",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1744,9 +1744,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1212"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1236"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1261"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1261"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1261",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1262"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1832,9 +1832,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1349"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1349"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1349",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1854,9 +1854,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1350"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1350"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1350",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1876,9 +1876,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1351"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1898,9 +1898,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1353"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1353"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1353",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1920,9 +1920,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1354"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1354"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1354",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1942,9 +1942,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1358"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1358"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1358",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1964,9 +1964,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1362"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1362"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1362",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1986,9 +1986,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1375"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2008,9 +2008,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1376"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2030,9 +2030,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1583"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1583"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1583",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2052,9 +2052,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1585"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1585"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1585",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1585",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2074,9 +2074,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1586"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2096,9 +2096,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1587"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1587"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1587",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1587",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2118,9 +2118,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1588"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1588"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1588",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1588",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2140,9 +2140,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1589"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1589"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1589",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2162,9 +2162,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1590"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1590"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1590",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1590",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2184,9 +2184,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1591"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1591"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1591",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1591",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2206,9 +2206,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1592"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2228,9 +2228,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1593"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1593"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1593",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1593",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2250,9 +2250,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1597"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1597"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1597",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1597",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2272,9 +2272,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1598"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1598"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1598",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2294,9 +2294,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1599"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1599"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1599",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2316,9 +2316,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1600"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2338,9 +2338,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1601"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1601"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1601",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2360,9 +2360,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1602"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2382,9 +2382,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1623"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2404,9 +2404,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1631"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2426,9 +2426,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1705"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1705"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1705",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2448,9 +2448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1707"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2470,9 +2470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1708"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1708"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1708",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2492,9 +2492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1712"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1712"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1712",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2514,9 +2514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1718"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1718"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1718",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2536,9 +2536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1729"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1729"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1729",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2558,9 +2558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1747"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2580,9 +2580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1769"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1769"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1769",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1769",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2602,9 +2602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1775"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1775"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1775",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2624,9 +2624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1792"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1792"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1792",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2646,9 +2646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1813"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1813"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1813",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2668,9 +2668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1827"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1827"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1827",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2690,9 +2690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1847"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1847"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1847",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2712,9 +2712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1849"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1849"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1849",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2734,9 +2734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1925"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1925"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1925",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2756,9 +2756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1926"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1926"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1926",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2778,9 +2778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1927"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1927"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1927",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1927",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2800,9 +2800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1954"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1954"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1954",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2822,9 +2822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1967"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1967"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1967",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1967",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2844,9 +2844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1995"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1995"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1995",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2866,9 +2866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1996"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1996"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1996",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2888,9 +2888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1997"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1997"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1997",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2910,9 +2910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1998"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1998"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1998",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2932,9 +2932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L1999"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1999"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L1999",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L1999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2954,9 +2954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2003"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2003"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2003",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2976,9 +2976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2004"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2004"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2004",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2998,9 +2998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2005"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2005"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2005",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3020,9 +3020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2006"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2006"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2006",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3042,9 +3042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2254"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2254"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2254",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3064,9 +3064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2255"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3086,9 +3086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2256"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3108,9 +3108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2257"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3130,9 +3130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2258"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3152,9 +3152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2259"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3174,9 +3174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2260"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3196,9 +3196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2264"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3218,9 +3218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2265"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2265"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2265",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3240,9 +3240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2266"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3262,9 +3262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2267"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3284,9 +3284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2268"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3306,9 +3306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2269"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3328,9 +3328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2270"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3350,9 +3350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2271"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3372,9 +3372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2272"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3394,9 +3394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2273"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2273"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2273",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3416,9 +3416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2274"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2274"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2274",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3438,9 +3438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2278"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3460,9 +3460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2279"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2279"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2279",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3482,9 +3482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2280"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3504,9 +3504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2281"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3526,9 +3526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2282"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3548,9 +3548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2286"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3570,9 +3570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2287"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2287"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2287",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2287",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3592,9 +3592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2288"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3614,9 +3614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2289"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2289"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2289",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3636,9 +3636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2290"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2290"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2290",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3658,9 +3658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2294"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3680,9 +3680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2295"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3702,9 +3702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2296"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2296"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2296",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3724,9 +3724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2297"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2297"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2297",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3746,9 +3746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2298"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2298"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2298",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3768,9 +3768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2299"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3790,9 +3790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2300"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2300"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2300",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3812,9 +3812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2301"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2301"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2301",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3834,9 +3834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2302"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2302"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2302",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3856,9 +3856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2308"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2308"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2308",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3878,9 +3878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2309"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3900,9 +3900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2310"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3922,9 +3922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2311"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2311"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2311",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2311",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3944,9 +3944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2312"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2312"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2312",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3966,9 +3966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2313"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2313"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2313",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3988,9 +3988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2314"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2314"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2314",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2314",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4010,9 +4010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2315"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4032,9 +4032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2316"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2316"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2316",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4054,9 +4054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2322"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4076,9 +4076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2323"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4098,9 +4098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2324"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2324"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2324",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4120,9 +4120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2325"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2325"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2325",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4142,9 +4142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2326"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2326"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2326",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4164,9 +4164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2327"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2327"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2327",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2327",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4186,9 +4186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2328"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2328"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2328",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4208,9 +4208,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2329"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2329"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2329",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4230,9 +4230,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2330"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4252,9 +4252,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/113-marketplace-capture-extension/spec.md#L2331"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2331"
       ],
-      "authority_source": "specs/feature/113-marketplace-capture-extension/spec.md#L2331",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/113-marketplace-capture-extension/spec.md#L2331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

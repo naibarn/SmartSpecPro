@@ -56,34 +56,6 @@
         "path": "tests/ss_autopilot/test_error_handler.py"
       },
       {
-        "excerpt": "error = SpecNotFoundError(\"spec-001\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 88,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "error = SpecNotFoundError(\"spec-001\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 88,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "assert \"spec-001\" in str(error)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 89,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "assert \"spec-001\" in str(error)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 89,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
         "excerpt": "assert \"spec-001\" in str(error)",
         "identity_ambiguous": true,
         "kind": "TEST",
@@ -121,7 +93,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/01-chat-intent-router/spec.md",
     "digest": "9fdd3e413df1479635781917eed5c86d8b13db703394fa0ce02806628afcac83",
@@ -179,34 +151,6 @@
         "path": "tests/ss_autopilot/test_error_handler.py"
       },
       {
-        "excerpt": "error = SpecNotFoundError(\"spec-001\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 88,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "error = SpecNotFoundError(\"spec-001\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 88,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "assert \"spec-001\" in str(error)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 89,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "assert \"spec-001\" in str(error)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 89,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
         "excerpt": "assert \"spec-001\" in str(error)",
         "identity_ambiguous": true,
         "kind": "TEST",
@@ -229,34 +173,6 @@
         "identity_ambiguous": true,
         "kind": "TEST",
         "line": 88,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "error = SpecNotFoundError(\"spec-001\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 88,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "error = SpecNotFoundError(\"spec-001\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 88,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "assert \"spec-001\" in str(error)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 89,
-        "path": "tests/ss_autopilot/test_error_handler.py"
-      },
-      {
-        "excerpt": "assert \"spec-001\" in str(error)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 89,
         "path": "tests/ss_autopilot/test_error_handler.py"
       },
       {

@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L26"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L26"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L26",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L39"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L39"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L39",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L96"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L160"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L173"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L173"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L173",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L225"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L232"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L236"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L337"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L338"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L338"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L338",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L339"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L339"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L339",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L340"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L341"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L342"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L343"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L344"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L345"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L345"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L345",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L346"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L346"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L346",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L347"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L348"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L352"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L352"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L352",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L378"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L403"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L403"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L403",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L405"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L405"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L405",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L430"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L430"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L430",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L431"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L437"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L441"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L441"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L441",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L441",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L442"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L442"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L442",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L443"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L443"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L443",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L444"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L444"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L444",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L445"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L445"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L445",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L451"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L452"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L452"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L452",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L453"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L453"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L453",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L453",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L454"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L454"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L454",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L454",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L473"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L473"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L473",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L480"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L481"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L481"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L481",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L482"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L482"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L482",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L482",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L489"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L489"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L489",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L499"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L499"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L499",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L537"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L550"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L550"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L550",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L551"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L551"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L551",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L553"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L553"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L553",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L594"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L594"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L594",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L598"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L598"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L598",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L602"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L603"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L604"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L604"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L604",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L605"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L605"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L605",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L605",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L606"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L606"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L606",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L610"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L610"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L610",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L611"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L611"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L611",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L612"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L612"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L612",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L616"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L616"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L616",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L617"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L618"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L619"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L620"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L689"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L795"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L795"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L795",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L795",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L837"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L955"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L955"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L955",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L981"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L981"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L981",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L994"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L994"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L994",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L994",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L997"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L997"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L997",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1012"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1012"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1012",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1012",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1022"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1037"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1037"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1037",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1064"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1064"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1064",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1067"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1067"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1067",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1071"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1071"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1071",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1083"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1083"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1083",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1093"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1093"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1093",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1097"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1097"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1097",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1097",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1116"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1121"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1122"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1123"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1124"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1125"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1126"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1126"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1126",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1127"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1131"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1136"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1136"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1136",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1140"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1144"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1164"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1165"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1166"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1167"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1167"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1167",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1169"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1177"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1177"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1177",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1195"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1215"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1230"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1232"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1234"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1236"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1237"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1238"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1239"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1240"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1240",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1241"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1242"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1243"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1243"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1243",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1244"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1244"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1244",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1286"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1287"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1287"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1287",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1287",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1314"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1314"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1314",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1314",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1380"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1380"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1380",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1392"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1394"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1415"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1451"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1457"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1457"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1457",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1457",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1500"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1541"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1541",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1542"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1542"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1542",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1543"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1543"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1543",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1563"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1563"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1563",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1563",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1568"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1569"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1569"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1569",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1588"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1588"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1588",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1588",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1590"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1590"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1590",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1590",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1592"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1606"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1606"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1606",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1616"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1616"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1616",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1617"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1618"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1619"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1620"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1621"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1622"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1623"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1624"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1625"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1626"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1626"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1626",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1627"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1628"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1629"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1630"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1630"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1630",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1631"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1632"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1632"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1632",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1633"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1634"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1635"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1636"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1637"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1638"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1638"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1638",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1639"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1639"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1639",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1640"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1641"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1641"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1641",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1641",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1642"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1643"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1644"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1644"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1644",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1645"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1645"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1645",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1646"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1646"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1646",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1647"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1647"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1647",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1648"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1648"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1648",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1649"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1650"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1650"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1650",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1651"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1651"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1651",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1652"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1653"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1653"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1653",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1654"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1654"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1654",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1655"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1655"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1655",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1656"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1657"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1657"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1657",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1658"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1659"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1683"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1683"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1683",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1739"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1740"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1740"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1740",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1781"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1783"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1783"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1783",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1788"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1788",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1852"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1852"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1852",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1884"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1884"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1884",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1903"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1903"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1903",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/123-agent-experience-adapter-layer/spec.md#L1923"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1923"
       ],
-      "authority_source": "specs/feature/123-agent-experience-adapter-layer/spec.md#L1923",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/123-agent-experience-adapter-layer/spec.md#L1923",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

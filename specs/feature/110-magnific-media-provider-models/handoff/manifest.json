@@ -17,97 +17,97 @@
       {
         "digest": "5000bdefe4f3ff0d486b2e066a8d0c1b766e3a9738181b3aa5cba8828c14fa08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-plan.md"
       },
       {
         "digest": "7641eb8ada8a10117a5aba76111bc55553bb62e9559760b116e5b349526f6f77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-spec.md"
       },
       {
         "digest": "5cc04079e3074809dde9bd4ff7408d13fd689b74b1f2edb204951d80ad7fa794",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
       },
       {
         "digest": "9751b20859dd22d8288bb748bc95e5376f979e26ef7a7350166349b86f7616ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
       },
       {
         "digest": "68df26fdfeda77b6c2a4431ffd9e87518dc404a14b7c012b00eaa0c2e3e41543",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
       },
       {
         "digest": "9b6b119ee8808e7dc7071af89550151a22d0149246d3b572ea021f570d53f4ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
       },
       {
         "digest": "614c935eaf8d1db956bde55b40ea66e4add39215795f533408ad477cd0efd7a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
       },
       {
         "digest": "eb82e2ab84eed3084b560a7e2620a210f4835093078f67cf298c9141b8164917",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
       },
       {
         "digest": "999158f8d387a5f1841fd1ad470f0868a07332674f467745bff9105c44fac0bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "43a0651d6ac125fe27eefff16ec70f8153e2ceb93b0847c734391c79cd8cad3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
       },
       {
         "digest": "239d21884602a5f69a1ea2a153c4582c72f8401eb135d5bc7409aafa94445584",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/index.md"
       },
       {
         "digest": "11f9305cf1514f384664f3ee060456c0546ec23013102771c2e8322c9787842b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
       },
       {
         "digest": "c0e8ed01a8dc5a51d439f8830b3252390a09d8f0f8f3de87beefa70d19e4172e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
       },
       {
         "digest": "66dd40fb8ebea070ef149130a19f6cd75ac9773995661bfe333160d20b22d25f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
       },
       {
         "digest": "31d9999c4385eda2c0b5c483cb3c8a3ee1e989212153bfdf7fd80d94f58ab4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
       },
       {
         "digest": "5ca02a8bb74b5b8b84dadac7ada745960cf801e79ca2a09015146b0bc0769340",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
       },
       {
         "digest": "166718ba2d8c5cfde02876c52919d2e5ffe6a9b160bda7eb5336662569b46719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
       },
       {
         "digest": "7b048b60f5423e0632a0225657e67d09632879169513193840e6d7f0b95afd0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
       },
       {
         "digest": "5b3f58cebcfbecb000b5faa81a2719f868b65ffedd3017321a2a29402a8f65e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "5000bdefe4f3ff0d486b2e066a8d0c1b766e3a9738181b3aa5cba8828c14fa08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-plan.md"
       },
       {
         "digest": "7641eb8ada8a10117a5aba76111bc55553bb62e9559760b116e5b349526f6f77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-spec.md"
       },
       {
         "digest": "5cc04079e3074809dde9bd4ff7408d13fd689b74b1f2edb204951d80ad7fa794",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
       },
       {
         "digest": "9751b20859dd22d8288bb748bc95e5376f979e26ef7a7350166349b86f7616ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
       },
       {
         "digest": "68df26fdfeda77b6c2a4431ffd9e87518dc404a14b7c012b00eaa0c2e3e41543",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
       },
       {
         "digest": "9b6b119ee8808e7dc7071af89550151a22d0149246d3b572ea021f570d53f4ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
       },
       {
         "digest": "614c935eaf8d1db956bde55b40ea66e4add39215795f533408ad477cd0efd7a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
       },
       {
         "digest": "eb82e2ab84eed3084b560a7e2620a210f4835093078f67cf298c9141b8164917",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
       },
       {
         "digest": "999158f8d387a5f1841fd1ad470f0868a07332674f467745bff9105c44fac0bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "43a0651d6ac125fe27eefff16ec70f8153e2ceb93b0847c734391c79cd8cad3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
       },
       {
         "digest": "239d21884602a5f69a1ea2a153c4582c72f8401eb135d5bc7409aafa94445584",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/index.md"
       },
       {
         "digest": "11f9305cf1514f384664f3ee060456c0546ec23013102771c2e8322c9787842b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
       },
       {
         "digest": "c0e8ed01a8dc5a51d439f8830b3252390a09d8f0f8f3de87beefa70d19e4172e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
       },
       {
         "digest": "66dd40fb8ebea070ef149130a19f6cd75ac9773995661bfe333160d20b22d25f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
       },
       {
         "digest": "31d9999c4385eda2c0b5c483cb3c8a3ee1e989212153bfdf7fd80d94f58ab4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
       },
       {
         "digest": "5ca02a8bb74b5b8b84dadac7ada745960cf801e79ca2a09015146b0bc0769340",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
       },
       {
         "digest": "166718ba2d8c5cfde02876c52919d2e5ffe6a9b160bda7eb5336662569b46719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
       },
       {
         "digest": "7b048b60f5423e0632a0225657e67d09632879169513193840e6d7f0b95afd0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
       },
       {
         "digest": "5b3f58cebcfbecb000b5faa81a2719f868b65ffedd3017321a2a29402a8f65e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "5000bdefe4f3ff0d486b2e066a8d0c1b766e3a9738181b3aa5cba8828c14fa08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-plan.md"
       },
       {
         "digest": "7641eb8ada8a10117a5aba76111bc55553bb62e9559760b116e5b349526f6f77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-spec.md"
       },
       {
         "digest": "5cc04079e3074809dde9bd4ff7408d13fd689b74b1f2edb204951d80ad7fa794",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
       },
       {
         "digest": "9751b20859dd22d8288bb748bc95e5376f979e26ef7a7350166349b86f7616ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
       },
       {
         "digest": "68df26fdfeda77b6c2a4431ffd9e87518dc404a14b7c012b00eaa0c2e3e41543",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
       },
       {
         "digest": "9b6b119ee8808e7dc7071af89550151a22d0149246d3b572ea021f570d53f4ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
       },
       {
         "digest": "614c935eaf8d1db956bde55b40ea66e4add39215795f533408ad477cd0efd7a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
       },
       {
         "digest": "eb82e2ab84eed3084b560a7e2620a210f4835093078f67cf298c9141b8164917",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
       },
       {
         "digest": "999158f8d387a5f1841fd1ad470f0868a07332674f467745bff9105c44fac0bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "43a0651d6ac125fe27eefff16ec70f8153e2ceb93b0847c734391c79cd8cad3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
       },
       {
         "digest": "239d21884602a5f69a1ea2a153c4582c72f8401eb135d5bc7409aafa94445584",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/index.md"
       },
       {
         "digest": "11f9305cf1514f384664f3ee060456c0546ec23013102771c2e8322c9787842b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
       },
       {
         "digest": "c0e8ed01a8dc5a51d439f8830b3252390a09d8f0f8f3de87beefa70d19e4172e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
       },
       {
         "digest": "66dd40fb8ebea070ef149130a19f6cd75ac9773995661bfe333160d20b22d25f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
       },
       {
         "digest": "31d9999c4385eda2c0b5c483cb3c8a3ee1e989212153bfdf7fd80d94f58ab4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
       },
       {
         "digest": "5ca02a8bb74b5b8b84dadac7ada745960cf801e79ca2a09015146b0bc0769340",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
       },
       {
         "digest": "166718ba2d8c5cfde02876c52919d2e5ffe6a9b160bda7eb5336662569b46719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
       },
       {
         "digest": "7b048b60f5423e0632a0225657e67d09632879169513193840e6d7f0b95afd0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
       },
       {
         "digest": "5b3f58cebcfbecb000b5faa81a2719f868b65ffedd3017321a2a29402a8f65e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/110-magnific-media-provider-models/spec.md",
     "digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
@@ -409,97 +409,97 @@
       {
         "digest": "5000bdefe4f3ff0d486b2e066a8d0c1b766e3a9738181b3aa5cba8828c14fa08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-plan.md"
       },
       {
         "digest": "7641eb8ada8a10117a5aba76111bc55553bb62e9559760b116e5b349526f6f77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-spec.md"
       },
       {
         "digest": "5cc04079e3074809dde9bd4ff7408d13fd689b74b1f2edb204951d80ad7fa794",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
       },
       {
         "digest": "9751b20859dd22d8288bb748bc95e5376f979e26ef7a7350166349b86f7616ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
       },
       {
         "digest": "68df26fdfeda77b6c2a4431ffd9e87518dc404a14b7c012b00eaa0c2e3e41543",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
       },
       {
         "digest": "9b6b119ee8808e7dc7071af89550151a22d0149246d3b572ea021f570d53f4ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
       },
       {
         "digest": "614c935eaf8d1db956bde55b40ea66e4add39215795f533408ad477cd0efd7a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
       },
       {
         "digest": "eb82e2ab84eed3084b560a7e2620a210f4835093078f67cf298c9141b8164917",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
       },
       {
         "digest": "999158f8d387a5f1841fd1ad470f0868a07332674f467745bff9105c44fac0bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "43a0651d6ac125fe27eefff16ec70f8153e2ceb93b0847c734391c79cd8cad3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
       },
       {
         "digest": "239d21884602a5f69a1ea2a153c4582c72f8401eb135d5bc7409aafa94445584",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/index.md"
       },
       {
         "digest": "11f9305cf1514f384664f3ee060456c0546ec23013102771c2e8322c9787842b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
       },
       {
         "digest": "c0e8ed01a8dc5a51d439f8830b3252390a09d8f0f8f3de87beefa70d19e4172e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
       },
       {
         "digest": "66dd40fb8ebea070ef149130a19f6cd75ac9773995661bfe333160d20b22d25f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
       },
       {
         "digest": "31d9999c4385eda2c0b5c483cb3c8a3ee1e989212153bfdf7fd80d94f58ab4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
       },
       {
         "digest": "5ca02a8bb74b5b8b84dadac7ada745960cf801e79ca2a09015146b0bc0769340",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
       },
       {
         "digest": "166718ba2d8c5cfde02876c52919d2e5ffe6a9b160bda7eb5336662569b46719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
       },
       {
         "digest": "7b048b60f5423e0632a0225657e67d09632879169513193840e6d7f0b95afd0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
       },
       {
         "digest": "5b3f58cebcfbecb000b5faa81a2719f868b65ffedd3017321a2a29402a8f65e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -765,97 +765,97 @@
       {
         "digest": "5000bdefe4f3ff0d486b2e066a8d0c1b766e3a9738181b3aa5cba8828c14fa08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-plan.md"
       },
       {
         "digest": "7641eb8ada8a10117a5aba76111bc55553bb62e9559760b116e5b349526f6f77",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/claude-spec.md"
       },
       {
         "digest": "5cc04079e3074809dde9bd4ff7408d13fd689b74b1f2edb204951d80ad7fa794",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/deep_implement_config.json"
       },
       {
         "digest": "9751b20859dd22d8288bb748bc95e5376f979e26ef7a7350166349b86f7616ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/persistence-audit.md"
       },
       {
         "digest": "68df26fdfeda77b6c2a4431ffd9e87518dc404a14b7c012b00eaa0c2e3e41543",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/risk_register.md"
       },
       {
         "digest": "9b6b119ee8808e7dc7071af89550151a22d0149246d3b572ea021f570d53f4ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/implementation/smoke-test-notes.md"
       },
       {
         "digest": "614c935eaf8d1db956bde55b40ea66e4add39215795f533408ad477cd0efd7a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/development-completeness-review.md"
       },
       {
         "digest": "eb82e2ab84eed3084b560a7e2620a210f4835093078f67cf298c9141b8164917",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/plan-completeness-review.md"
       },
       {
         "digest": "999158f8d387a5f1841fd1ad470f0868a07332674f467745bff9105c44fac0bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "43a0651d6ac125fe27eefff16ec70f8153e2ceb93b0847c734391c79cd8cad3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/reviews/self-review-round-1.md"
       },
       {
         "digest": "239d21884602a5f69a1ea2a153c4582c72f8401eb135d5bc7409aafa94445584",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/index.md"
       },
       {
         "digest": "11f9305cf1514f384664f3ee060456c0546ec23013102771c2e8322c9787842b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-01-provider-foundation.md"
       },
       {
         "digest": "c0e8ed01a8dc5a51d439f8830b3252390a09d8f0f8f3de87beefa70d19e4172e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-02-model-seeding-and-fallback.md"
       },
       {
         "digest": "66dd40fb8ebea070ef149130a19f6cd75ac9773995661bfe333160d20b22d25f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-03-media-studio-inputs-and-validation.md"
       },
       {
         "digest": "31d9999c4385eda2c0b5c483cb3c8a3ee1e989212153bfdf7fd80d94f58ab4e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-04-python-provider-client.md"
       },
       {
         "digest": "5ca02a8bb74b5b8b84dadac7ada745960cf801e79ca2a09015146b0bc0769340",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-05-gateway-routing-and-sync-flow.md"
       },
       {
         "digest": "166718ba2d8c5cfde02876c52919d2e5ffe6a9b160bda7eb5336662569b46719",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-06-polling-rehosting-and-billing.md"
       },
       {
         "digest": "7b048b60f5423e0632a0225657e67d09632879169513193840e6d7f0b95afd0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-07-security-observability-and-rollout.md"
       },
       {
         "digest": "5b3f58cebcfbecb000b5faa81a2719f868b65ffedd3017321a2a29402a8f65e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/sections/section-08-regression-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

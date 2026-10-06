@@ -14,7 +14,7 @@
         "referencing_spec_id": "231",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "231",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "231",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -54,7 +54,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": null
       },
@@ -70,7 +70,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": null
       },
@@ -86,7 +86,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -100,7 +100,7 @@
         "requirement_ids": [
           "R1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L660",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L660",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -112,7 +112,7 @@
         "referencing_spec_id": "232",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L764",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L764",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -130,7 +130,7 @@
           "R6",
           "R7"
         ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -148,7 +148,7 @@
           "R6",
           "R7"
         ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       }
@@ -164,92 +164,92 @@
       {
         "digest": "da86fd284c32dcec2fe89eedad3cc252e8a5d8d61dabceb3045a1135a638c423",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
       },
       {
         "digest": "6b79c6ab395f865a1ca9de5a1c40eb013bd2a8d3390f40bdc2f0078d724092a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
       },
       {
         "digest": "267af4b7b6631e63c28913bf92958877f0238ba6a884fa9920aa708647a60137",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
       },
       {
         "digest": "c792b5b645c9f043c5db02ce8e4a5c5fdfb9e31e755563fbc2a7927bc03f9c71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
       },
       {
         "digest": "32110847e336cffa0162e906747385d376ff51eee20506fa41f5b4c5255cb4cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "c3b12d66099fa9f22de3a8e2d5814096ff92898677ebd702a6db74a6492cf1a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
       },
       {
         "digest": "4132a1c04c065ee43809a3de12843a92e562c788b78ac9cb52fb28c0f3a6bc8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
       },
       {
         "digest": "8624486d06f07e18a5c9c93a176f518e2907c7005a4823ecc785ba8ca9b59e88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
       },
       {
         "digest": "58d36c20e04f2040db7d40fa04486df403fd33c006e7446422e1b3a496ba5622",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
       },
       {
         "digest": "a100452864207b5d0a8884a17c6121933591b9a20a4e5fab2e4fd92579881dbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
       },
       {
         "digest": "5b3398c18f8152578f1154ccb71b1f063c84e618fd10ba3e35cfa46c16cdee9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
       },
       {
         "digest": "fe71f57908d967213159c8a64a6b6acb736872a156d1f503ef7d9654cbe007f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
       },
       {
         "digest": "854fe319d802c7e16a5ab11f703b466bf4fea8fd960da11159257b037c7a5b70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
       },
       {
         "digest": "128640623c2dd1ae046a276db2abc68579f1770be025a36184fd1c88456bb0ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
       },
       {
         "digest": "3f5f287e3bb39b73e6729c0aa4c8235bd7abc1a54a89f61294bbd58756e43c41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
       },
       {
         "digest": "d1e66b93061e7737d9f69ff8dab0484a86bb8e77d3988168c7710513f12abae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
       },
       {
         "digest": "6dcce46268422e539f13b69887e1eeb6644de1131c38eaf68df299bfe67e5203",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
       },
       {
         "digest": "aa21bf34f535f4d1756e8a6a5f3e3e3482bac91285674f2232f959304c1a3762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -280,92 +280,92 @@
       {
         "digest": "da86fd284c32dcec2fe89eedad3cc252e8a5d8d61dabceb3045a1135a638c423",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
       },
       {
         "digest": "6b79c6ab395f865a1ca9de5a1c40eb013bd2a8d3390f40bdc2f0078d724092a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
       },
       {
         "digest": "267af4b7b6631e63c28913bf92958877f0238ba6a884fa9920aa708647a60137",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
       },
       {
         "digest": "c792b5b645c9f043c5db02ce8e4a5c5fdfb9e31e755563fbc2a7927bc03f9c71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
       },
       {
         "digest": "32110847e336cffa0162e906747385d376ff51eee20506fa41f5b4c5255cb4cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "c3b12d66099fa9f22de3a8e2d5814096ff92898677ebd702a6db74a6492cf1a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
       },
       {
         "digest": "4132a1c04c065ee43809a3de12843a92e562c788b78ac9cb52fb28c0f3a6bc8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
       },
       {
         "digest": "8624486d06f07e18a5c9c93a176f518e2907c7005a4823ecc785ba8ca9b59e88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
       },
       {
         "digest": "58d36c20e04f2040db7d40fa04486df403fd33c006e7446422e1b3a496ba5622",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
       },
       {
         "digest": "a100452864207b5d0a8884a17c6121933591b9a20a4e5fab2e4fd92579881dbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
       },
       {
         "digest": "5b3398c18f8152578f1154ccb71b1f063c84e618fd10ba3e35cfa46c16cdee9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
       },
       {
         "digest": "fe71f57908d967213159c8a64a6b6acb736872a156d1f503ef7d9654cbe007f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
       },
       {
         "digest": "854fe319d802c7e16a5ab11f703b466bf4fea8fd960da11159257b037c7a5b70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
       },
       {
         "digest": "128640623c2dd1ae046a276db2abc68579f1770be025a36184fd1c88456bb0ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
       },
       {
         "digest": "3f5f287e3bb39b73e6729c0aa4c8235bd7abc1a54a89f61294bbd58756e43c41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
       },
       {
         "digest": "d1e66b93061e7737d9f69ff8dab0484a86bb8e77d3988168c7710513f12abae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
       },
       {
         "digest": "6dcce46268422e539f13b69887e1eeb6644de1131c38eaf68df299bfe67e5203",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
       },
       {
         "digest": "aa21bf34f535f4d1756e8a6a5f3e3e3482bac91285674f2232f959304c1a3762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
       },
       {
         "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
@@ -537,98 +537,98 @@
       {
         "digest": "da86fd284c32dcec2fe89eedad3cc252e8a5d8d61dabceb3045a1135a638c423",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
       },
       {
         "digest": "6b79c6ab395f865a1ca9de5a1c40eb013bd2a8d3390f40bdc2f0078d724092a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
       },
       {
         "digest": "267af4b7b6631e63c28913bf92958877f0238ba6a884fa9920aa708647a60137",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
       },
       {
         "digest": "c792b5b645c9f043c5db02ce8e4a5c5fdfb9e31e755563fbc2a7927bc03f9c71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
       },
       {
         "digest": "32110847e336cffa0162e906747385d376ff51eee20506fa41f5b4c5255cb4cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "c3b12d66099fa9f22de3a8e2d5814096ff92898677ebd702a6db74a6492cf1a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
       },
       {
         "digest": "4132a1c04c065ee43809a3de12843a92e562c788b78ac9cb52fb28c0f3a6bc8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
       },
       {
         "digest": "8624486d06f07e18a5c9c93a176f518e2907c7005a4823ecc785ba8ca9b59e88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
       },
       {
         "digest": "58d36c20e04f2040db7d40fa04486df403fd33c006e7446422e1b3a496ba5622",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
       },
       {
         "digest": "a100452864207b5d0a8884a17c6121933591b9a20a4e5fab2e4fd92579881dbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
       },
       {
         "digest": "5b3398c18f8152578f1154ccb71b1f063c84e618fd10ba3e35cfa46c16cdee9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
       },
       {
         "digest": "fe71f57908d967213159c8a64a6b6acb736872a156d1f503ef7d9654cbe007f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
       },
       {
         "digest": "854fe319d802c7e16a5ab11f703b466bf4fea8fd960da11159257b037c7a5b70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
       },
       {
         "digest": "128640623c2dd1ae046a276db2abc68579f1770be025a36184fd1c88456bb0ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
       },
       {
         "digest": "3f5f287e3bb39b73e6729c0aa4c8235bd7abc1a54a89f61294bbd58756e43c41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
       },
       {
         "digest": "d1e66b93061e7737d9f69ff8dab0484a86bb8e77d3988168c7710513f12abae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
       },
       {
         "digest": "6dcce46268422e539f13b69887e1eeb6644de1131c38eaf68df299bfe67e5203",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
       },
       {
         "digest": "aa21bf34f535f4d1756e8a6a5f3e3e3482bac91285674f2232f959304c1a3762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
     "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
@@ -681,92 +681,92 @@
       {
         "digest": "da86fd284c32dcec2fe89eedad3cc252e8a5d8d61dabceb3045a1135a638c423",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
       },
       {
         "digest": "6b79c6ab395f865a1ca9de5a1c40eb013bd2a8d3390f40bdc2f0078d724092a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
       },
       {
         "digest": "267af4b7b6631e63c28913bf92958877f0238ba6a884fa9920aa708647a60137",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
       },
       {
         "digest": "c792b5b645c9f043c5db02ce8e4a5c5fdfb9e31e755563fbc2a7927bc03f9c71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
       },
       {
         "digest": "32110847e336cffa0162e906747385d376ff51eee20506fa41f5b4c5255cb4cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "c3b12d66099fa9f22de3a8e2d5814096ff92898677ebd702a6db74a6492cf1a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
       },
       {
         "digest": "4132a1c04c065ee43809a3de12843a92e562c788b78ac9cb52fb28c0f3a6bc8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
       },
       {
         "digest": "8624486d06f07e18a5c9c93a176f518e2907c7005a4823ecc785ba8ca9b59e88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
       },
       {
         "digest": "58d36c20e04f2040db7d40fa04486df403fd33c006e7446422e1b3a496ba5622",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
       },
       {
         "digest": "a100452864207b5d0a8884a17c6121933591b9a20a4e5fab2e4fd92579881dbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
       },
       {
         "digest": "5b3398c18f8152578f1154ccb71b1f063c84e618fd10ba3e35cfa46c16cdee9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
       },
       {
         "digest": "fe71f57908d967213159c8a64a6b6acb736872a156d1f503ef7d9654cbe007f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
       },
       {
         "digest": "854fe319d802c7e16a5ab11f703b466bf4fea8fd960da11159257b037c7a5b70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
       },
       {
         "digest": "128640623c2dd1ae046a276db2abc68579f1770be025a36184fd1c88456bb0ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
       },
       {
         "digest": "3f5f287e3bb39b73e6729c0aa4c8235bd7abc1a54a89f61294bbd58756e43c41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
       },
       {
         "digest": "d1e66b93061e7737d9f69ff8dab0484a86bb8e77d3988168c7710513f12abae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
       },
       {
         "digest": "6dcce46268422e539f13b69887e1eeb6644de1131c38eaf68df299bfe67e5203",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
       },
       {
         "digest": "aa21bf34f535f4d1756e8a6a5f3e3e3482bac91285674f2232f959304c1a3762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
       },
       {
         "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
@@ -1741,92 +1741,92 @@
       {
         "digest": "da86fd284c32dcec2fe89eedad3cc252e8a5d8d61dabceb3045a1135a638c423",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
       },
       {
         "digest": "6b79c6ab395f865a1ca9de5a1c40eb013bd2a8d3390f40bdc2f0078d724092a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
       },
       {
         "digest": "267af4b7b6631e63c28913bf92958877f0238ba6a884fa9920aa708647a60137",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
       },
       {
         "digest": "c792b5b645c9f043c5db02ce8e4a5c5fdfb9e31e755563fbc2a7927bc03f9c71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
       },
       {
         "digest": "32110847e336cffa0162e906747385d376ff51eee20506fa41f5b4c5255cb4cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
       },
       {
         "digest": "c3b12d66099fa9f22de3a8e2d5814096ff92898677ebd702a6db74a6492cf1a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
       },
       {
         "digest": "4132a1c04c065ee43809a3de12843a92e562c788b78ac9cb52fb28c0f3a6bc8c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
       },
       {
         "digest": "8624486d06f07e18a5c9c93a176f518e2907c7005a4823ecc785ba8ca9b59e88",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
       },
       {
         "digest": "58d36c20e04f2040db7d40fa04486df403fd33c006e7446422e1b3a496ba5622",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
       },
       {
         "digest": "a100452864207b5d0a8884a17c6121933591b9a20a4e5fab2e4fd92579881dbe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
       },
       {
         "digest": "5b3398c18f8152578f1154ccb71b1f063c84e618fd10ba3e35cfa46c16cdee9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
       },
       {
         "digest": "fe71f57908d967213159c8a64a6b6acb736872a156d1f503ef7d9654cbe007f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
       },
       {
         "digest": "854fe319d802c7e16a5ab11f703b466bf4fea8fd960da11159257b037c7a5b70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
       },
       {
         "digest": "128640623c2dd1ae046a276db2abc68579f1770be025a36184fd1c88456bb0ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
       },
       {
         "digest": "3f5f287e3bb39b73e6729c0aa4c8235bd7abc1a54a89f61294bbd58756e43c41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
       },
       {
         "digest": "d1e66b93061e7737d9f69ff8dab0484a86bb8e77d3988168c7710513f12abae7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
       },
       {
         "digest": "6dcce46268422e539f13b69887e1eeb6644de1131c38eaf68df299bfe67e5203",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
       },
       {
         "digest": "aa21bf34f535f4d1756e8a6a5f3e3e3482bac91285674f2232f959304c1a3762",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L24"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L24"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L24",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L55"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L55"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L55",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L56"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L56"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L56",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L57"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L57"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L57",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L58"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L58"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L58",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L59"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L59"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L59",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L60"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L60"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L60",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L60",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L71"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L71"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L71",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L91"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L91"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L91",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L100"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L101"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L117"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L124"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L125"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L135"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L139"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L139"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L139",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L143"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L143"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L143",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L144"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L146"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L147"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L148"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L165"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L166"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L174"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L174"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L174",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L177"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L177"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L177",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L184"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L231"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L262"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L264"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L288"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L289"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L289"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L289",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L293"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L318"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L318"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L318",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L319"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L319"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L319",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L320"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L320"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L320",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L321"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L321"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L321",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L322"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/093-hermes-capability-expansion/spec.md#L323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L323"
       ],
-      "authority_source": "specs/feature/093-hermes-capability-expansion/spec.md#L323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/093-hermes-capability-expansion/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

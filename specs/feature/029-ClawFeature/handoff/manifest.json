@@ -17,97 +17,97 @@
       {
         "digest": "67c9dbde83adf9eba1288bdbd3a924e8730feac9587f23ad8f883d0272c78095",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-plan.md"
       },
       {
         "digest": "6f8e584b3170c524af8be825823d194232be972f2327b28533937b812708a077",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-spec.md"
       },
       {
         "digest": "aaf6c1036ea7c0e271edfe46e061eb5b836c687ac5beaf2fb0fec7deb4864d96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
       },
       {
         "digest": "864b2948a6dff94ceb810a0dc4e040c9afb95363aa77e7ee233814c02704dedf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
       },
       {
         "digest": "9cfb37adcda2f4cf3bab75161e4c77c17315f2c20ff01e49abe442dc505e012d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/index.md"
       },
       {
         "digest": "46e1399c62598667e7accc6f51eac4a9ca3db917d38f7eddc337f27db3634a41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-01-database.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-01-database.md"
       },
       {
         "digest": "5dc32c914c14f2607e742cf21bb7abce86f4b709f462fc68cd4ae6ca227c39c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-02-persona.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-02-persona.md"
       },
       {
         "digest": "4cfc91a4928c2280b94490c5a1c1540db0112e5b1eebc5f2c369bd3626f00eb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
       },
       {
         "digest": "c6aa5e696b3e222c9b6b12262da716cdc63524c3367e81ef6ad699134936fd9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-04-canvas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-04-canvas.md"
       },
       {
         "digest": "9721dc8a8e9269f8cb532802f83ae46ffe97f82d95caaca81a20d05f8b025667",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
       },
       {
         "digest": "45bcda8502a5b02bd84367df162442b90d13f2cf5f4aa4f3fb6914649897883a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-06-voice.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-06-voice.md"
       },
       {
         "digest": "17ef4a8aaf60bb02bc13d6e10c0270261e086d5a370a17d42335b4b26daae826",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-07-browser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-07-browser.md"
       },
       {
         "digest": "1c133378db2a3db346a595d2a477f29f29c1f0641e0d0645e1f9ddf70dace634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
       },
       {
         "digest": "a227359e6f620bf66e175aa8db1e0cb644ab9e545c977411b8a9fccb6654c767",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
       },
       {
         "digest": "3ab797f1f31daa4ebcab7192d9b61bcdcf1bad45c3d43bce232c82d3c54bfbf1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-10-widget.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-10-widget.md"
       },
       {
         "digest": "be790ab484c91c57a3a78120bf5e0d041d4606971e2b36ad54fd78e4dba290d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
       },
       {
         "digest": "fa311b0a38cb68ec447dff8a0eab4db3e04d8413eb67b1f80a8cc03b169ed223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
       },
       {
         "digest": "a1bf7443117bcec2481b5ce41be7405be682c89f1b2dfcc5a6bc061eb6c5fc06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
       },
       {
         "digest": "5c0983a76d47268215e2ca445673b0315273faba1272e0ce5c0d936ba05f4434",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "67c9dbde83adf9eba1288bdbd3a924e8730feac9587f23ad8f883d0272c78095",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-plan.md"
       },
       {
         "digest": "6f8e584b3170c524af8be825823d194232be972f2327b28533937b812708a077",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-spec.md"
       },
       {
         "digest": "aaf6c1036ea7c0e271edfe46e061eb5b836c687ac5beaf2fb0fec7deb4864d96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
       },
       {
         "digest": "864b2948a6dff94ceb810a0dc4e040c9afb95363aa77e7ee233814c02704dedf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
       },
       {
         "digest": "9cfb37adcda2f4cf3bab75161e4c77c17315f2c20ff01e49abe442dc505e012d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/index.md"
       },
       {
         "digest": "46e1399c62598667e7accc6f51eac4a9ca3db917d38f7eddc337f27db3634a41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-01-database.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-01-database.md"
       },
       {
         "digest": "5dc32c914c14f2607e742cf21bb7abce86f4b709f462fc68cd4ae6ca227c39c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-02-persona.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-02-persona.md"
       },
       {
         "digest": "4cfc91a4928c2280b94490c5a1c1540db0112e5b1eebc5f2c369bd3626f00eb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
       },
       {
         "digest": "c6aa5e696b3e222c9b6b12262da716cdc63524c3367e81ef6ad699134936fd9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-04-canvas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-04-canvas.md"
       },
       {
         "digest": "9721dc8a8e9269f8cb532802f83ae46ffe97f82d95caaca81a20d05f8b025667",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
       },
       {
         "digest": "45bcda8502a5b02bd84367df162442b90d13f2cf5f4aa4f3fb6914649897883a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-06-voice.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-06-voice.md"
       },
       {
         "digest": "17ef4a8aaf60bb02bc13d6e10c0270261e086d5a370a17d42335b4b26daae826",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-07-browser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-07-browser.md"
       },
       {
         "digest": "1c133378db2a3db346a595d2a477f29f29c1f0641e0d0645e1f9ddf70dace634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
       },
       {
         "digest": "a227359e6f620bf66e175aa8db1e0cb644ab9e545c977411b8a9fccb6654c767",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
       },
       {
         "digest": "3ab797f1f31daa4ebcab7192d9b61bcdcf1bad45c3d43bce232c82d3c54bfbf1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-10-widget.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-10-widget.md"
       },
       {
         "digest": "be790ab484c91c57a3a78120bf5e0d041d4606971e2b36ad54fd78e4dba290d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
       },
       {
         "digest": "fa311b0a38cb68ec447dff8a0eab4db3e04d8413eb67b1f80a8cc03b169ed223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
       },
       {
         "digest": "a1bf7443117bcec2481b5ce41be7405be682c89f1b2dfcc5a6bc061eb6c5fc06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
       },
       {
         "digest": "5c0983a76d47268215e2ca445673b0315273faba1272e0ce5c0d936ba05f4434",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "67c9dbde83adf9eba1288bdbd3a924e8730feac9587f23ad8f883d0272c78095",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-plan.md"
       },
       {
         "digest": "6f8e584b3170c524af8be825823d194232be972f2327b28533937b812708a077",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-spec.md"
       },
       {
         "digest": "aaf6c1036ea7c0e271edfe46e061eb5b836c687ac5beaf2fb0fec7deb4864d96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
       },
       {
         "digest": "864b2948a6dff94ceb810a0dc4e040c9afb95363aa77e7ee233814c02704dedf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
       },
       {
         "digest": "9cfb37adcda2f4cf3bab75161e4c77c17315f2c20ff01e49abe442dc505e012d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/index.md"
       },
       {
         "digest": "46e1399c62598667e7accc6f51eac4a9ca3db917d38f7eddc337f27db3634a41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-01-database.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-01-database.md"
       },
       {
         "digest": "5dc32c914c14f2607e742cf21bb7abce86f4b709f462fc68cd4ae6ca227c39c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-02-persona.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-02-persona.md"
       },
       {
         "digest": "4cfc91a4928c2280b94490c5a1c1540db0112e5b1eebc5f2c369bd3626f00eb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
       },
       {
         "digest": "c6aa5e696b3e222c9b6b12262da716cdc63524c3367e81ef6ad699134936fd9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-04-canvas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-04-canvas.md"
       },
       {
         "digest": "9721dc8a8e9269f8cb532802f83ae46ffe97f82d95caaca81a20d05f8b025667",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
       },
       {
         "digest": "45bcda8502a5b02bd84367df162442b90d13f2cf5f4aa4f3fb6914649897883a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-06-voice.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-06-voice.md"
       },
       {
         "digest": "17ef4a8aaf60bb02bc13d6e10c0270261e086d5a370a17d42335b4b26daae826",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-07-browser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-07-browser.md"
       },
       {
         "digest": "1c133378db2a3db346a595d2a477f29f29c1f0641e0d0645e1f9ddf70dace634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
       },
       {
         "digest": "a227359e6f620bf66e175aa8db1e0cb644ab9e545c977411b8a9fccb6654c767",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
       },
       {
         "digest": "3ab797f1f31daa4ebcab7192d9b61bcdcf1bad45c3d43bce232c82d3c54bfbf1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-10-widget.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-10-widget.md"
       },
       {
         "digest": "be790ab484c91c57a3a78120bf5e0d041d4606971e2b36ad54fd78e4dba290d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
       },
       {
         "digest": "fa311b0a38cb68ec447dff8a0eab4db3e04d8413eb67b1f80a8cc03b169ed223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
       },
       {
         "digest": "a1bf7443117bcec2481b5ce41be7405be682c89f1b2dfcc5a6bc061eb6c5fc06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
       },
       {
         "digest": "5c0983a76d47268215e2ca445673b0315273faba1272e0ce5c0d936ba05f4434",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/029-ClawFeature/spec.md",
     "digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
@@ -409,102 +409,102 @@
       {
         "digest": "67c9dbde83adf9eba1288bdbd3a924e8730feac9587f23ad8f883d0272c78095",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-plan.md"
       },
       {
         "digest": "6f8e584b3170c524af8be825823d194232be972f2327b28533937b812708a077",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-spec.md"
       },
       {
         "digest": "aaf6c1036ea7c0e271edfe46e061eb5b836c687ac5beaf2fb0fec7deb4864d96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
       },
       {
         "digest": "864b2948a6dff94ceb810a0dc4e040c9afb95363aa77e7ee233814c02704dedf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
       },
       {
         "digest": "9cfb37adcda2f4cf3bab75161e4c77c17315f2c20ff01e49abe442dc505e012d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/index.md"
       },
       {
         "digest": "46e1399c62598667e7accc6f51eac4a9ca3db917d38f7eddc337f27db3634a41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-01-database.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-01-database.md"
       },
       {
         "digest": "5dc32c914c14f2607e742cf21bb7abce86f4b709f462fc68cd4ae6ca227c39c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-02-persona.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-02-persona.md"
       },
       {
         "digest": "4cfc91a4928c2280b94490c5a1c1540db0112e5b1eebc5f2c369bd3626f00eb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
       },
       {
         "digest": "c6aa5e696b3e222c9b6b12262da716cdc63524c3367e81ef6ad699134936fd9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-04-canvas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-04-canvas.md"
       },
       {
         "digest": "9721dc8a8e9269f8cb532802f83ae46ffe97f82d95caaca81a20d05f8b025667",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
       },
       {
         "digest": "45bcda8502a5b02bd84367df162442b90d13f2cf5f4aa4f3fb6914649897883a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-06-voice.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-06-voice.md"
       },
       {
         "digest": "17ef4a8aaf60bb02bc13d6e10c0270261e086d5a370a17d42335b4b26daae826",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-07-browser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-07-browser.md"
       },
       {
         "digest": "1c133378db2a3db346a595d2a477f29f29c1f0641e0d0645e1f9ddf70dace634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
       },
       {
         "digest": "a227359e6f620bf66e175aa8db1e0cb644ab9e545c977411b8a9fccb6654c767",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
       },
       {
         "digest": "3ab797f1f31daa4ebcab7192d9b61bcdcf1bad45c3d43bce232c82d3c54bfbf1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-10-widget.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-10-widget.md"
       },
       {
         "digest": "be790ab484c91c57a3a78120bf5e0d041d4606971e2b36ad54fd78e4dba290d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
       },
       {
         "digest": "fa311b0a38cb68ec447dff8a0eab4db3e04d8413eb67b1f80a8cc03b169ed223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
       },
       {
         "digest": "a1bf7443117bcec2481b5ce41be7405be682c89f1b2dfcc5a6bc061eb6c5fc06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
       },
       {
         "digest": "5c0983a76d47268215e2ca445673b0315273faba1272e0ce5c0d936ba05f4434",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
       },
       {
         "digest": "85fd15e9e1c6ffd3e653d9364be4ab74c1cf373eb61ead0332a26e99e85f1a42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-15-security-infra.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-15-security-infra.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -959,102 +959,102 @@
       {
         "digest": "67c9dbde83adf9eba1288bdbd3a924e8730feac9587f23ad8f883d0272c78095",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-plan.md"
       },
       {
         "digest": "6f8e584b3170c524af8be825823d194232be972f2327b28533937b812708a077",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/claude-spec.md"
       },
       {
         "digest": "aaf6c1036ea7c0e271edfe46e061eb5b836c687ac5beaf2fb0fec7deb4864d96",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/implementation/deep_implement_config.json"
       },
       {
         "digest": "864b2948a6dff94ceb810a0dc4e040c9afb95363aa77e7ee233814c02704dedf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/reviews/iteration-1-opus.md"
       },
       {
         "digest": "9cfb37adcda2f4cf3bab75161e4c77c17315f2c20ff01e49abe442dc505e012d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/index.md"
       },
       {
         "digest": "46e1399c62598667e7accc6f51eac4a9ca3db917d38f7eddc337f27db3634a41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-01-database.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-01-database.md"
       },
       {
         "digest": "5dc32c914c14f2607e742cf21bb7abce86f4b709f462fc68cd4ae6ca227c39c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-02-persona.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-02-persona.md"
       },
       {
         "digest": "4cfc91a4928c2280b94490c5a1c1540db0112e5b1eebc5f2c369bd3626f00eb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-03-cost-display.md"
       },
       {
         "digest": "c6aa5e696b3e222c9b6b12262da716cdc63524c3367e81ef6ad699134936fd9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-04-canvas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-04-canvas.md"
       },
       {
         "digest": "9721dc8a8e9269f8cb532802f83ae46ffe97f82d95caaca81a20d05f8b025667",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-05-channel-adapter.md"
       },
       {
         "digest": "45bcda8502a5b02bd84367df162442b90d13f2cf5f4aa4f3fb6914649897883a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-06-voice.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-06-voice.md"
       },
       {
         "digest": "17ef4a8aaf60bb02bc13d6e10c0270261e086d5a370a17d42335b4b26daae826",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-07-browser.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-07-browser.md"
       },
       {
         "digest": "1c133378db2a3db346a595d2a477f29f29c1f0641e0d0645e1f9ddf70dace634",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-08-cross-agency.md"
       },
       {
         "digest": "a227359e6f620bf66e175aa8db1e0cb644ab9e545c977411b8a9fccb6654c767",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-09-whatsapp-line.md"
       },
       {
         "digest": "3ab797f1f31daa4ebcab7192d9b61bcdcf1bad45c3d43bce232c82d3c54bfbf1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-10-widget.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-10-widget.md"
       },
       {
         "digest": "be790ab484c91c57a3a78120bf5e0d041d4606971e2b36ad54fd78e4dba290d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-11-webhooks.md"
       },
       {
         "digest": "fa311b0a38cb68ec447dff8a0eab4db3e04d8413eb67b1f80a8cc03b169ed223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-12-channel-router.md"
       },
       {
         "digest": "a1bf7443117bcec2481b5ce41be7405be682c89f1b2dfcc5a6bc061eb6c5fc06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-13-slack-discord.md"
       },
       {
         "digest": "5c0983a76d47268215e2ca445673b0315273faba1272e0ce5c0d936ba05f4434",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-14-feature-flags.md"
       },
       {
         "digest": "85fd15e9e1c6ffd3e653d9364be4ab74c1cf373eb61ead0332a26e99e85f1a42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/029-ClawFeature/sections/section-15-security-infra.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/029-ClawFeature/sections/section-15-security-infra.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

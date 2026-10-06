@@ -17,7 +17,7 @@
       {
         "digest": "a38f379927e20c025f52cd316a125410f10b0f2fe9b3a5c615006d60667eff00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/005-api-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/005-api-generator/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "a38f379927e20c025f52cd316a125410f10b0f2fe9b3a5c615006d60667eff00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/005-api-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/005-api-generator/plan.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -80,13 +80,13 @@
       {
         "digest": "a38f379927e20c025f52cd316a125410f10b0f2fe9b3a5c615006d60667eff00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/005-api-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/005-api-generator/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/005-api-generator/spec.md",
     "digest": "478b575388633d3189963cbd6420c988c5994ac4222844e7b39c46396c73bcea",
@@ -139,7 +139,7 @@
       {
         "digest": "a38f379927e20c025f52cd316a125410f10b0f2fe9b3a5c615006d60667eff00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/005-api-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/005-api-generator/plan.md"
       }
     ],
     "stale_fields": [],
@@ -167,7 +167,7 @@
       {
         "digest": "a38f379927e20c025f52cd316a125410f10b0f2fe9b3a5c615006d60667eff00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/005-api-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/005-api-generator/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

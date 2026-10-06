@@ -17,82 +17,82 @@
       {
         "digest": "743526182570e4f9b8ca128f6c18d3296d23f8f615a5898c0970075f64c84a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "90c9155fa039ae382fdd80e4672b95ef3ed9996bacf152302c76e8059f8c8c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9293d298a9a8f9f3338efbf024582b4d2737e356aa279e788ded6fceb3e52182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
       },
       {
         "digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "8998a8b02593efe5fc49d243896c1524c03df288d21df62919c7a8035d116fd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
       },
       {
         "digest": "f38d3c2960c006a7613b15625031d1677618767d446f2315354a6a9e210bb34e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
       },
       {
         "digest": "0d8a2a145126c1307e44f1e5d96a462dceb4d2b4e1a6e85631f053a93795869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
       },
       {
         "digest": "d785a5a6f9f08cefc29186524e1f008ba965e7f2312a476be95c4075435d2f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
       },
       {
         "digest": "802a2dbfb20b097907f8deec65ccd7a35db0fdb19cace9ef9194889b70bd7ead",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
       },
       {
         "digest": "7040ff30292dfdae6dde66cd17d95ed4ead90526da1306c6f7556f20f0c8bbb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
       },
       {
         "digest": "dbc72e3bca828b5f33480adaab22d9c703b7fb1dadf958c535aa4b08e898c9b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
       },
       {
         "digest": "6f5c8f67a45d6171e362e29e2fa0e2a78f793e75d599d29752891339803a6664",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
       },
       {
         "digest": "08d8b2ac7b2fad307c26b50015d9af059bdc256a6e6df7525c758e34df959eff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3c98879e31c9ea2ed867250d621d09df8d6cdb71ba16cfa17b08e8cdae9cb588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
       },
       {
         "digest": "8433c4fbd9b104562380d350586e342d7511bf7b1da1bef6017e355cd8c118a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
       },
       {
         "digest": "91b6d64c3e118cbd1f3da2f0daf3038e285b46dd23d3290cb5c0076bd8efe896",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
       }
     ],
     "predecessors": [],
@@ -123,82 +123,82 @@
       {
         "digest": "743526182570e4f9b8ca128f6c18d3296d23f8f615a5898c0970075f64c84a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "90c9155fa039ae382fdd80e4672b95ef3ed9996bacf152302c76e8059f8c8c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9293d298a9a8f9f3338efbf024582b4d2737e356aa279e788ded6fceb3e52182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
       },
       {
         "digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "8998a8b02593efe5fc49d243896c1524c03df288d21df62919c7a8035d116fd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
       },
       {
         "digest": "f38d3c2960c006a7613b15625031d1677618767d446f2315354a6a9e210bb34e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
       },
       {
         "digest": "0d8a2a145126c1307e44f1e5d96a462dceb4d2b4e1a6e85631f053a93795869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
       },
       {
         "digest": "d785a5a6f9f08cefc29186524e1f008ba965e7f2312a476be95c4075435d2f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
       },
       {
         "digest": "802a2dbfb20b097907f8deec65ccd7a35db0fdb19cace9ef9194889b70bd7ead",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
       },
       {
         "digest": "7040ff30292dfdae6dde66cd17d95ed4ead90526da1306c6f7556f20f0c8bbb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
       },
       {
         "digest": "dbc72e3bca828b5f33480adaab22d9c703b7fb1dadf958c535aa4b08e898c9b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
       },
       {
         "digest": "6f5c8f67a45d6171e362e29e2fa0e2a78f793e75d599d29752891339803a6664",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
       },
       {
         "digest": "08d8b2ac7b2fad307c26b50015d9af059bdc256a6e6df7525c758e34df959eff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3c98879e31c9ea2ed867250d621d09df8d6cdb71ba16cfa17b08e8cdae9cb588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
       },
       {
         "digest": "8433c4fbd9b104562380d350586e342d7511bf7b1da1bef6017e355cd8c118a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
       },
       {
         "digest": "91b6d64c3e118cbd1f3da2f0daf3038e285b46dd23d3290cb5c0076bd8efe896",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -230,88 +230,88 @@
       {
         "digest": "743526182570e4f9b8ca128f6c18d3296d23f8f615a5898c0970075f64c84a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "90c9155fa039ae382fdd80e4672b95ef3ed9996bacf152302c76e8059f8c8c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9293d298a9a8f9f3338efbf024582b4d2737e356aa279e788ded6fceb3e52182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
       },
       {
         "digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "8998a8b02593efe5fc49d243896c1524c03df288d21df62919c7a8035d116fd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
       },
       {
         "digest": "f38d3c2960c006a7613b15625031d1677618767d446f2315354a6a9e210bb34e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
       },
       {
         "digest": "0d8a2a145126c1307e44f1e5d96a462dceb4d2b4e1a6e85631f053a93795869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
       },
       {
         "digest": "d785a5a6f9f08cefc29186524e1f008ba965e7f2312a476be95c4075435d2f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
       },
       {
         "digest": "802a2dbfb20b097907f8deec65ccd7a35db0fdb19cace9ef9194889b70bd7ead",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
       },
       {
         "digest": "7040ff30292dfdae6dde66cd17d95ed4ead90526da1306c6f7556f20f0c8bbb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
       },
       {
         "digest": "dbc72e3bca828b5f33480adaab22d9c703b7fb1dadf958c535aa4b08e898c9b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
       },
       {
         "digest": "6f5c8f67a45d6171e362e29e2fa0e2a78f793e75d599d29752891339803a6664",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
       },
       {
         "digest": "08d8b2ac7b2fad307c26b50015d9af059bdc256a6e6df7525c758e34df959eff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3c98879e31c9ea2ed867250d621d09df8d6cdb71ba16cfa17b08e8cdae9cb588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
       },
       {
         "digest": "8433c4fbd9b104562380d350586e342d7511bf7b1da1bef6017e355cd8c118a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
       },
       {
         "digest": "91b6d64c3e118cbd1f3da2f0daf3038e285b46dd23d3290cb5c0076bd8efe896",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
     "digest": "d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
@@ -364,82 +364,82 @@
       {
         "digest": "743526182570e4f9b8ca128f6c18d3296d23f8f615a5898c0970075f64c84a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "90c9155fa039ae382fdd80e4672b95ef3ed9996bacf152302c76e8059f8c8c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9293d298a9a8f9f3338efbf024582b4d2737e356aa279e788ded6fceb3e52182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
       },
       {
         "digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "8998a8b02593efe5fc49d243896c1524c03df288d21df62919c7a8035d116fd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
       },
       {
         "digest": "f38d3c2960c006a7613b15625031d1677618767d446f2315354a6a9e210bb34e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
       },
       {
         "digest": "0d8a2a145126c1307e44f1e5d96a462dceb4d2b4e1a6e85631f053a93795869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
       },
       {
         "digest": "d785a5a6f9f08cefc29186524e1f008ba965e7f2312a476be95c4075435d2f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
       },
       {
         "digest": "802a2dbfb20b097907f8deec65ccd7a35db0fdb19cace9ef9194889b70bd7ead",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
       },
       {
         "digest": "7040ff30292dfdae6dde66cd17d95ed4ead90526da1306c6f7556f20f0c8bbb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
       },
       {
         "digest": "dbc72e3bca828b5f33480adaab22d9c703b7fb1dadf958c535aa4b08e898c9b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
       },
       {
         "digest": "6f5c8f67a45d6171e362e29e2fa0e2a78f793e75d599d29752891339803a6664",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
       },
       {
         "digest": "08d8b2ac7b2fad307c26b50015d9af059bdc256a6e6df7525c758e34df959eff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3c98879e31c9ea2ed867250d621d09df8d6cdb71ba16cfa17b08e8cdae9cb588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
       },
       {
         "digest": "8433c4fbd9b104562380d350586e342d7511bf7b1da1bef6017e355cd8c118a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
       },
       {
         "digest": "91b6d64c3e118cbd1f3da2f0daf3038e285b46dd23d3290cb5c0076bd8efe896",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -543,82 +543,82 @@
       {
         "digest": "743526182570e4f9b8ca128f6c18d3296d23f8f615a5898c0970075f64c84a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "90c9155fa039ae382fdd80e4672b95ef3ed9996bacf152302c76e8059f8c8c31",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9293d298a9a8f9f3338efbf024582b4d2737e356aa279e788ded6fceb3e52182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/cross-section-review.md"
       },
       {
         "digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "8998a8b02593efe5fc49d243896c1524c03df288d21df62919c7a8035d116fd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-1-5.md"
       },
       {
         "digest": "f38d3c2960c006a7613b15625031d1677618767d446f2315354a6a9e210bb34e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/gap-review-rounds-11-20.md"
       },
       {
         "digest": "0d8a2a145126c1307e44f1e5d96a462dceb4d2b4e1a6e85631f053a93795869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/runtime-verification.md"
       },
       {
         "digest": "d785a5a6f9f08cefc29186524e1f008ba965e7f2312a476be95c4075435d2f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-01-evidence.md"
       },
       {
         "digest": "802a2dbfb20b097907f8deec65ccd7a35db0fdb19cace9ef9194889b70bd7ead",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/section-02-evidence.md"
       },
       {
         "digest": "7040ff30292dfdae6dde66cd17d95ed4ead90526da1306c6f7556f20f0c8bbb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/usage.md"
       },
       {
         "digest": "dbc72e3bca828b5f33480adaab22d9c703b7fb1dadf958c535aa4b08e898c9b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/deep-review-10-rounds.md"
       },
       {
         "digest": "6f5c8f67a45d6171e362e29e2fa0e2a78f793e75d599d29752891339803a6664",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/final-5-rounds.md"
       },
       {
         "digest": "08d8b2ac7b2fad307c26b50015d9af059bdc256a6e6df7525c758e34df959eff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3c98879e31c9ea2ed867250d621d09df8d6cdb71ba16cfa17b08e8cdae9cb588",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/index.md"
       },
       {
         "digest": "8433c4fbd9b104562380d350586e342d7511bf7b1da1bef6017e355cd8c118a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-01-worker-analysis-transcription.md"
       },
       {
         "digest": "91b6d64c3e118cbd1f3da2f0daf3038e285b46dd23d3290cb5c0076bd8efe896",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

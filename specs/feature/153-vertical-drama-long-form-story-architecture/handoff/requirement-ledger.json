@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L53"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L53"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L53",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L54"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L54"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L54",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L61"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L61"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L61",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L62"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L62"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L62",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L69"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L69"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L69",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L84"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L88"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L88"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L88",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L91"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L91"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L91",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L94"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L94"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L94",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L99"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L99"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L99",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L104"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L108"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L117"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L120"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L120"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L120",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L121"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L123"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L124"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L126"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L126"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L126",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L127"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L143"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L143"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L143",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L151"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L151"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L151",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L163"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L182"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L182"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L182",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L185"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L185"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L185",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L195"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L262"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L281"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L418"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L418"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L418",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L428"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L428"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L428",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L431"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L439"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L439"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L439",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L443"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L443"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L443",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L449"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L459"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L464"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L464"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L464",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L468"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L472"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L472"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L472",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L489"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L489"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L489",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L508"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L508"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L508",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L508",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L529"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L531"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L531"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L531",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L533"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L533"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L533",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L535"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L535"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L535",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L538"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L538"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L538",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L541"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L541",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L543"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L543"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L543",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L545"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L545"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L545",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L547"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L547"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L547",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L549"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L549"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L549",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L551"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L551"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L551",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L553"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L553"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L553",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L570"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L725"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L725"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L725",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L730"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L730"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L730",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L732"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L732"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L732",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L733"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L733"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L733",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L747"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L748"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L802"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L802"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L802",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L805"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L805"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L805",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L806"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L806"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L806",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L812"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L812"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L812",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L821"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L821"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L821",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L832"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L832"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L832",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L832",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L839"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L839"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L839",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L839",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L847"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L847"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L847",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L854"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L854"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L854",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L860"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L860"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L860",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L894"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L894"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L894",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L915"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L921"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L921"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L921",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L921",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L924"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L924"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L924",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L924",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1022"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1035"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1035"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1035",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1035",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1037"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1037"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1037",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1058"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1058"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1058",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1175"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1175"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1175",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1178"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1209"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1209"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1209",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1212"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1213"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1213"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1213",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1214"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1214"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1214",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1219"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1235"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1235"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1235",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1286"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1292"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1292"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1292",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1294"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1299"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1302"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1302"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1302",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1310"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1313"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1313"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1313",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1320"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1320"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1320",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1323"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1376"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1391"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1391"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1391",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1403"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1403"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1403",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1414"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1414"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1414",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1418"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1418"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1418",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1426"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1437"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1458"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1458"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1458",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1483"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1483"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1483",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1485"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1485"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1485",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1488"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1488"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1488",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1490"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1490"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1490",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1509"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1509"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1509",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1510"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1510"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1510",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1512"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1512"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1512",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1515"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1515"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1515",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1565"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1565"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1565",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1565",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1573"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1573"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1573",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1585"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1585"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1585",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1585",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1591"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1591"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1591",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1591",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1599"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1599"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1599",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1610"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1610"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1610",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1614"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1614"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1614",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1614",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1648"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1648"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1648",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1662"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1662"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1662",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1662",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1700"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1700"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1700",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1720"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1720"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1720",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1724"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1741"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1741"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1741",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1743"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1743"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1743",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1758"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1763"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1763"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1763",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1763",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1776"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1776"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1776",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1793"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1793"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1793",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1809"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1809"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1809",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1809",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1914"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1914"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1914",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1935"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1935"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1935",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1937"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1937"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1937",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1950"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1950"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1950",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1950",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1954"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1954"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1954",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1955"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1955"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1955",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1959"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1959"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1959",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1967"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1967"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1967",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1967",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1968"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1968"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1968",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1968",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1977"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1977"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1977",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1984"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1984"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1984",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L1984",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2002"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2002"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2002",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2005"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2005"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2005",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2007"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2007"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2007",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2009"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2009"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2009",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2009",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2027"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2030"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2030"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2030",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2045"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2045"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2045",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2045",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2049"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2049"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2049",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2049",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2055"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2055"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2055",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2057"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2057"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2057",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2068"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2068"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2068",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2068",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2070"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2070"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2070",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2095"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2095"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2095",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2096"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2115"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2123"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2125"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2127"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2130"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2137"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2137"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2137",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2158"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2160"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2177"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2177"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2177",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2190"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2199"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2211"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2212"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2286"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2355"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2355"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2355",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2377"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2389"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2492"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2492"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2492",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2492",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2494"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2494"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2494",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2500"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2506"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2506"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2506",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2506",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2509"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2509"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2509",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2511"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2513"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2513"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2513",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2516"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2516"
       ],
-      "authority_source": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2516",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/153-vertical-drama-long-form-story-architecture/spec.md#L2516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

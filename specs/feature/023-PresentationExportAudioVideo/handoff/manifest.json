@@ -17,97 +17,97 @@
       {
         "digest": "9bf3fb183dd0e524aeaf7158c8c4bca009563e7f9a8d3346d7403332d21fe567",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
       },
       {
         "digest": "aae238eb09073f201ac05ee35992de24bb465b3996cdd74b581a7f2572135e1b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
       },
       {
         "digest": "42f4943b926190f65d3abd3a772a9fce107d4fe41a08b92d377a9e841da94901",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
       },
       {
         "digest": "78ec0bf6fb74404e418cd0340995490e825c5d81a66a727c317acf788de7f2ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
       },
       {
         "digest": "b05c1bf664110ce082e066f049121b4beac71ba39a07e8f91df0bee7117b9eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
       },
       {
         "digest": "3df9a6abaf44ab75c5b9129da761f9ba22ca035e0423a1f66f239499a0c089c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1c2bcda411cf9ef15d48e7a7b811ee3f9dd1c38bb777ce1440d9c03429113722",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/index.md"
       },
       {
         "digest": "bdf278faee2917f33af142afce4819b16fcdca4bdfc2c509a1b964cf6fd2e9cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
       },
       {
         "digest": "1d7106b93712476ad07626ba9f51076a417f72251065775aa1affdff0c5e21bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
       },
       {
         "digest": "9fa21c02cce21ceec6109633a73aa21c342a609e8ba951057777f25e588c6d4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
       },
       {
         "digest": "13542bb7b7f66b05a1bbcb0df807ad572b275c697f45359e5e608db26904f586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
       },
       {
         "digest": "6c7916745aa04cb4f4e48cfee97d7aeca7457c291f2704fae77e7b6266765957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
       },
       {
         "digest": "c174f0ad1f8beda32f37df8e8122747ef4db4c25093913db0bf276a87389b757",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
       },
       {
         "digest": "1d69329e72fd873db38c3d8cb3adb98bd3952a5cf126f0355c44e94c240229ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
       },
       {
         "digest": "644050cd08a3288cb1a21b40d53305363960cc085e65168ada17ba417b71f842",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
       },
       {
         "digest": "a659879845c44fa2eb6c5573ed708119db35f476c2d7fddb78f8b0850afce10a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
       },
       {
         "digest": "48b06f62e0278058531c64b3e712d44fa58d79718a075d4af582538f601429c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
       },
       {
         "digest": "454f0e265eb37ad9d4b0bb863af21f0ec590ade867e963d79a7158b4a9cc6ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
       },
       {
         "digest": "0cd1207d2eada4b0d179b01dc141584a13397a7e379464ca441f17c3e57122cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "9bf3fb183dd0e524aeaf7158c8c4bca009563e7f9a8d3346d7403332d21fe567",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
       },
       {
         "digest": "aae238eb09073f201ac05ee35992de24bb465b3996cdd74b581a7f2572135e1b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
       },
       {
         "digest": "42f4943b926190f65d3abd3a772a9fce107d4fe41a08b92d377a9e841da94901",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
       },
       {
         "digest": "78ec0bf6fb74404e418cd0340995490e825c5d81a66a727c317acf788de7f2ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
       },
       {
         "digest": "b05c1bf664110ce082e066f049121b4beac71ba39a07e8f91df0bee7117b9eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
       },
       {
         "digest": "3df9a6abaf44ab75c5b9129da761f9ba22ca035e0423a1f66f239499a0c089c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1c2bcda411cf9ef15d48e7a7b811ee3f9dd1c38bb777ce1440d9c03429113722",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/index.md"
       },
       {
         "digest": "bdf278faee2917f33af142afce4819b16fcdca4bdfc2c509a1b964cf6fd2e9cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
       },
       {
         "digest": "1d7106b93712476ad07626ba9f51076a417f72251065775aa1affdff0c5e21bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
       },
       {
         "digest": "9fa21c02cce21ceec6109633a73aa21c342a609e8ba951057777f25e588c6d4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
       },
       {
         "digest": "13542bb7b7f66b05a1bbcb0df807ad572b275c697f45359e5e608db26904f586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
       },
       {
         "digest": "6c7916745aa04cb4f4e48cfee97d7aeca7457c291f2704fae77e7b6266765957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
       },
       {
         "digest": "c174f0ad1f8beda32f37df8e8122747ef4db4c25093913db0bf276a87389b757",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
       },
       {
         "digest": "1d69329e72fd873db38c3d8cb3adb98bd3952a5cf126f0355c44e94c240229ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
       },
       {
         "digest": "644050cd08a3288cb1a21b40d53305363960cc085e65168ada17ba417b71f842",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
       },
       {
         "digest": "a659879845c44fa2eb6c5573ed708119db35f476c2d7fddb78f8b0850afce10a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
       },
       {
         "digest": "48b06f62e0278058531c64b3e712d44fa58d79718a075d4af582538f601429c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
       },
       {
         "digest": "454f0e265eb37ad9d4b0bb863af21f0ec590ade867e963d79a7158b4a9cc6ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
       },
       {
         "digest": "0cd1207d2eada4b0d179b01dc141584a13397a7e379464ca441f17c3e57122cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "9bf3fb183dd0e524aeaf7158c8c4bca009563e7f9a8d3346d7403332d21fe567",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
       },
       {
         "digest": "aae238eb09073f201ac05ee35992de24bb465b3996cdd74b581a7f2572135e1b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
       },
       {
         "digest": "42f4943b926190f65d3abd3a772a9fce107d4fe41a08b92d377a9e841da94901",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
       },
       {
         "digest": "78ec0bf6fb74404e418cd0340995490e825c5d81a66a727c317acf788de7f2ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
       },
       {
         "digest": "b05c1bf664110ce082e066f049121b4beac71ba39a07e8f91df0bee7117b9eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
       },
       {
         "digest": "3df9a6abaf44ab75c5b9129da761f9ba22ca035e0423a1f66f239499a0c089c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1c2bcda411cf9ef15d48e7a7b811ee3f9dd1c38bb777ce1440d9c03429113722",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/index.md"
       },
       {
         "digest": "bdf278faee2917f33af142afce4819b16fcdca4bdfc2c509a1b964cf6fd2e9cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
       },
       {
         "digest": "1d7106b93712476ad07626ba9f51076a417f72251065775aa1affdff0c5e21bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
       },
       {
         "digest": "9fa21c02cce21ceec6109633a73aa21c342a609e8ba951057777f25e588c6d4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
       },
       {
         "digest": "13542bb7b7f66b05a1bbcb0df807ad572b275c697f45359e5e608db26904f586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
       },
       {
         "digest": "6c7916745aa04cb4f4e48cfee97d7aeca7457c291f2704fae77e7b6266765957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
       },
       {
         "digest": "c174f0ad1f8beda32f37df8e8122747ef4db4c25093913db0bf276a87389b757",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
       },
       {
         "digest": "1d69329e72fd873db38c3d8cb3adb98bd3952a5cf126f0355c44e94c240229ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
       },
       {
         "digest": "644050cd08a3288cb1a21b40d53305363960cc085e65168ada17ba417b71f842",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
       },
       {
         "digest": "a659879845c44fa2eb6c5573ed708119db35f476c2d7fddb78f8b0850afce10a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
       },
       {
         "digest": "48b06f62e0278058531c64b3e712d44fa58d79718a075d4af582538f601429c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
       },
       {
         "digest": "454f0e265eb37ad9d4b0bb863af21f0ec590ade867e963d79a7158b4a9cc6ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
       },
       {
         "digest": "0cd1207d2eada4b0d179b01dc141584a13397a7e379464ca441f17c3e57122cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/023-PresentationExportAudioVideo/spec.md",
     "digest": "ab6da55f585804ff43092390a68d44d3101bf1c367a23184c3fae8d7f9d6e208",
@@ -409,112 +409,112 @@
       {
         "digest": "9bf3fb183dd0e524aeaf7158c8c4bca009563e7f9a8d3346d7403332d21fe567",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
       },
       {
         "digest": "aae238eb09073f201ac05ee35992de24bb465b3996cdd74b581a7f2572135e1b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
       },
       {
         "digest": "42f4943b926190f65d3abd3a772a9fce107d4fe41a08b92d377a9e841da94901",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
       },
       {
         "digest": "78ec0bf6fb74404e418cd0340995490e825c5d81a66a727c317acf788de7f2ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
       },
       {
         "digest": "b05c1bf664110ce082e066f049121b4beac71ba39a07e8f91df0bee7117b9eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
       },
       {
         "digest": "3df9a6abaf44ab75c5b9129da761f9ba22ca035e0423a1f66f239499a0c089c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1c2bcda411cf9ef15d48e7a7b811ee3f9dd1c38bb777ce1440d9c03429113722",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/index.md"
       },
       {
         "digest": "bdf278faee2917f33af142afce4819b16fcdca4bdfc2c509a1b964cf6fd2e9cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
       },
       {
         "digest": "1d7106b93712476ad07626ba9f51076a417f72251065775aa1affdff0c5e21bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
       },
       {
         "digest": "9fa21c02cce21ceec6109633a73aa21c342a609e8ba951057777f25e588c6d4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
       },
       {
         "digest": "13542bb7b7f66b05a1bbcb0df807ad572b275c697f45359e5e608db26904f586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
       },
       {
         "digest": "6c7916745aa04cb4f4e48cfee97d7aeca7457c291f2704fae77e7b6266765957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
       },
       {
         "digest": "c174f0ad1f8beda32f37df8e8122747ef4db4c25093913db0bf276a87389b757",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
       },
       {
         "digest": "1d69329e72fd873db38c3d8cb3adb98bd3952a5cf126f0355c44e94c240229ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
       },
       {
         "digest": "644050cd08a3288cb1a21b40d53305363960cc085e65168ada17ba417b71f842",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
       },
       {
         "digest": "a659879845c44fa2eb6c5573ed708119db35f476c2d7fddb78f8b0850afce10a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
       },
       {
         "digest": "48b06f62e0278058531c64b3e712d44fa58d79718a075d4af582538f601429c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
       },
       {
         "digest": "454f0e265eb37ad9d4b0bb863af21f0ec590ade867e963d79a7158b4a9cc6ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
       },
       {
         "digest": "0cd1207d2eada4b0d179b01dc141584a13397a7e379464ca441f17c3e57122cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
       },
       {
         "digest": "be235569abda1ebafb2d4cb8ce89544b860e804ab61dcfa82d4d334548a3f668",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-13-audio-track-player.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-13-audio-track-player.md"
       },
       {
         "digest": "5d15ad08f1c64131bb63284893c714599dee72ab8f49e77c72201ea0ffefbcd5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-14-infrastructure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-14-infrastructure.md"
       },
       {
         "digest": "8e54592226b9379b60dfea2b78a6896c06834b45b93e30f1bd79b227db25f8ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-15-testing-strategy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-15-testing-strategy.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -969,112 +969,112 @@
       {
         "digest": "9bf3fb183dd0e524aeaf7158c8c4bca009563e7f9a8d3346d7403332d21fe567",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-plan.md"
       },
       {
         "digest": "aae238eb09073f201ac05ee35992de24bb465b3996cdd74b581a7f2572135e1b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/claude-spec.md"
       },
       {
         "digest": "42f4943b926190f65d3abd3a772a9fce107d4fe41a08b92d377a9e841da94901",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/deep_implement_config.json"
       },
       {
         "digest": "78ec0bf6fb74404e418cd0340995490e825c5d81a66a727c317acf788de7f2ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/implementation/usage.md"
       },
       {
         "digest": "b05c1bf664110ce082e066f049121b4beac71ba39a07e8f91df0bee7117b9eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-opus-review.md"
       },
       {
         "digest": "3df9a6abaf44ab75c5b9129da761f9ba22ca035e0423a1f66f239499a0c089c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/reviews/iteration-1-summary.md"
       },
       {
         "digest": "1c2bcda411cf9ef15d48e7a7b811ee3f9dd1c38bb777ce1440d9c03429113722",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/index.md"
       },
       {
         "digest": "bdf278faee2917f33af142afce4819b16fcdca4bdfc2c509a1b964cf6fd2e9cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-01-database-migration.md"
       },
       {
         "digest": "1d7106b93712476ad07626ba9f51076a417f72251065775aa1affdff0c5e21bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-02-shared-contracts.md"
       },
       {
         "digest": "9fa21c02cce21ceec6109633a73aa21c342a609e8ba951057777f25e588c6d4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-03-export-service.md"
       },
       {
         "digest": "13542bb7b7f66b05a1bbcb0df807ad572b275c697f45359e5e608db26904f586",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-04-trpc-router.md"
       },
       {
         "digest": "6c7916745aa04cb4f4e48cfee97d7aeca7457c291f2704fae77e7b6266765957",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-05-slide-render-route.md"
       },
       {
         "digest": "c174f0ad1f8beda32f37df8e8122747ef4db4c25093913db0bf276a87389b757",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-06-python-fastapi-export.md"
       },
       {
         "digest": "1d69329e72fd873db38c3d8cb3adb98bd3952a5cf126f0355c44e94c240229ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-07-python-celery-task.md"
       },
       {
         "digest": "644050cd08a3288cb1a21b40d53305363960cc085e65168ada17ba417b71f842",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-08-export-dialog.md"
       },
       {
         "digest": "a659879845c44fa2eb6c5573ed708119db35f476c2d7fddb78f8b0850afce10a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-09-slide-audio-panel.md"
       },
       {
         "digest": "48b06f62e0278058531c64b3e712d44fa58d79718a075d4af582538f601429c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-10-editor-modifications.md"
       },
       {
         "digest": "454f0e265eb37ad9d4b0bb863af21f0ec590ade867e963d79a7158b4a9cc6ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-11-play-mode-page.md"
       },
       {
         "digest": "0cd1207d2eada4b0d179b01dc141584a13397a7e379464ca441f17c3e57122cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-12-playback-engine.md"
       },
       {
         "digest": "be235569abda1ebafb2d4cb8ce89544b860e804ab61dcfa82d4d334548a3f668",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-13-audio-track-player.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-13-audio-track-player.md"
       },
       {
         "digest": "5d15ad08f1c64131bb63284893c714599dee72ab8f49e77c72201ea0ffefbcd5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-14-infrastructure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-14-infrastructure.md"
       },
       {
         "digest": "8e54592226b9379b60dfea2b78a6896c06834b45b93e30f1bd79b227db25f8ef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/023-PresentationExportAudioVideo/sections/section-15-testing-strategy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/023-PresentationExportAudioVideo/sections/section-15-testing-strategy.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -17,97 +17,97 @@
       {
         "digest": "3b7119072cd16d4f68c8f3cc949370c866721880f52ade066451d21008b7ad66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-plan.md"
       },
       {
         "digest": "5654de54c70ffc2bd30d72440bb9446e8deaf51265beedbe20087cedcb06a441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-spec.md"
       },
       {
         "digest": "b1d6be9595baa342be311da9b22287c68b13164e7686eb9d95cd2c2fceef10d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "4847267ab1aaa5345c0755b42e0ecd845f89ff1b07ff04030d2b13facaa43ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
       },
       {
         "digest": "808365ac4d6763c169e8f59ce32598ad5c64b1e08748878569dd1ee8b5532276",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
       },
       {
         "digest": "ffa88218e9d0fdfb782bd33d9108a6d748922fa16c5e300e2982b48fba9c2d17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "2e6be57c20c90f5c4bce7a3bc0123d660986553c18311d52e1097311d2de90f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/index.md"
       },
       {
         "digest": "fb72254cdb400e8453808854e290127cac82ca0343f0152d1056f61e21d207a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "39ed82eb9f19171e2026c9be2f2927a95179c93d3887804f8d5953e3429299d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
       },
       {
         "digest": "9019f33006e5e42238a4fbddb489703bf64759cac73950dd843a8dd8e3ad0b8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
       },
       {
         "digest": "34a3e43453614fef0c84c1fd19ca18769bf7ed29a720bb97af0c8725f281dc15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
       },
       {
         "digest": "02f222fdad81102ed3d5f12ad4fa988cd07ced4817015b748f2baf02cc950e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
       },
       {
         "digest": "4e6d91801d8ca3a636bf2689289478e618e9ad9cda08a1b04091ae3284629d44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
       },
       {
         "digest": "e748448b58301463302a1aa078858a9fb89bfc35a4627a93849eedf8774814ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
       },
       {
         "digest": "6e42d8147418a0527a1ade1044a06930963f00184f7aed06e84540f4bc426e4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
       },
       {
         "digest": "570b5f83dcebdb8313db39e859bcdd7c47b67b065fa568e23e8e6f8c3da3bc8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
       },
       {
         "digest": "19fca50e2764ed3e958e91eb2165e7a3d32f35588bfc67508731dd813fcd399f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
       },
       {
         "digest": "81dd2c683508dd99dffa176b95a174fe62cafc168b56515f860792c3f80e6bbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
       },
       {
         "digest": "42ef1fa1a28ab683e97938f097705e99fb8e6830eda007e0eea504e9aedb4c09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "3b7119072cd16d4f68c8f3cc949370c866721880f52ade066451d21008b7ad66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-plan.md"
       },
       {
         "digest": "5654de54c70ffc2bd30d72440bb9446e8deaf51265beedbe20087cedcb06a441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-spec.md"
       },
       {
         "digest": "b1d6be9595baa342be311da9b22287c68b13164e7686eb9d95cd2c2fceef10d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "4847267ab1aaa5345c0755b42e0ecd845f89ff1b07ff04030d2b13facaa43ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
       },
       {
         "digest": "808365ac4d6763c169e8f59ce32598ad5c64b1e08748878569dd1ee8b5532276",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
       },
       {
         "digest": "ffa88218e9d0fdfb782bd33d9108a6d748922fa16c5e300e2982b48fba9c2d17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "2e6be57c20c90f5c4bce7a3bc0123d660986553c18311d52e1097311d2de90f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/index.md"
       },
       {
         "digest": "fb72254cdb400e8453808854e290127cac82ca0343f0152d1056f61e21d207a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "39ed82eb9f19171e2026c9be2f2927a95179c93d3887804f8d5953e3429299d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
       },
       {
         "digest": "9019f33006e5e42238a4fbddb489703bf64759cac73950dd843a8dd8e3ad0b8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
       },
       {
         "digest": "34a3e43453614fef0c84c1fd19ca18769bf7ed29a720bb97af0c8725f281dc15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
       },
       {
         "digest": "02f222fdad81102ed3d5f12ad4fa988cd07ced4817015b748f2baf02cc950e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
       },
       {
         "digest": "4e6d91801d8ca3a636bf2689289478e618e9ad9cda08a1b04091ae3284629d44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
       },
       {
         "digest": "e748448b58301463302a1aa078858a9fb89bfc35a4627a93849eedf8774814ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
       },
       {
         "digest": "6e42d8147418a0527a1ade1044a06930963f00184f7aed06e84540f4bc426e4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
       },
       {
         "digest": "570b5f83dcebdb8313db39e859bcdd7c47b67b065fa568e23e8e6f8c3da3bc8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
       },
       {
         "digest": "19fca50e2764ed3e958e91eb2165e7a3d32f35588bfc67508731dd813fcd399f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
       },
       {
         "digest": "81dd2c683508dd99dffa176b95a174fe62cafc168b56515f860792c3f80e6bbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
       },
       {
         "digest": "42ef1fa1a28ab683e97938f097705e99fb8e6830eda007e0eea504e9aedb4c09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "3b7119072cd16d4f68c8f3cc949370c866721880f52ade066451d21008b7ad66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-plan.md"
       },
       {
         "digest": "5654de54c70ffc2bd30d72440bb9446e8deaf51265beedbe20087cedcb06a441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-spec.md"
       },
       {
         "digest": "b1d6be9595baa342be311da9b22287c68b13164e7686eb9d95cd2c2fceef10d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "4847267ab1aaa5345c0755b42e0ecd845f89ff1b07ff04030d2b13facaa43ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
       },
       {
         "digest": "808365ac4d6763c169e8f59ce32598ad5c64b1e08748878569dd1ee8b5532276",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
       },
       {
         "digest": "ffa88218e9d0fdfb782bd33d9108a6d748922fa16c5e300e2982b48fba9c2d17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "2e6be57c20c90f5c4bce7a3bc0123d660986553c18311d52e1097311d2de90f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/index.md"
       },
       {
         "digest": "fb72254cdb400e8453808854e290127cac82ca0343f0152d1056f61e21d207a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "39ed82eb9f19171e2026c9be2f2927a95179c93d3887804f8d5953e3429299d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
       },
       {
         "digest": "9019f33006e5e42238a4fbddb489703bf64759cac73950dd843a8dd8e3ad0b8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
       },
       {
         "digest": "34a3e43453614fef0c84c1fd19ca18769bf7ed29a720bb97af0c8725f281dc15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
       },
       {
         "digest": "02f222fdad81102ed3d5f12ad4fa988cd07ced4817015b748f2baf02cc950e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
       },
       {
         "digest": "4e6d91801d8ca3a636bf2689289478e618e9ad9cda08a1b04091ae3284629d44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
       },
       {
         "digest": "e748448b58301463302a1aa078858a9fb89bfc35a4627a93849eedf8774814ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
       },
       {
         "digest": "6e42d8147418a0527a1ade1044a06930963f00184f7aed06e84540f4bc426e4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
       },
       {
         "digest": "570b5f83dcebdb8313db39e859bcdd7c47b67b065fa568e23e8e6f8c3da3bc8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
       },
       {
         "digest": "19fca50e2764ed3e958e91eb2165e7a3d32f35588bfc67508731dd813fcd399f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
       },
       {
         "digest": "81dd2c683508dd99dffa176b95a174fe62cafc168b56515f860792c3f80e6bbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
       },
       {
         "digest": "42ef1fa1a28ab683e97938f097705e99fb8e6830eda007e0eea504e9aedb4c09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/135-hermes-grok-media-worker/spec.md",
     "digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
@@ -409,97 +409,97 @@
       {
         "digest": "3b7119072cd16d4f68c8f3cc949370c866721880f52ade066451d21008b7ad66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-plan.md"
       },
       {
         "digest": "5654de54c70ffc2bd30d72440bb9446e8deaf51265beedbe20087cedcb06a441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-spec.md"
       },
       {
         "digest": "b1d6be9595baa342be311da9b22287c68b13164e7686eb9d95cd2c2fceef10d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "4847267ab1aaa5345c0755b42e0ecd845f89ff1b07ff04030d2b13facaa43ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
       },
       {
         "digest": "808365ac4d6763c169e8f59ce32598ad5c64b1e08748878569dd1ee8b5532276",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
       },
       {
         "digest": "ffa88218e9d0fdfb782bd33d9108a6d748922fa16c5e300e2982b48fba9c2d17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "2e6be57c20c90f5c4bce7a3bc0123d660986553c18311d52e1097311d2de90f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/index.md"
       },
       {
         "digest": "fb72254cdb400e8453808854e290127cac82ca0343f0152d1056f61e21d207a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "39ed82eb9f19171e2026c9be2f2927a95179c93d3887804f8d5953e3429299d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
       },
       {
         "digest": "9019f33006e5e42238a4fbddb489703bf64759cac73950dd843a8dd8e3ad0b8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
       },
       {
         "digest": "34a3e43453614fef0c84c1fd19ca18769bf7ed29a720bb97af0c8725f281dc15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
       },
       {
         "digest": "02f222fdad81102ed3d5f12ad4fa988cd07ced4817015b748f2baf02cc950e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
       },
       {
         "digest": "4e6d91801d8ca3a636bf2689289478e618e9ad9cda08a1b04091ae3284629d44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
       },
       {
         "digest": "e748448b58301463302a1aa078858a9fb89bfc35a4627a93849eedf8774814ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
       },
       {
         "digest": "6e42d8147418a0527a1ade1044a06930963f00184f7aed06e84540f4bc426e4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
       },
       {
         "digest": "570b5f83dcebdb8313db39e859bcdd7c47b67b065fa568e23e8e6f8c3da3bc8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
       },
       {
         "digest": "19fca50e2764ed3e958e91eb2165e7a3d32f35588bfc67508731dd813fcd399f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
       },
       {
         "digest": "81dd2c683508dd99dffa176b95a174fe62cafc168b56515f860792c3f80e6bbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
       },
       {
         "digest": "42ef1fa1a28ab683e97938f097705e99fb8e6830eda007e0eea504e9aedb4c09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -873,97 +873,97 @@
       {
         "digest": "3b7119072cd16d4f68c8f3cc949370c866721880f52ade066451d21008b7ad66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-plan.md"
       },
       {
         "digest": "5654de54c70ffc2bd30d72440bb9446e8deaf51265beedbe20087cedcb06a441",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/claude-spec.md"
       },
       {
         "digest": "b1d6be9595baa342be311da9b22287c68b13164e7686eb9d95cd2c2fceef10d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "4847267ab1aaa5345c0755b42e0ecd845f89ff1b07ff04030d2b13facaa43ad7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/followup-operator-ui-and-test-generation.md"
       },
       {
         "digest": "808365ac4d6763c169e8f59ce32598ad5c64b1e08748878569dd1ee8b5532276",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/implementation/usage.md"
       },
       {
         "digest": "ffa88218e9d0fdfb782bd33d9108a6d748922fa16c5e300e2982b48fba9c2d17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "2e6be57c20c90f5c4bce7a3bc0123d660986553c18311d52e1097311d2de90f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/index.md"
       },
       {
         "digest": "fb72254cdb400e8453808854e290127cac82ca0343f0152d1056f61e21d207a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "39ed82eb9f19171e2026c9be2f2927a95179c93d3887804f8d5953e3429299d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-02-db-schema.md"
       },
       {
         "digest": "9019f33006e5e42238a4fbddb489703bf64759cac73950dd843a8dd8e3ad0b8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-03-connection-service-router.md"
       },
       {
         "digest": "34a3e43453614fef0c84c1fd19ca18769bf7ed29a720bb97af0c8725f281dc15",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-04-connection-control-jobs.md"
       },
       {
         "digest": "02f222fdad81102ed3d5f12ad4fa988cd07ced4817015b748f2baf02cc950e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-05-admission-scheduler.md"
       },
       {
         "digest": "4e6d91801d8ca3a636bf2689289478e618e9ad9cda08a1b04091ae3284629d44",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-06-task-projection-credits.md"
       },
       {
         "digest": "e748448b58301463302a1aa078858a9fb89bfc35a4627a93849eedf8774814ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-07-shared-worker.md"
       },
       {
         "digest": "6e42d8147418a0527a1ade1044a06930963f00184f7aed06e84540f4bc426e4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-08-model-catalog-transport.md"
       },
       {
         "digest": "570b5f83dcebdb8313db39e859bcdd7c47b67b065fa568e23e8e6f8c3da3bc8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-09-vd-surface-integration.md"
       },
       {
         "digest": "19fca50e2764ed3e958e91eb2165e7a3d32f35588bfc67508731dd813fcd399f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-10-client-web.md"
       },
       {
         "digest": "81dd2c683508dd99dffa176b95a174fe62cafc168b56515f860792c3f80e6bbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-11-worker-app.md"
       },
       {
         "digest": "42ef1fa1a28ab683e97938f097705e99fb8e6830eda007e0eea504e9aedb4c09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/135-hermes-grok-media-worker/sections/section-12-observability-hardening.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

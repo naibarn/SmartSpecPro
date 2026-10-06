@@ -54,20 +54,6 @@
         "kind": "SOURCE",
         "line": 1281,
         "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -100,7 +86,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/project/013-features-195-200/requirements.deep-project/06-feature-200-external-agent-control-plane/spec.md",
     "digest": "12964b67d24b6b7b17b9c8e583f183834e8f2bd184458d935cec6a8ee8cc219b",
@@ -156,20 +142,6 @@
         "kind": "SOURCE",
         "line": 1281,
         "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
       }
     ],
     "stale_fields": [],
@@ -182,20 +154,6 @@
   },
   "relevance_assessment": {
     "active_references": [
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
       {
         "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
         "identity_ambiguous": true,

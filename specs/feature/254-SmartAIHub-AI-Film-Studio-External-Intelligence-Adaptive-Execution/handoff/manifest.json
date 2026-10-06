@@ -14,7 +14,7 @@
         "referencing_spec_id": "254",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
         "source_digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
         "successor_spec_id": "254"
       }
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md",
     "digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",

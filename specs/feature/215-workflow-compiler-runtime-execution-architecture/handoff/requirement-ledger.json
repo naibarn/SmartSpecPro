@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L16"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L16"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L16",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L16",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L18"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L18"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L18",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L18",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L49"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L49"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L49",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L56"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L56"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L56",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L87"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L87"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L87",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L180"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L205"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L205"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L205",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L237"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L242"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L263"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L263"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L263",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L340"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L344"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L346"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L346"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L346",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L354"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L354"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L354",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L356"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L406"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L406"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L406",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L406",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L439"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L439"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L439",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L470"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L470"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L470",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L503"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L503"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L503",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L503",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L533"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L533"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L533",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L565"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L565"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L565",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L565",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L665"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L665"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L665",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L693"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L693"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L693",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L744"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L744"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L744",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L761"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L761"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L761",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L761",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L780"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L780"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L780",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L892"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L892"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L892",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L909"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L909",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L917"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L917"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L917",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L969"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L969"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L969",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L975"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L975"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L975",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L975",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L988"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L988"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L988",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L996"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L996"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L996",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1011"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1011"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1011",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1042"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1042"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1042",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1042",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1048"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1048"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1048",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1061"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1061"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1061",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1061",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1067"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1067"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1067",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1069"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1069"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1069",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1069",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1093"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1093"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1093",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1125"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1131"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1146"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1169"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1202"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1202"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1202",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1219"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1245"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1245"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1245",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1265"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1265"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1265",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1277"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1293"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1299"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1318"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1318"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1318",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1333"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1333"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1333",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1353"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1353"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1353",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1368"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1390"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1408"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1446"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1452"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1452"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1452",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1463"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1480"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1486"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1486"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1486",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1521"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1529"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1537"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1547"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1547"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1547",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1573"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1573"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1573",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1575"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1575"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1575",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1598"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1598"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1598",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1614"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1614"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1614",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1614",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1637"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1650"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1650"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1650",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1689"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1725"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1725"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1725",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1745"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1745"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1745",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1745",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1751"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1751"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1751",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1772"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1772"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1772",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1772",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1843"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1843"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1843",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1863"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1863"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1863",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1873"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1873"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1873",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1873",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1874"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1874"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1874",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1875"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1875"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1875",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1875",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1876"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1876"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1876",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1877"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1877"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1877",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1878"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1878"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1878",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1879"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1879"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1879",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1880"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1880"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1880",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1880",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1881"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1881"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1881",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1882"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1882"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1882",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1883"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1883"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1883",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1883",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1884"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1884"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1884",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1885"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1885"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1885",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1885",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1886"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1886"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1886",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1886",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1887"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1887"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1887",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1887",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1888"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1888"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1888",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1888",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1889"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1889"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1889",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1889",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1890"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1890"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1890",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1891"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1891"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1891",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1891",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1892"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1892"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1892",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1893"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1893"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1893",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1894"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1894"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1894",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1895"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1895"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1895",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1896"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1896"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1896",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1897"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1897"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1897",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1897",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1898"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1898"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1898",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1898",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1899"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1899"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1899",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1900"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1900"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1900",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1900",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1901"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1901"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1901",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1981"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1981"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1981",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2004"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2004"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2004",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2020"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2020"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2020",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2020",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2022"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2048"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2048"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2048",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2067"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2067"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2067",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2071"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2071"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2071",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2073"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2073"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2073",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2077"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2077"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2077",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2079"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2079"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2079",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2083"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2083"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2083",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2087"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2087"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2087",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2106"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2108"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2110"
       ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L2110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

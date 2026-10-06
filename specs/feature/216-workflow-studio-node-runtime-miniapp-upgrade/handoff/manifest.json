@@ -14,7 +14,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L54",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L54",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L1133",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "216",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L75",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L75",
         "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
         "successor_spec_id": "216"
       }
@@ -127,7 +127,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
     "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",

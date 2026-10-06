@@ -17,77 +17,77 @@
       {
         "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
       },
       {
         "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
       },
       {
         "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
       },
       {
         "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
       },
       {
         "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
       },
       {
         "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
       },
       {
         "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
       },
       {
         "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
       },
       {
         "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
       },
       {
         "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
       },
       {
         "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
       },
       {
         "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
       },
       {
         "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
       },
       {
         "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
       },
       {
         "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
       },
       {
         "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
       },
       {
         "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
       },
       {
         "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
       },
       {
         "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
       },
       {
         "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
       },
       {
         "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
       },
       {
         "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
       },
       {
         "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
       },
       {
         "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
       },
       {
         "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
       },
       {
         "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
       },
       {
         "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
       },
       {
         "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
       },
       {
         "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,83 +220,83 @@
       {
         "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
       },
       {
         "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
       },
       {
         "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
       },
       {
         "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
       },
       {
         "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
       },
       {
         "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
       },
       {
         "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
       },
       {
         "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
       },
       {
         "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
       },
       {
         "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
       },
       {
         "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
       },
       {
         "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
       },
       {
         "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
       },
       {
         "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
       },
       {
         "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
     "digest": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
@@ -349,77 +349,77 @@
       {
         "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
       },
       {
         "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
       },
       {
         "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
       },
       {
         "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
       },
       {
         "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
       },
       {
         "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
       },
       {
         "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
       },
       {
         "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
       },
       {
         "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
       },
       {
         "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
       },
       {
         "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
       },
       {
         "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
       },
       {
         "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
       },
       {
         "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
       },
       {
         "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -658,77 +658,77 @@
       {
         "digest": "777596abff054141cea73252b6ba0c05e1618ab4becc45d4569109de2d3ae822",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-plan.md"
       },
       {
         "digest": "a17ec858c61d42e73669efa7853bf97c4617ad404f75c44ed3fde0a8fe8eb301",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/claude-spec.md"
       },
       {
         "digest": "9a7f0bbfabe383b795a64a069401526e411342ded700b60c7136cdd281e2d16d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/implementation/deep_implement_config.json"
       },
       {
         "digest": "dc88e1b46fdeb476de3ba355794ff742e7e4bd2fc97de70552439e0fdef89124",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/agency-runtime-retirement-final.md"
       },
       {
         "digest": "d524d27d9e274e787e4d74d1970a3cc1126a3e0443d359f0b3b61b6998dcf2c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/final-runtime-video-prompt-audit.md"
       },
       {
         "digest": "38db284f6c472b439c5bf7bb5bd13fe2419f26811fc37be2d7f4d8debb483138",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/self-review-round-1.md"
       },
       {
         "digest": "e0610fb2da62c188260678f5e1308a0c4aea81f20f0731dfded8d2134307ce98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/reviews/video-prompt-provider-ready-gap-closure.md"
       },
       {
         "digest": "a3d41a200aa7311877b4d1fc01b276b533e3bdf68fd286114327fc7f53ebb15a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/index.md"
       },
       {
         "digest": "c7fda3dc45673a10b29b957871d1affd757d430cf5dd178084725262527da307",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-01-contract-foundation.md"
       },
       {
         "digest": "549930676b343d9849165b56b19c37d2ca0a9aab4b6d04ee9f02a7259a47a743",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-02-deterministic-assurance.md"
       },
       {
         "digest": "fe54f507a8a7a87fced04b59473aa4475b619b3aa7e195e9fe1ff11a3d643927",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-03-python-orchestra-seam.md"
       },
       {
         "digest": "a9286cbc6a1f272f56a89477de4c0a5157a553bfa83826d79206eeb5b7448405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-04-node-planner-final-gate.md"
       },
       {
         "digest": "1fcba8f2569603622376498b48931ca33e7994e8f5799012e72895ecd61bc679",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-05-replay-correction-observability.md"
       },
       {
         "digest": "cf3654a97908c162f0f2e05fd78042c08dc48e701e1bb64100876dd553d174f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-06-agency-freeze-migration-guard.md"
       },
       {
         "digest": "e57340b9a8b6257dfa17d4d58cdb5b0a898b6c13e15a2a4515cf9a0074a967a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/151-unified-agent-output-assurance-orchestra/sections/section-07-regression-rollout-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

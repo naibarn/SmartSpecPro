@@ -17,57 +17,57 @@
       {
         "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
       },
       {
         "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
       },
       {
         "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
       },
       {
         "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
       },
       {
         "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
       },
       {
         "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
       },
       {
         "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
       },
       {
         "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
       },
       {
         "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
       },
       {
         "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
       }
     ],
     "predecessors": [],
@@ -98,57 +98,57 @@
       {
         "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
       },
       {
         "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
       },
       {
         "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
       },
       {
         "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
       },
       {
         "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
       },
       {
         "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
       },
       {
         "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
       },
       {
         "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
       },
       {
         "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
       },
       {
         "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
       },
       {
         "excerpt": "Note: The execute-turn endpoint was removed in spec-051 section-04.",
@@ -208,63 +208,63 @@
       {
         "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
       },
       {
         "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
       },
       {
         "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
       },
       {
         "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
       },
       {
         "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
       },
       {
         "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
       },
       {
         "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
       },
       {
         "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
       },
       {
         "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
       },
       {
         "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md",
     "digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
@@ -317,57 +317,57 @@
       {
         "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
       },
       {
         "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
       },
       {
         "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
       },
       {
         "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
       },
       {
         "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
       },
       {
         "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
       },
       {
         "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
       },
       {
         "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
       },
       {
         "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
       },
       {
         "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
       },
       {
         "excerpt": "Note: The execute-turn endpoint was removed in spec-051 section-04.",
@@ -615,57 +615,57 @@
       {
         "digest": "7910e0fd35fe1afdd929246c1849b7ac0cd9cfe1b719142b2cb69be9a59511c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-plan.md"
       },
       {
         "digest": "2d55201976d3d87d3c00e7ca621e11ed2f7cf537dbfde6c191983fbfe37a6e49",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/claude-spec.md"
       },
       {
         "digest": "b104a716c8efac39e79c006680c7e22924ed693bd13ee7662ab21fbb27a41fe8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "fbc43769b436efbac1287b0ab149d5648289115a348e1cbb3d52ed2eba65e554",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/implementation/usage.md"
       },
       {
         "digest": "e32af081c5146eb1412b37a8d65f2df34c4953d87ac731017f0a7677a40e6ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/index.md"
       },
       {
         "digest": "fb9399c908c1d61f42dc1e17fcd05084a77375d19c5c5ca2120eb2757b87c556",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-01-skill-detection.md"
       },
       {
         "digest": "0885232c87ce57623e6d407640d59b286aea18c3fd421a6bf89d3294493ffdf3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-02-prompt-composer.md"
       },
       {
         "digest": "dc551c966487423350dc32743c6cb236d25ddbbe146a2df17620e9989989a4e3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-03-skill-executor.md"
       },
       {
         "digest": "76ea4c81c05a083c04604401c2078dcb6a000871bc3f51f50d418cad1f29c591",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-04-remove-python.md"
       },
       {
         "digest": "c077bc048806b4132c60eda4f75a483f530b31861579ac9ca5a7a2f582e926e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-05-migration-cleanup.md"
       },
       {
         "digest": "c0bd1de4bac2c5fdb58235fc086d3d5ac7ae3203191e804145713f40d648e9a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/051-team-room-reuse-chat-pipeline/sections/section-06-testing.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

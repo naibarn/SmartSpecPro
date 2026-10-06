@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L80"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L81"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L81"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L81",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L82"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L82"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L82",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L83"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L84"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L85"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L85"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L85",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L86"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L618"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L620"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L621"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L624"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L1211"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L1211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1360"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L1360"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1360",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L1360",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2104"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2105"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2106"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2107"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2108"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2109"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2110"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2111"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2112"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2113"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2114"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2115"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2116"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2117"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2118"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2121"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2122"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2123"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2124"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2128"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2129"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2129"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2129",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2130"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2131"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2132"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2133"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2133"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2133",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2134"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2135"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2252"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2252"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2252",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2256"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2257"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2308"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2308"
       ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L2308",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/spec.md#L2308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

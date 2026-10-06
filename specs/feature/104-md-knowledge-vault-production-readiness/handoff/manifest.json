@@ -17,62 +17,62 @@
       {
         "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
       },
       {
         "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
       },
       {
         "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
       },
       {
         "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
       },
       {
         "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
       },
       {
         "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
       },
       {
         "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
       },
       {
         "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
       },
       {
         "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
       },
       {
         "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
       },
       {
         "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
       }
     ],
     "predecessors": [],
@@ -103,62 +103,62 @@
       {
         "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
       },
       {
         "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
       },
       {
         "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
       },
       {
         "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
       },
       {
         "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
       },
       {
         "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
       },
       {
         "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
       },
       {
         "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
       },
       {
         "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
       },
       {
         "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
       },
       {
         "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -190,68 +190,68 @@
       {
         "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
       },
       {
         "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
       },
       {
         "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
       },
       {
         "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
       },
       {
         "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
       },
       {
         "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
       },
       {
         "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
       },
       {
         "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
       },
       {
         "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
       },
       {
         "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
       },
       {
         "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md",
     "digest": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
@@ -304,62 +304,62 @@
       {
         "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
       },
       {
         "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
       },
       {
         "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
       },
       {
         "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
       },
       {
         "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
       },
       {
         "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
       },
       {
         "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
       },
       {
         "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
       },
       {
         "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
       },
       {
         "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
       },
       {
         "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -409,62 +409,62 @@
       {
         "digest": "2cbb7d06a42b76fdf1ead368abecb6b2253525800c12ad2a45e22e5c7022f764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/implementation/deep_implement_config.json"
       },
       {
         "digest": "925b7d3f11c7052eee2cb0321b026e27883c80586c27473c6f9fc95321b20a13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/index.md"
       },
       {
         "digest": "fd0e9d8b0125d0b40ba9cbc7fa531d4524b40ee6c9b91e81e559b28ccfcae82b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-01-index-job-payload-and-refresh-worker.md"
       },
       {
         "digest": "5e601ac59fa225cdb758252625679d68ee88872db275d8e4697a24df8a5d25d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-02-migration-integration-tests-and-db-safety.md"
       },
       {
         "digest": "7d64835e18c18dc02daf425b2131036e4f0a8a602061893340f272d9478f6c61",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-03-context-pack-approval-workflow.md"
       },
       {
         "digest": "869e951e117631ee063fda771273be1af466a5ca404faa2983b2a91ebb657a6a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-04-agent-skill-memory-picker-and-citations.md"
       },
       {
         "digest": "064d2fa4291b4b7c59e558111f7a4bae127b014707e7add4bdd28ad51b94235a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-05-knowledge-vault-ui-navigation-and-curation.md"
       },
       {
         "digest": "de8ada7c6af6d29454fdb0bdeaeae7137514898116cb8c813a28830e3144d4ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-06-observability-release-gates-and-leakage-safety.md"
       },
       {
         "digest": "116cbd2595bb726ccd2899eaf3e0bdf995f1c5e71ac79729da3e67d3c5c58857",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-07-snapshot-context-packs-and-auditability.md"
       },
       {
         "digest": "781b2f0a2bcb2677774f40c10761faf3aee585272b74dee47fcb093a2153f37e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-08-feature-flags-rollout-and-access-policy.md"
       },
       {
         "digest": "e50a6527895e8f905cbe75a8d35878ce0549f855fa43b00b206bd8d67171bf64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-09-canvas-graph-and-spatial-knowledge-productization.md"
       },
       {
         "digest": "4d7546a6a4320f5a7b17c0046264157cfaab276495341f20d7fb98b36a2f94ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/104-md-knowledge-vault-production-readiness/sections/section-10-end-to-end-adoption-flows.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

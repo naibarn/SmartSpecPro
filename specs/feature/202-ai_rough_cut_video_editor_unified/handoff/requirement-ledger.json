@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L23"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L23"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L23",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L23",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L25"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L25"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L25",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L25",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L32"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L32"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L32",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L33"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L33"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L33",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L33",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L655"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L655"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L655",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L670"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L681"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1623"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1637"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1640"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1645"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1645"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1645",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1649"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1662"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1662"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1662",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1662",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1664"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1664"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1664",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1666"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1673"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1684"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1684"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1684",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1688"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1969"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1969"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1969",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1970"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1970"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1970",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L1970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2041"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2041"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2041",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2048"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2048"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2048",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2053"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2053"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2053",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2053",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2056"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2056"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2056",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2251"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2252"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2252"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2252",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2253"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2253"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2253",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2254"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2254"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2254",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2255"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2256"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2257"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2258"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2259"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2260"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2266"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2267"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2268"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2269"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2270"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2271"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2272"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2278"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2279"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2279"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2279",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2280"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2281"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2282"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2283"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2283"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2283",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2284"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2284"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2284",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2290"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2290"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2290",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2291"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2291"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2291",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2292"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2292"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2292",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2293"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2294"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2295"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2296"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2296"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2296",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2297"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2297"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2297",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2298"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2298"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2298",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2415"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2426"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2429"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2429"
       ],
-      "authority_source": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2429",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/spec.md#L2429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

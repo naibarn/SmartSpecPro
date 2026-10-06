@@ -14,7 +14,7 @@
         "referencing_spec_id": "220",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L67",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L67",
         "source_digest": "9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",
         "successor_spec_id": "220"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "219",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L1373",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L1373",
         "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
         "successor_spec_id": "219"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "231",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "234",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L168",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L168",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "237",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L383",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md#L383",
         "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
         "successor_spec_id": "237"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "244",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L86",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L86",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -116,7 +116,7 @@
           "R5-01",
           "R5-15"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -128,7 +128,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       }
@@ -233,7 +233,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/220-tenant-data-capability-security-gateway/spec.md",
     "digest": "9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",

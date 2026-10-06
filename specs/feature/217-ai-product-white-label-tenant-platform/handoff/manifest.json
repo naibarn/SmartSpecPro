@@ -14,7 +14,7 @@
         "referencing_spec_id": "217",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1317",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1317",
         "source_digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
         "successor_spec_id": "217"
       },
@@ -28,7 +28,7 @@
         "requirement_ids": [
           "R0.2"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -40,7 +40,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       }
@@ -117,7 +117,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md",
     "digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",

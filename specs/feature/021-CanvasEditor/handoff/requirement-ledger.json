@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L29"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L29"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L29",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L30"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L30"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L30",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L31"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L32"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L32"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L32",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L33"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L33"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L33",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L33",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L46"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L46"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L46",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L47"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L47"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L47",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L48"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L49"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L49"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L49",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L50"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L50"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L50",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L51"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L51"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L51",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L52"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L142"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L143"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L143"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L143",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L144"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L145"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L145"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L145",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L146"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L147"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L151"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L151"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L151",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L152"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L153"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L153"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L153",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L154"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L154"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L154",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L155"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L156"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L157"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L157"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L157",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L158"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L159"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L159"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L159",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L160"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L161"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L162"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L163"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L164"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L165"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L166"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L167"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L167"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L167",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L168"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L169"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L173"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L173"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L173",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L174"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L174"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L174",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L175"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L175"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L175",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L176"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L176"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L176",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L177"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L177"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L177",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L178"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L179"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L180"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L181"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L182"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L182"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L182",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L183"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L184"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L185"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L185"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L185",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L186"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L186"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L186",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L187"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L188"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L192"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L192"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L192",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L193"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L193"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L193",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L194"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L195"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L196"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L196"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L196",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L197"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L197"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L197",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L198"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L199"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L200"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L201"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L201"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L201",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L202"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L202"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L202",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L203"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L203"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L203",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L207"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L208"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L208"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L208",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L209"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L209"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L209",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L210"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L210"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L210",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L214"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L214"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L214",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L215"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L216"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L217"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L218"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L218"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L218",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L219"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L223"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L223"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L223",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L224"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L224"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L225"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L226"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L226"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L226",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L348"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L349"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L349"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L349",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L350"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L350"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L350",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L351"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L352"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L352"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L352",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L535"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L535"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L535",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L536"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L536"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L536",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L537"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L538"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L538"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L538",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L540"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L540"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L540",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L541"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L541",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L542"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L542"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L542",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L544"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L544"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L544",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L545"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L545"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L545",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L546"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L546"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L546",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L548"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L548"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L548",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L549"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L549"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L549",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/021-CanvasEditor/spec.md#L550"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L550"
       ],
-      "authority_source": "specs/feature/021-CanvasEditor/spec.md#L550",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

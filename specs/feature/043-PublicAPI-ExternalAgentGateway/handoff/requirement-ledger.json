@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L106"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L132"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L234"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L276"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L276"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L276",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L375"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L449"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L550"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L550"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L550",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L576"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L576"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L576",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L576",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L607"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L607"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L607",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L698"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L698"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L698",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L813"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L813"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L813",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L814"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L814"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L814",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L845"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L845"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L845",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L864"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L864"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L864",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L937"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L937"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L937",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L974"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L974"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L974",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L974",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1003"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1003"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1003",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1083"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1083"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1083",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1341"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1343"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1345"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1345"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1345",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1569"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1569"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1569",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1952"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1952"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1952",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1952",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1965"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1965"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1965",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1995"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1995"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1995",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1997"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1997"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1997",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2104"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2191"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2415"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2463"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2476"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2476"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2476",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2493"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2493"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2493",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2536"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2536"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2536",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2559"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2559"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2559",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2567"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2567"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2567",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2567",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2568"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2569"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2569"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2569",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2570"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2571"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2571"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2571",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2572"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2572"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2572",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2573"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2573"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2573",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2574"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2574"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2574",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2575"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2575"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2575",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2576"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2576"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2576",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2576",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2577"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2577"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2577",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2577",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2578"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2578"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2578",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2579"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2579"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2579",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2579",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2583"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2583"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2583",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2584"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2584"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2584",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2585"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2585"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2585",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2585",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2586"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2587"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2587"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2587",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2587",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2591"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2591"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2591",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2591",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2592"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2593"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2593"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2593",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2593",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2594"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2594"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2594",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2595"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2595"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2595",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2595",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2596"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2596"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2596",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2600"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2601"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2601"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2601",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2602"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2603"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2604"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2604"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2604",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2605"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2605"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2605",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2605",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2606"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2606"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2606",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2607"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2607"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2607",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2608"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2608"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2608",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2608",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2609"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2609"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2609",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2610"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2610"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2610",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2611"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2611"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2611",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2615"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2615"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2615",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2615",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2616"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2616"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2616",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2617"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2618"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2619"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2620"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2624"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2625"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2626"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2626"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2626",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2627"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2628"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2629"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2633"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2634"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2635"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2636"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2637"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2638"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2638"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2638",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2639"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2639"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2639",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2643"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2644"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2644"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2644",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2645"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2645"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2645",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2646"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2646"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2646",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2678"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2678"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2678",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2733"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2733"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2733",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2797"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2797"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2797",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2797",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2911"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2911"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2911",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2915"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2928"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2931"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2931"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2931",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2942"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2942"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2942",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2948"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2948"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2948",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2956"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2956"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2956",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2956",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2959"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2959"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2959",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2968"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2968"
       ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2968",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2968",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

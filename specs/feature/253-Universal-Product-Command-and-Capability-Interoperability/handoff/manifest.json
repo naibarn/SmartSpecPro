@@ -14,7 +14,7 @@
         "referencing_spec_id": "253",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L265",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#L265",
         "source_digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
         "successor_spec_id": "253"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       }
@@ -132,7 +132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md",
     "digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",

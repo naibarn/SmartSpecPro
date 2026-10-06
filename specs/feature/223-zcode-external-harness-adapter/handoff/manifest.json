@@ -14,7 +14,7 @@
         "referencing_spec_id": "223",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/223-zcode-external-harness-adapter/spec.md#L191",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/223-zcode-external-harness-adapter/spec.md#L191",
         "source_digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
         "successor_spec_id": "223"
       }
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/223-zcode-external-harness-adapter/spec.md",
     "digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",

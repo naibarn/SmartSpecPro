@@ -14,7 +14,7 @@
         "referencing_spec_id": "278",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L188",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L188",
         "source_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
         "successor_spec_id": "278"
       }
@@ -30,97 +30,97 @@
       {
         "digest": "67cfbb9ee4a4e2dca080a67cc82865b98edef155c30ca9c91b4b5d7f77ee2256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
       },
       {
         "digest": "60921559fe7e7d9429f1689991d95f5235deb0599ff76462093980d7f1c87470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
       },
       {
         "digest": "9805d5e2f6093f92c4cb9fbe0f76adb665838debd1f34da620cd52db1dde180a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
       },
       {
         "digest": "14b279875393bf30a667f96199605a8c9f42e49ef8f0bf03d898baa11286e7e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
       },
       {
         "digest": "d49beee35f83a0296d30ab27eb4757530a4b742f7f9fca1cebda38f288a5a33c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
       },
       {
         "digest": "c2ff5af2a774d0d655f03f201e57696f7380af494dfc408d216d955f37f2e1e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
       },
       {
         "digest": "81496cd91e2ed7039413ad046a4b0f8a4b1716aaa1165435a954255f626025f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
       },
       {
         "digest": "dfd08f20d03483e309bed7ba89843014f09ba0cca52ecc57d853448be83e8602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
       },
       {
         "digest": "9b5e411ff4d4083c12fbac3d0a807be22bdd657611312251ba60db052c7da48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
       },
       {
         "digest": "b77a73f60bc36aad2212c7267b5d684f486f675f40d44e4eed96f33f5230c91d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
       },
       {
         "digest": "9b5ee574cb9bca28ef12cb1dbd098bd41d7b0a591e226e8ffe6ea1f03c4626e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
       },
       {
         "digest": "9dc3ae711e2e320ba86665ccfb8816f317dd8d7395a9db2b058e6211436c4c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
       },
       {
         "digest": "a27335f9a68a723f63a7f5e27291fde4e7db3da00f9a53b119a95f9b45f6b489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
       },
       {
         "digest": "c99c4e45ccac8a49801532002367e8e57c339b023d1c0d32630934a2012771d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
       },
       {
         "digest": "7430d9d6c8e226ebb34fd8c3c420b38f4e6dcaf2fafc1fb66680c118e52a9c39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
       },
       {
         "digest": "1c0f52afb294e87684684c018b079a837b353a91c7f685e97f1d836c108381b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
       },
       {
         "digest": "0a88da7cb92c99df55e8062f6e0ece716ab9b9507eb62738f614b93ad49c4edd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
       },
       {
         "digest": "cb13018bfbd53d7f8ce24d290b623461ffc3215121665ed61424d23f6a3cd643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
       },
       {
         "digest": "c9a62b1aa14bae148a100b67812e4dac3968fe759f5bbf5f83ab0173050fe7c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
       }
     ],
     "predecessors": [],
@@ -151,97 +151,97 @@
       {
         "digest": "67cfbb9ee4a4e2dca080a67cc82865b98edef155c30ca9c91b4b5d7f77ee2256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
       },
       {
         "digest": "60921559fe7e7d9429f1689991d95f5235deb0599ff76462093980d7f1c87470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
       },
       {
         "digest": "9805d5e2f6093f92c4cb9fbe0f76adb665838debd1f34da620cd52db1dde180a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
       },
       {
         "digest": "14b279875393bf30a667f96199605a8c9f42e49ef8f0bf03d898baa11286e7e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
       },
       {
         "digest": "d49beee35f83a0296d30ab27eb4757530a4b742f7f9fca1cebda38f288a5a33c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
       },
       {
         "digest": "c2ff5af2a774d0d655f03f201e57696f7380af494dfc408d216d955f37f2e1e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
       },
       {
         "digest": "81496cd91e2ed7039413ad046a4b0f8a4b1716aaa1165435a954255f626025f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
       },
       {
         "digest": "dfd08f20d03483e309bed7ba89843014f09ba0cca52ecc57d853448be83e8602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
       },
       {
         "digest": "9b5e411ff4d4083c12fbac3d0a807be22bdd657611312251ba60db052c7da48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
       },
       {
         "digest": "b77a73f60bc36aad2212c7267b5d684f486f675f40d44e4eed96f33f5230c91d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
       },
       {
         "digest": "9b5ee574cb9bca28ef12cb1dbd098bd41d7b0a591e226e8ffe6ea1f03c4626e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
       },
       {
         "digest": "9dc3ae711e2e320ba86665ccfb8816f317dd8d7395a9db2b058e6211436c4c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
       },
       {
         "digest": "a27335f9a68a723f63a7f5e27291fde4e7db3da00f9a53b119a95f9b45f6b489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
       },
       {
         "digest": "c99c4e45ccac8a49801532002367e8e57c339b023d1c0d32630934a2012771d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
       },
       {
         "digest": "7430d9d6c8e226ebb34fd8c3c420b38f4e6dcaf2fafc1fb66680c118e52a9c39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
       },
       {
         "digest": "1c0f52afb294e87684684c018b079a837b353a91c7f685e97f1d836c108381b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
       },
       {
         "digest": "0a88da7cb92c99df55e8062f6e0ece716ab9b9507eb62738f614b93ad49c4edd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
       },
       {
         "digest": "cb13018bfbd53d7f8ce24d290b623461ffc3215121665ed61424d23f6a3cd643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
       },
       {
         "digest": "c9a62b1aa14bae148a100b67812e4dac3968fe759f5bbf5f83ab0173050fe7c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
       },
       {
         "excerpt": "## Spec 278 Session Host implementation status",
@@ -322,103 +322,103 @@
       {
         "digest": "67cfbb9ee4a4e2dca080a67cc82865b98edef155c30ca9c91b4b5d7f77ee2256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
       },
       {
         "digest": "60921559fe7e7d9429f1689991d95f5235deb0599ff76462093980d7f1c87470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
       },
       {
         "digest": "9805d5e2f6093f92c4cb9fbe0f76adb665838debd1f34da620cd52db1dde180a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
       },
       {
         "digest": "14b279875393bf30a667f96199605a8c9f42e49ef8f0bf03d898baa11286e7e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
       },
       {
         "digest": "d49beee35f83a0296d30ab27eb4757530a4b742f7f9fca1cebda38f288a5a33c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
       },
       {
         "digest": "c2ff5af2a774d0d655f03f201e57696f7380af494dfc408d216d955f37f2e1e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
       },
       {
         "digest": "81496cd91e2ed7039413ad046a4b0f8a4b1716aaa1165435a954255f626025f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
       },
       {
         "digest": "dfd08f20d03483e309bed7ba89843014f09ba0cca52ecc57d853448be83e8602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
       },
       {
         "digest": "9b5e411ff4d4083c12fbac3d0a807be22bdd657611312251ba60db052c7da48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
       },
       {
         "digest": "b77a73f60bc36aad2212c7267b5d684f486f675f40d44e4eed96f33f5230c91d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
       },
       {
         "digest": "9b5ee574cb9bca28ef12cb1dbd098bd41d7b0a591e226e8ffe6ea1f03c4626e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
       },
       {
         "digest": "9dc3ae711e2e320ba86665ccfb8816f317dd8d7395a9db2b058e6211436c4c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
       },
       {
         "digest": "a27335f9a68a723f63a7f5e27291fde4e7db3da00f9a53b119a95f9b45f6b489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
       },
       {
         "digest": "c99c4e45ccac8a49801532002367e8e57c339b023d1c0d32630934a2012771d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
       },
       {
         "digest": "7430d9d6c8e226ebb34fd8c3c420b38f4e6dcaf2fafc1fb66680c118e52a9c39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
       },
       {
         "digest": "1c0f52afb294e87684684c018b079a837b353a91c7f685e97f1d836c108381b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
       },
       {
         "digest": "0a88da7cb92c99df55e8062f6e0ece716ab9b9507eb62738f614b93ad49c4edd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
       },
       {
         "digest": "cb13018bfbd53d7f8ce24d290b623461ffc3215121665ed61424d23f6a3cd643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
       },
       {
         "digest": "c9a62b1aa14bae148a100b67812e4dac3968fe759f5bbf5f83ab0173050fe7c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md",
     "digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
@@ -471,142 +471,142 @@
       {
         "digest": "67cfbb9ee4a4e2dca080a67cc82865b98edef155c30ca9c91b4b5d7f77ee2256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
       },
       {
         "digest": "60921559fe7e7d9429f1689991d95f5235deb0599ff76462093980d7f1c87470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
       },
       {
         "digest": "9805d5e2f6093f92c4cb9fbe0f76adb665838debd1f34da620cd52db1dde180a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
       },
       {
         "digest": "14b279875393bf30a667f96199605a8c9f42e49ef8f0bf03d898baa11286e7e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
       },
       {
         "digest": "d49beee35f83a0296d30ab27eb4757530a4b742f7f9fca1cebda38f288a5a33c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
       },
       {
         "digest": "c2ff5af2a774d0d655f03f201e57696f7380af494dfc408d216d955f37f2e1e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
       },
       {
         "digest": "81496cd91e2ed7039413ad046a4b0f8a4b1716aaa1165435a954255f626025f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
       },
       {
         "digest": "dfd08f20d03483e309bed7ba89843014f09ba0cca52ecc57d853448be83e8602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
       },
       {
         "digest": "9b5e411ff4d4083c12fbac3d0a807be22bdd657611312251ba60db052c7da48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
       },
       {
         "digest": "b77a73f60bc36aad2212c7267b5d684f486f675f40d44e4eed96f33f5230c91d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
       },
       {
         "digest": "9b5ee574cb9bca28ef12cb1dbd098bd41d7b0a591e226e8ffe6ea1f03c4626e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
       },
       {
         "digest": "9dc3ae711e2e320ba86665ccfb8816f317dd8d7395a9db2b058e6211436c4c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
       },
       {
         "digest": "a27335f9a68a723f63a7f5e27291fde4e7db3da00f9a53b119a95f9b45f6b489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
       },
       {
         "digest": "c99c4e45ccac8a49801532002367e8e57c339b023d1c0d32630934a2012771d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
       },
       {
         "digest": "7430d9d6c8e226ebb34fd8c3c420b38f4e6dcaf2fafc1fb66680c118e52a9c39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
       },
       {
         "digest": "1c0f52afb294e87684684c018b079a837b353a91c7f685e97f1d836c108381b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
       },
       {
         "digest": "0a88da7cb92c99df55e8062f6e0ece716ab9b9507eb62738f614b93ad49c4edd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
       },
       {
         "digest": "cb13018bfbd53d7f8ce24d290b623461ffc3215121665ed61424d23f6a3cd643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
       },
       {
         "digest": "c9a62b1aa14bae148a100b67812e4dac3968fe759f5bbf5f83ab0173050fe7c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
       },
       {
         "digest": "ba58b1fd77d493d5161cedc832ecb7e06649707e0ca1d0037fe32b5c0fabc775",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-03-recovery-reconciliation-and-authority-fencing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-03-recovery-reconciliation-and-authority-fencing.md"
       },
       {
         "digest": "b932c0184457d897e3ede2b302002d5e2ddb0636bcb75a25016531151057a03d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-04-ordered-command-lane-stream-and-upgrade.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-04-ordered-command-lane-stream-and-upgrade.md"
       },
       {
         "digest": "aee2c21514bf09c5038c3503470e409dac7c07bdd63c371fa5404ac53d3bafa3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-05-resource-v2-and-two-phase-placement.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-05-resource-v2-and-two-phase-placement.md"
       },
       {
         "digest": "92c8cf6aadd4cb4853f0f457cc6588ed06efed279148f1dbc7333441aa6f60b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-06-structured-drivers-and-checkpoint-integrity.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-06-structured-drivers-and-checkpoint-integrity.md"
       },
       {
         "digest": "3109e10f9f4bfca48453619b1cac98231691a87002356d3c884dc315174a4a23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-07-cloudflare-container-and-sandbox-drivers.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-07-cloudflare-container-and-sandbox-drivers.md"
       },
       {
         "digest": "056ee8ded438d14468cf6c3bd9a236746ece355faade3bcb223c5a1ba5bfb876",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-08-execution-stream-separation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-08-execution-stream-separation.md"
       },
       {
         "digest": "47f853a7fcf1ca5742800eaffb1d7713f470fbf8645b4512f062ea0e27404152",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-09-task-control-session-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-09-task-control-session-projection.md"
       },
       {
         "digest": "6a9bc01fb507cbb39ae86a57eaaa814e42f8c3894f743fcbd7cb1f03443de07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-10-commercial-grants-and-metering-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-10-commercial-grants-and-metering-evidence.md"
       },
       {
         "digest": "bab943b275d6339d0622cbf19ddc6ea059aa85f873951808b3f3b422bec506e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-11-certification-integration-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-11-certification-integration-and-rollout.md"
       },
       {
         "excerpt": "## Spec 278 Session Host implementation status",
@@ -755,142 +755,142 @@
       {
         "digest": "67cfbb9ee4a4e2dca080a67cc82865b98edef155c30ca9c91b4b5d7f77ee2256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-plan.md"
       },
       {
         "digest": "60921559fe7e7d9429f1689991d95f5235deb0599ff76462093980d7f1c87470",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/claude-spec.md"
       },
       {
         "digest": "9805d5e2f6093f92c4cb9fbe0f76adb665838debd1f34da620cd52db1dde180a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/continuation-2026-10-05.md"
       },
       {
         "digest": "14b279875393bf30a667f96199605a8c9f42e49ef8f0bf03d898baa11286e7e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/deep_implement_config.json"
       },
       {
         "digest": "d49beee35f83a0296d30ab27eb4757530a4b742f7f9fca1cebda38f288a5a33c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-closure-2026-10-05.md"
       },
       {
         "digest": "c2ff5af2a774d0d655f03f201e57696f7380af494dfc408d216d955f37f2e1e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/gap-review-12-rounds.md"
       },
       {
         "digest": "81496cd91e2ed7039413ad046a4b0f8a4b1716aaa1165435a954255f626025f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/learning-log.md"
       },
       {
         "digest": "dfd08f20d03483e309bed7ba89843014f09ba0cca52ecc57d853448be83e8602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/loop-progress.md"
       },
       {
         "digest": "9b5e411ff4d4083c12fbac3d0a807be22bdd657611312251ba60db052c7da48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/orchestra-lifecycle.md"
       },
       {
         "digest": "b77a73f60bc36aad2212c7267b5d684f486f675f40d44e4eed96f33f5230c91d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/receipt-binding-review-10-rounds-2026-10-05.md"
       },
       {
         "digest": "9b5ee574cb9bca28ef12cb1dbd098bd41d7b0a591e226e8ffe6ea1f03c4626e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-code-loop-2026-10-05.md"
       },
       {
         "digest": "9dc3ae711e2e320ba86665ccfb8816f317dd8d7395a9db2b058e6211436c4c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/spec-compliance-12-rounds.md"
       },
       {
         "digest": "a27335f9a68a723f63a7f5e27291fde4e7db3da00f9a53b119a95f9b45f6b489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/implementation/traceability.md"
       },
       {
         "digest": "c99c4e45ccac8a49801532002367e8e57c339b023d1c0d32630934a2012771d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-adversarial-review.md"
       },
       {
         "digest": "7430d9d6c8e226ebb34fd8c3c420b38f4e6dcaf2fafc1fb66680c118e52a9c39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-1.md"
       },
       {
         "digest": "1c0f52afb294e87684684c018b079a837b353a91c7f685e97f1d836c108381b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/reviews/plan-review-round-2.md"
       },
       {
         "digest": "0a88da7cb92c99df55e8062f6e0ece716ab9b9507eb62738f614b93ad49c4edd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/index.md"
       },
       {
         "digest": "cb13018bfbd53d7f8ce24d290b623461ffc3215121665ed61424d23f6a3cd643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-01-canonical-contracts-and-dark-projection.md"
       },
       {
         "digest": "c9a62b1aa14bae148a100b67812e4dac3968fe759f5bbf5f83ab0173050fe7c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-02-local-session-host-and-registry.md"
       },
       {
         "digest": "ba58b1fd77d493d5161cedc832ecb7e06649707e0ca1d0037fe32b5c0fabc775",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-03-recovery-reconciliation-and-authority-fencing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-03-recovery-reconciliation-and-authority-fencing.md"
       },
       {
         "digest": "b932c0184457d897e3ede2b302002d5e2ddb0636bcb75a25016531151057a03d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-04-ordered-command-lane-stream-and-upgrade.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-04-ordered-command-lane-stream-and-upgrade.md"
       },
       {
         "digest": "aee2c21514bf09c5038c3503470e409dac7c07bdd63c371fa5404ac53d3bafa3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-05-resource-v2-and-two-phase-placement.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-05-resource-v2-and-two-phase-placement.md"
       },
       {
         "digest": "92c8cf6aadd4cb4853f0f457cc6588ed06efed279148f1dbc7333441aa6f60b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-06-structured-drivers-and-checkpoint-integrity.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-06-structured-drivers-and-checkpoint-integrity.md"
       },
       {
         "digest": "3109e10f9f4bfca48453619b1cac98231691a87002356d3c884dc315174a4a23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-07-cloudflare-container-and-sandbox-drivers.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-07-cloudflare-container-and-sandbox-drivers.md"
       },
       {
         "digest": "056ee8ded438d14468cf6c3bd9a236746ece355faade3bcb223c5a1ba5bfb876",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-08-execution-stream-separation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-08-execution-stream-separation.md"
       },
       {
         "digest": "47f853a7fcf1ca5742800eaffb1d7713f470fbf8645b4512f062ea0e27404152",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-09-task-control-session-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-09-task-control-session-projection.md"
       },
       {
         "digest": "6a9bc01fb507cbb39ae86a57eaaa814e42f8c3894f743fcbd7cb1f03443de07c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-10-commercial-grants-and-metering-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-10-commercial-grants-and-metering-evidence.md"
       },
       {
         "digest": "bab943b275d6339d0622cbf19ddc6ea059aa85f873951808b3f3b422bec506e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-11-certification-integration-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/sections/section-11-certification-integration-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

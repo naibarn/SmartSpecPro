@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L92"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L92"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L92",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L112"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L118"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L119"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L119"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L119",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L120"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L120"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L120",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L121"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L122"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L123"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L124"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L125"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L126"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L126"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L126",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L127"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L128"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L140"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L154"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L154"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L154",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L187"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L195"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L196"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L196"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L196",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L197"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L197"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L197",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L198"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L199"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L200"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L206"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L207"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L208"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L208"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L208",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L209"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L209"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L209",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L210"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L210"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L210",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L211"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L212"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L213"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L213"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L213",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L226"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L226"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L226",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L228"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L228"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L228",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L229"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L230"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L231"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L232"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L233"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L233"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L233",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L234"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L235"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L235"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L235",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L236"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L238"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L240"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L240",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L246"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L246"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L246",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L291"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L291"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L291",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L302"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L302"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L302",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L315"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L385"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L385"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L385",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L387"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L387"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L387",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L388"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L388"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L388",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L401"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L498"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L498"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L498",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L500"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L507"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L507"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L507",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L513"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L513"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L513",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L531"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L531"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L531",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L537"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L543"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L543"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L543",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L552"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L552"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L552",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L560"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L560"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L560",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L568"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L575"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L575"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L575",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L596"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L596"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L596",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L604"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L604"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L604",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L613"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L613"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L613",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L621"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L629"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L643"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L652"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L660"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L660"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L660",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L662"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L662"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L662",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L662",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L669"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L669"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L669",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L679"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L679"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L679",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L687"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L694"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L694"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L694",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L709"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L709"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L709",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L718"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L718"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L718",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L718",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L725"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L725"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L725",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L738"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L746"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L748"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L758"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L764"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L764"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L764",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L764",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L770"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1021"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1021"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1021",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1128"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1150"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1150"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1150",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1152"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1172"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1172"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1172",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1195"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1373"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1373"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1373",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1394"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1471"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1471"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1471",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1472"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1472"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1472",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1473"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1473"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1473",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1474"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1474"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1474",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1539"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1539"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1539",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1544"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1544"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1544",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1548"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1548"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1548",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1549"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1549"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1549",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1552"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1552"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1552",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1652"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1653"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1653"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1653",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1654"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1654"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1654",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1663"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1663"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1663",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1670"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1702"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1702"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1702",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1710"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1710"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1710",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1783"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1783"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1783",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1844"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1844"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1844",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1854"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1854"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1854",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1912"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1912"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1912",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1912",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2043"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2043"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2043",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2094"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2094"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2094",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2096"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2122"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2321"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2321"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2321",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2339"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2339"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2339",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2340"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2352"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2352"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2352",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2370"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2425"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2425"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2425",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2441"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2441"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2441",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2441",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2465"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2465"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2465",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2465",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2467"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2542"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2542"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2542",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2557"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2557"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2557",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2558"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2558"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2558",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2558",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2559"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2559"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2559",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2562"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2562"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2562",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2566"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2566"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2566",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2567"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2567"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2567",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2567",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2568"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2570"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2571"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2571"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2571",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2572"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2572"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2572",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2602"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2603"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2609"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2609"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2609",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2611"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2611"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2611",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2612"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2612"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2612",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2613"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2613"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2613",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2627"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2631"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2681"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2695"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2695"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2695",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2707"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2713"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2713"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2713",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2748"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2760"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2760"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2760",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2786"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2786"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2786",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2794"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2794"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2794",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2823"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2823"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2823",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2830"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2830"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2830",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2864"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2864"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2864",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2868"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2868"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2868",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2870"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2870"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2870",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2870",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2872"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2872"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2872",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2872",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2901"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2901"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2901",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2905"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2905"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2905",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2905",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2907"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2907"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2907",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2907",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2912"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2912"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2912",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2912",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2929"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2929"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2929",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2936"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2936"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2936",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2936",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2962"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2962"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2962",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2962",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2981"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2981"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2981",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L2981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3005"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3005"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3005",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3015"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3015"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3015",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3023"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3023"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3023",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3023",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3027"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3125"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3128"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3132"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3143"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3143"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3143",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3147"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3163"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3164"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3165"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3242"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3243"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3243"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3243",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3244"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3244"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3244",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3256"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3262"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3266"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3275"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3284"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3284"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3284",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3414"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3414"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3414",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3415"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3498"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3498"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3498",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3505"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3505"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3505",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3707"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4185,9 +4185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3720"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3720"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3720",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4207,9 +4207,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3721"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4229,9 +4229,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3723"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3723"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3723",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4251,9 +4251,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3724"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4273,9 +4273,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3738"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4295,9 +4295,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3742"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3742"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3742",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4317,9 +4317,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3751"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3751"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3751",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4339,9 +4339,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3756"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3756"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3756",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4361,9 +4361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3767"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3767"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3767",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4383,9 +4383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3886"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3886"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3886",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3886",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4405,9 +4405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3906"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3906"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3906",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3906",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4427,9 +4427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3981"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3981"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3981",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4449,9 +4449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3982"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3982"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3982",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3982",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4471,9 +4471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4060"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4060"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4060",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4493,9 +4493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4227"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4515,9 +4515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4307"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4307"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4307",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4537,9 +4537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4313"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4313"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4313",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4559,9 +4559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4386"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4386"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4386",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4581,9 +4581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4405"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4405"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4405",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4603,9 +4603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4433"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4625,9 +4625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4489"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4489"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4489",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4647,9 +4647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4499"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4499"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4499",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4669,9 +4669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4510"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4510"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4510",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4691,9 +4691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4622"
       ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L4622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

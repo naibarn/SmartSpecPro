@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L70"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L76"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L76"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L76",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L80"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L84"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L87"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L87"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L87",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L92"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L92"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L92",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L109"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L221"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L260"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L267"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L269"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L420"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L420"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L420",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L437"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L461"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L461"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L461",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L461",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L468"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L600"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L747"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L759"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L759"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L759",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L765"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L765"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L765",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L769"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L769"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L769",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L769",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L797"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L797"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L797",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L797",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L846"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L846"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L846",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L924"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L924"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L924",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L924",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L925"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L925"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L925",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L927"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L927"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L927",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L927",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L928"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L938"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L938"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L938",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L940"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L940"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L940",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L942"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L942"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L942",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L945"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L945"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L945",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L949"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L949"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L949",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L949",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L953"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L953"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L953",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L953",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L955"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L955"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L955",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L960"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L960"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L960",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L962"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L962"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L962",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L962",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L967"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L967"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L967",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L967",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L970"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L970"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L970",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L973"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L973"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L973",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L973",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L976"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L976"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L976",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L976",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L978"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L978"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L978",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L978",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1022"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1056"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1056"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1056",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1057"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1057"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1057",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1111"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1208"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1208"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1208",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1211"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1215"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1217"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1221"
       ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

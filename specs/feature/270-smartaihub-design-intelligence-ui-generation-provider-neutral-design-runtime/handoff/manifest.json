@@ -17,72 +17,72 @@
       {
         "digest": "fcb313f289934f62a5f90040c7dbe335260f62a570dbe4f943b2041e946e118b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
       },
       {
         "digest": "7ef643591307881fddf79442b191927ec016f0abaafa26fdc291d3a43246a294",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
       },
       {
         "digest": "d6f078871453533f427e36dea9e3f220fd823f5c26d16787933fa5bcac849d8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
       },
       {
         "digest": "b160566d447f55924152b17742c3a6f1b8337f57df670c6ac08243a8b80364c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
       },
       {
         "digest": "2161dd005392a61b73220cadd9e5885d2291e08b7b6a0a9c68cd31eb9fc15945",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
       },
       {
         "digest": "3c2ddb316f1ef0f03588d5453eac529cb3c21f232fd59f11d658adeb5a469e1a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
       },
       {
         "digest": "61b416e664dbd0ca24c622945d4cb4d4b2574b692b0f29044ed9ed7dba1e8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
       },
       {
         "digest": "5c19683c2f0dfcacdadc0881847872f1ca01215dff775b3d3a72cf15fa6baa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
       },
       {
         "digest": "993d318e63b7b1403e1530cc96cffe04c151e5d8af94e5f643b05aebecb33f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
       },
       {
         "digest": "f0ba66bcd835a1294274d32df776111c8c750c8d6eb24bfa7b2c024ea812e3f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
       },
       {
         "digest": "da5ed76bb975b62959c3edff5c38f774106a86780cbb5332feeb6023a3771cf7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
       },
       {
         "digest": "c51449a5fd1444b799e4890ea44151596713b1fbab94418cfffc22eae43a6fb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
       },
       {
         "digest": "f8a0e0bf18f9dc44f2df85556e573171dacdc5dee8965b329c05e23c736dc899",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
       },
       {
         "digest": "556845dda3895085da4108405be091975229224ba14e173c7a8ac559d6740da6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "fcb313f289934f62a5f90040c7dbe335260f62a570dbe4f943b2041e946e118b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
       },
       {
         "digest": "7ef643591307881fddf79442b191927ec016f0abaafa26fdc291d3a43246a294",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
       },
       {
         "digest": "d6f078871453533f427e36dea9e3f220fd823f5c26d16787933fa5bcac849d8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
       },
       {
         "digest": "b160566d447f55924152b17742c3a6f1b8337f57df670c6ac08243a8b80364c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
       },
       {
         "digest": "2161dd005392a61b73220cadd9e5885d2291e08b7b6a0a9c68cd31eb9fc15945",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
       },
       {
         "digest": "3c2ddb316f1ef0f03588d5453eac529cb3c21f232fd59f11d658adeb5a469e1a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
       },
       {
         "digest": "61b416e664dbd0ca24c622945d4cb4d4b2574b692b0f29044ed9ed7dba1e8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
       },
       {
         "digest": "5c19683c2f0dfcacdadc0881847872f1ca01215dff775b3d3a72cf15fa6baa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
       },
       {
         "digest": "993d318e63b7b1403e1530cc96cffe04c151e5d8af94e5f643b05aebecb33f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
       },
       {
         "digest": "f0ba66bcd835a1294274d32df776111c8c750c8d6eb24bfa7b2c024ea812e3f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
       },
       {
         "digest": "da5ed76bb975b62959c3edff5c38f774106a86780cbb5332feeb6023a3771cf7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
       },
       {
         "digest": "c51449a5fd1444b799e4890ea44151596713b1fbab94418cfffc22eae43a6fb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
       },
       {
         "digest": "f8a0e0bf18f9dc44f2df85556e573171dacdc5dee8965b329c05e23c736dc899",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
       },
       {
         "digest": "556845dda3895085da4108405be091975229224ba14e173c7a8ac559d6740da6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
       },
       {
         "excerpt": "smartAiHubDesignIntelligence: boolean; // Spec 270 parent gate (default off)",
@@ -259,78 +259,78 @@
       {
         "digest": "fcb313f289934f62a5f90040c7dbe335260f62a570dbe4f943b2041e946e118b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
       },
       {
         "digest": "7ef643591307881fddf79442b191927ec016f0abaafa26fdc291d3a43246a294",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
       },
       {
         "digest": "d6f078871453533f427e36dea9e3f220fd823f5c26d16787933fa5bcac849d8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
       },
       {
         "digest": "b160566d447f55924152b17742c3a6f1b8337f57df670c6ac08243a8b80364c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
       },
       {
         "digest": "2161dd005392a61b73220cadd9e5885d2291e08b7b6a0a9c68cd31eb9fc15945",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
       },
       {
         "digest": "3c2ddb316f1ef0f03588d5453eac529cb3c21f232fd59f11d658adeb5a469e1a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
       },
       {
         "digest": "61b416e664dbd0ca24c622945d4cb4d4b2574b692b0f29044ed9ed7dba1e8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
       },
       {
         "digest": "5c19683c2f0dfcacdadc0881847872f1ca01215dff775b3d3a72cf15fa6baa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
       },
       {
         "digest": "993d318e63b7b1403e1530cc96cffe04c151e5d8af94e5f643b05aebecb33f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
       },
       {
         "digest": "f0ba66bcd835a1294274d32df776111c8c750c8d6eb24bfa7b2c024ea812e3f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
       },
       {
         "digest": "da5ed76bb975b62959c3edff5c38f774106a86780cbb5332feeb6023a3771cf7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
       },
       {
         "digest": "c51449a5fd1444b799e4890ea44151596713b1fbab94418cfffc22eae43a6fb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
       },
       {
         "digest": "f8a0e0bf18f9dc44f2df85556e573171dacdc5dee8965b329c05e23c736dc899",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
       },
       {
         "digest": "556845dda3895085da4108405be091975229224ba14e173c7a8ac559d6740da6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md",
     "digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
@@ -383,72 +383,72 @@
       {
         "digest": "fcb313f289934f62a5f90040c7dbe335260f62a570dbe4f943b2041e946e118b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
       },
       {
         "digest": "7ef643591307881fddf79442b191927ec016f0abaafa26fdc291d3a43246a294",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
       },
       {
         "digest": "d6f078871453533f427e36dea9e3f220fd823f5c26d16787933fa5bcac849d8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
       },
       {
         "digest": "b160566d447f55924152b17742c3a6f1b8337f57df670c6ac08243a8b80364c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
       },
       {
         "digest": "2161dd005392a61b73220cadd9e5885d2291e08b7b6a0a9c68cd31eb9fc15945",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
       },
       {
         "digest": "3c2ddb316f1ef0f03588d5453eac529cb3c21f232fd59f11d658adeb5a469e1a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
       },
       {
         "digest": "61b416e664dbd0ca24c622945d4cb4d4b2574b692b0f29044ed9ed7dba1e8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
       },
       {
         "digest": "5c19683c2f0dfcacdadc0881847872f1ca01215dff775b3d3a72cf15fa6baa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
       },
       {
         "digest": "993d318e63b7b1403e1530cc96cffe04c151e5d8af94e5f643b05aebecb33f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
       },
       {
         "digest": "f0ba66bcd835a1294274d32df776111c8c750c8d6eb24bfa7b2c024ea812e3f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
       },
       {
         "digest": "da5ed76bb975b62959c3edff5c38f774106a86780cbb5332feeb6023a3771cf7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
       },
       {
         "digest": "c51449a5fd1444b799e4890ea44151596713b1fbab94418cfffc22eae43a6fb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
       },
       {
         "digest": "f8a0e0bf18f9dc44f2df85556e573171dacdc5dee8965b329c05e23c736dc899",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
       },
       {
         "digest": "556845dda3895085da4108405be091975229224ba14e173c7a8ac559d6740da6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
       },
       {
         "excerpt": "smartAiHubDesignIntelligence: boolean; // Spec 270 parent gate (default off)",
@@ -817,72 +817,72 @@
       {
         "digest": "fcb313f289934f62a5f90040c7dbe335260f62a570dbe4f943b2041e946e118b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-plan.md"
       },
       {
         "digest": "7ef643591307881fddf79442b191927ec016f0abaafa26fdc291d3a43246a294",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/claude-spec.md"
       },
       {
         "digest": "d6f078871453533f427e36dea9e3f220fd823f5c26d16787933fa5bcac849d8b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/G0-reconciliation-record.md"
       },
       {
         "digest": "b160566d447f55924152b17742c3a6f1b8337f57df670c6ac08243a8b80364c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/deep_implement_config.json"
       },
       {
         "digest": "2161dd005392a61b73220cadd9e5885d2291e08b7b6a0a9c68cd31eb9fc15945",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/implementation/final-audit-rounds.md"
       },
       {
         "digest": "3c2ddb316f1ef0f03588d5453eac529cb3c21f232fd59f11d658adeb5a469e1a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/reviews/self-review-round-1.md"
       },
       {
         "digest": "61b416e664dbd0ca24c622945d4cb4d4b2574b692b0f29044ed9ed7dba1e8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/index.md"
       },
       {
         "digest": "5c19683c2f0dfcacdadc0881847872f1ca01215dff775b3d3a72cf15fa6baa4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-01-reconciliation-and-contracts.md"
       },
       {
         "digest": "993d318e63b7b1403e1530cc96cffe04c151e5d8af94e5f643b05aebecb33f64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-02-native-artifact-lifecycle.md"
       },
       {
         "digest": "f0ba66bcd835a1294274d32df776111c8c750c8d6eb24bfa7b2c024ea812e3f3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-03-astryx-resolution.md"
       },
       {
         "digest": "da5ed76bb975b62959c3edff5c38f774106a86780cbb5332feeb6023a3771cf7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-04-spec224-256-handoff.md"
       },
       {
         "digest": "c51449a5fd1444b799e4890ea44151596713b1fbab94418cfffc22eae43a6fb7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-05-provider-adapter-boundary.md"
       },
       {
         "digest": "f8a0e0bf18f9dc44f2df85556e573171dacdc5dee8965b329c05e23c736dc899",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-06-native-authoring-ui.md"
       },
       {
         "digest": "556845dda3895085da4108405be091975229224ba14e173c7a8ac559d6740da6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/sections/section-07-hardening-and-evidence.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

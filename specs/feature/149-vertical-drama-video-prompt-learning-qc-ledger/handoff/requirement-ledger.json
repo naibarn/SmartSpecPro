@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L26"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L26"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L26",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L52"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L80"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L81"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L81"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L81",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L83"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L84"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L85"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L85"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L85",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L87"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L87"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L87",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L88"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L88"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L88",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L90"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L90"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L90",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L91"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L91"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L91",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L92"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L92"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L92",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L111"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L114"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L138"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L141"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L165"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L180"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L187"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L206"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L254"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L254"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L254",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L267"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L323"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L336"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L347"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L382"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L383"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L383"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L383",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L411"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L411"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L411",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L411",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L440"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L440"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L440",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L440",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L451"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L497"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L497"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L497",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L507"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L507"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L507",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L531"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L531"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L531",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L532"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L532"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L532",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L548"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L548"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L548",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L562"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L562"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L562",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L568"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L596"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L596"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L596",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L597"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L597"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L597",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L597",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L598"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L598"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L598",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L599"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L599"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L599",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L600"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L601"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L601"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L601",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L602"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L603"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L607"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L607"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L607",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L608"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L608"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L608",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L608",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L609"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L609"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L609",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L610"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L610"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L610",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L611"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L611"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L611",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L612"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L612"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L612",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L613"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L613"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L613",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L619"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L620"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L621"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L622"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L623"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L624"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L625"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L626"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L626"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L626",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L630"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L630"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L630",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L631"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L632"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L632"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L632",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L633"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L634"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L640"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L642"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L644"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L644"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L644",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L646"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L646"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L646",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L648"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L648"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L648",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L649"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L650"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L650"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L650",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L651"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L651"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L651",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L652"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L653"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L653"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L653",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L654"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L654"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L654",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L655"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L655"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L655",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L699"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L700"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L700"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L700",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L713"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L713"
       ],
-      "authority_source": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L713",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

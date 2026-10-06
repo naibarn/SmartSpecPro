@@ -21,11 +21,14 @@ def collect_source_evidence(repo: Path) -> dict[str, list[dict[str, Any]]]:
 
 def collect_source_evidence_for_inventory(repo: Path, discovered: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     by_id: dict[str, list[dict[str, Any]]] = {}
-    aliases: dict[str, list[str]] = {}
+    aliases: dict[str, set[str]] = {}
+    candidate_counts: dict[str, int] = {}
     for row in discovered["records"]:
         if row["root_kind"] == "CANONICAL" and row["record_kind"] == "CANONICAL_SPEC" and row.get("spec_id"):
             by_id.setdefault(str(row["spec_id"]), [])
-            aliases.setdefault(str(int(row["spec_id"])), []).append(str(row["spec_id"]))
+            normalized_id = str(int(row["spec_id"]))
+            aliases.setdefault(normalized_id, set()).add(str(row["spec_id"]))
+            candidate_counts[normalized_id] = candidate_counts.get(normalized_id, 0) + 1
     result = {spec_id: [] for spec_id in by_id}
     for root_name in _SOURCE_ROOTS:
         root = repo / root_name
@@ -48,13 +51,15 @@ def collect_source_evidence_for_inventory(repo: Path, discovered: dict[str, Any]
                 for number, line in enumerate(lines, start=1):
                     for match in _SPEC_MENTION.finditer(line):
                         spec_id = match.group(1)
-                        targets = aliases.get(str(int(spec_id)), [])
+                        normalized_id = str(int(spec_id))
+                        targets = sorted(aliases.get(normalized_id, set()))
                         if not targets:
                             continue
                         for target in targets:
-                            result[target].append({"kind": category, "path": path.relative_to(repo).as_posix(), "line": number, "excerpt": line.strip()[:240], "identity_ambiguous": len(targets) > 1})
-    for rows in result.values():
-        rows.sort(key=lambda row: (row["kind"], row["path"], row["line"]))
+                            result[target].append({"kind": category, "path": path.relative_to(repo).as_posix(), "line": number, "excerpt": line.strip()[:240], "identity_ambiguous": candidate_counts[normalized_id] > 1})
+    for spec_id, rows in result.items():
+        unique_rows = {(row["kind"], row["path"], row["line"]): row for row in rows}
+        result[spec_id] = sorted(unique_rows.values(), key=lambda row: (row["kind"], row["path"], row["line"]))
     return result
 
 

@@ -14,7 +14,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "282",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "282",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       }
@@ -120,7 +120,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md",
     "digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",

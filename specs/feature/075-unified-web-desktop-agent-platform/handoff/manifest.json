@@ -17,97 +17,97 @@
       {
         "digest": "84c1795df556af860bd0a6a911c839653b7bed342ab101796b438c2ae00c2681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
       },
       {
         "digest": "750670159068c1db25c59217eec1768cf90810bb68f781f0845dd31298a12659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
       },
       {
         "digest": "672810db41fc4d90a4dbb98a8fe994b401a72c5dfcc6668727d3366488042587",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "047b5bb9b78122981cdd4b52cfa4e47aa0201ee5d762b257e2b13b6da84aeedb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
       },
       {
         "digest": "04ba49bae721ab1c8a90e8127fb9e6afd2d63b838e37922150dac97566598d1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
       },
       {
         "digest": "d2b63600e39285421570366d98d9117e402ddc18e57bff4908b3a1bff5ce2a55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
       },
       {
         "digest": "2a1ffa6947b3ead12760b37441b03b6ba5c96c569fb52e99053320071e30cfd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
       },
       {
         "digest": "0a16e36ecba881e009c943bbfee21c19ebff08c459a826f40e741b2c1fa01f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
       },
       {
         "digest": "7409edde418403e48d123af8f5c0458afeb02efa0a341d65a18e0e3bf3ef3b33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
       },
       {
         "digest": "3dfd584917923509a3d6b23c1e20deab86d5f74c98cf23f58db6c859f4927f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
       },
       {
         "digest": "0d4e4aa7372c1bc4c1f56b5fcc95b5383a340049c246c92e77e6b2cc1b53b1a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
       },
       {
         "digest": "609d09b36fb8c7e5802e8cb456f80614dad8dfd5add0dff615afd342afe49eac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
       },
       {
         "digest": "07c0d56f410c06063d7b9389718d07b40b55121a931621a7d0ba6f6d673747aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0a5def344471b8a5e0901b5554ac15259b89350411e8c9c7cdd2997d744231d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "801cb00f6153da4b660fee5efd9e2b2771670e9c48ee67999d8b290e08d44ba7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
       },
       {
         "digest": "0dea18265917d8d833ab4f2366e157cdcd4926d2db2487adb60cd2003c6adc25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
       },
       {
         "digest": "17663b9fc4a4b791ac7b10258b8e3f20635e9b56934ceb8f2d330fde0a090c7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
       },
       {
         "digest": "642aece7465061c30b63ddcad36df5d26fc779eaf95b29b1f538e6f3d05eef4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
       },
       {
         "digest": "250225447e530a415b1824b8e2b76bd4f6e9a7c3d4d5e4093d2623d4624319ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "84c1795df556af860bd0a6a911c839653b7bed342ab101796b438c2ae00c2681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
       },
       {
         "digest": "750670159068c1db25c59217eec1768cf90810bb68f781f0845dd31298a12659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
       },
       {
         "digest": "672810db41fc4d90a4dbb98a8fe994b401a72c5dfcc6668727d3366488042587",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "047b5bb9b78122981cdd4b52cfa4e47aa0201ee5d762b257e2b13b6da84aeedb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
       },
       {
         "digest": "04ba49bae721ab1c8a90e8127fb9e6afd2d63b838e37922150dac97566598d1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
       },
       {
         "digest": "d2b63600e39285421570366d98d9117e402ddc18e57bff4908b3a1bff5ce2a55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
       },
       {
         "digest": "2a1ffa6947b3ead12760b37441b03b6ba5c96c569fb52e99053320071e30cfd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
       },
       {
         "digest": "0a16e36ecba881e009c943bbfee21c19ebff08c459a826f40e741b2c1fa01f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
       },
       {
         "digest": "7409edde418403e48d123af8f5c0458afeb02efa0a341d65a18e0e3bf3ef3b33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
       },
       {
         "digest": "3dfd584917923509a3d6b23c1e20deab86d5f74c98cf23f58db6c859f4927f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
       },
       {
         "digest": "0d4e4aa7372c1bc4c1f56b5fcc95b5383a340049c246c92e77e6b2cc1b53b1a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
       },
       {
         "digest": "609d09b36fb8c7e5802e8cb456f80614dad8dfd5add0dff615afd342afe49eac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
       },
       {
         "digest": "07c0d56f410c06063d7b9389718d07b40b55121a931621a7d0ba6f6d673747aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0a5def344471b8a5e0901b5554ac15259b89350411e8c9c7cdd2997d744231d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "801cb00f6153da4b660fee5efd9e2b2771670e9c48ee67999d8b290e08d44ba7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
       },
       {
         "digest": "0dea18265917d8d833ab4f2366e157cdcd4926d2db2487adb60cd2003c6adc25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
       },
       {
         "digest": "17663b9fc4a4b791ac7b10258b8e3f20635e9b56934ceb8f2d330fde0a090c7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
       },
       {
         "digest": "642aece7465061c30b63ddcad36df5d26fc779eaf95b29b1f538e6f3d05eef4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
       },
       {
         "digest": "250225447e530a415b1824b8e2b76bd4f6e9a7c3d4d5e4093d2623d4624319ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "84c1795df556af860bd0a6a911c839653b7bed342ab101796b438c2ae00c2681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
       },
       {
         "digest": "750670159068c1db25c59217eec1768cf90810bb68f781f0845dd31298a12659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
       },
       {
         "digest": "672810db41fc4d90a4dbb98a8fe994b401a72c5dfcc6668727d3366488042587",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "047b5bb9b78122981cdd4b52cfa4e47aa0201ee5d762b257e2b13b6da84aeedb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
       },
       {
         "digest": "04ba49bae721ab1c8a90e8127fb9e6afd2d63b838e37922150dac97566598d1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
       },
       {
         "digest": "d2b63600e39285421570366d98d9117e402ddc18e57bff4908b3a1bff5ce2a55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
       },
       {
         "digest": "2a1ffa6947b3ead12760b37441b03b6ba5c96c569fb52e99053320071e30cfd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
       },
       {
         "digest": "0a16e36ecba881e009c943bbfee21c19ebff08c459a826f40e741b2c1fa01f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
       },
       {
         "digest": "7409edde418403e48d123af8f5c0458afeb02efa0a341d65a18e0e3bf3ef3b33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
       },
       {
         "digest": "3dfd584917923509a3d6b23c1e20deab86d5f74c98cf23f58db6c859f4927f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
       },
       {
         "digest": "0d4e4aa7372c1bc4c1f56b5fcc95b5383a340049c246c92e77e6b2cc1b53b1a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
       },
       {
         "digest": "609d09b36fb8c7e5802e8cb456f80614dad8dfd5add0dff615afd342afe49eac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
       },
       {
         "digest": "07c0d56f410c06063d7b9389718d07b40b55121a931621a7d0ba6f6d673747aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0a5def344471b8a5e0901b5554ac15259b89350411e8c9c7cdd2997d744231d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "801cb00f6153da4b660fee5efd9e2b2771670e9c48ee67999d8b290e08d44ba7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
       },
       {
         "digest": "0dea18265917d8d833ab4f2366e157cdcd4926d2db2487adb60cd2003c6adc25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
       },
       {
         "digest": "17663b9fc4a4b791ac7b10258b8e3f20635e9b56934ceb8f2d330fde0a090c7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
       },
       {
         "digest": "642aece7465061c30b63ddcad36df5d26fc779eaf95b29b1f538e6f3d05eef4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
       },
       {
         "digest": "250225447e530a415b1824b8e2b76bd4f6e9a7c3d4d5e4093d2623d4624319ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
     "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
@@ -409,137 +409,137 @@
       {
         "digest": "84c1795df556af860bd0a6a911c839653b7bed342ab101796b438c2ae00c2681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
       },
       {
         "digest": "750670159068c1db25c59217eec1768cf90810bb68f781f0845dd31298a12659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
       },
       {
         "digest": "672810db41fc4d90a4dbb98a8fe994b401a72c5dfcc6668727d3366488042587",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "047b5bb9b78122981cdd4b52cfa4e47aa0201ee5d762b257e2b13b6da84aeedb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
       },
       {
         "digest": "04ba49bae721ab1c8a90e8127fb9e6afd2d63b838e37922150dac97566598d1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
       },
       {
         "digest": "d2b63600e39285421570366d98d9117e402ddc18e57bff4908b3a1bff5ce2a55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
       },
       {
         "digest": "2a1ffa6947b3ead12760b37441b03b6ba5c96c569fb52e99053320071e30cfd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
       },
       {
         "digest": "0a16e36ecba881e009c943bbfee21c19ebff08c459a826f40e741b2c1fa01f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
       },
       {
         "digest": "7409edde418403e48d123af8f5c0458afeb02efa0a341d65a18e0e3bf3ef3b33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
       },
       {
         "digest": "3dfd584917923509a3d6b23c1e20deab86d5f74c98cf23f58db6c859f4927f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
       },
       {
         "digest": "0d4e4aa7372c1bc4c1f56b5fcc95b5383a340049c246c92e77e6b2cc1b53b1a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
       },
       {
         "digest": "609d09b36fb8c7e5802e8cb456f80614dad8dfd5add0dff615afd342afe49eac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
       },
       {
         "digest": "07c0d56f410c06063d7b9389718d07b40b55121a931621a7d0ba6f6d673747aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0a5def344471b8a5e0901b5554ac15259b89350411e8c9c7cdd2997d744231d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "801cb00f6153da4b660fee5efd9e2b2771670e9c48ee67999d8b290e08d44ba7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
       },
       {
         "digest": "0dea18265917d8d833ab4f2366e157cdcd4926d2db2487adb60cd2003c6adc25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
       },
       {
         "digest": "17663b9fc4a4b791ac7b10258b8e3f20635e9b56934ceb8f2d330fde0a090c7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
       },
       {
         "digest": "642aece7465061c30b63ddcad36df5d26fc779eaf95b29b1f538e6f3d05eef4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
       },
       {
         "digest": "250225447e530a415b1824b8e2b76bd4f6e9a7c3d4d5e4093d2623d4624319ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
       },
       {
         "digest": "7bf895b7d1552bd100890dcf50f03c945c1159e6a651edc9791eba0c9d711e19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-05-agency-swarm-and-connector-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-05-agency-swarm-and-connector-runtime.md"
       },
       {
         "digest": "2d36843aa6c0a75a7314818fb4e38a13f1fa8bbb7c57e43772fc2aa635fe6f11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-06-unified-ux-cross-surface-handoff-and-run-labels.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-06-unified-ux-cross-surface-handoff-and-run-labels.md"
       },
       {
         "digest": "4f825f6ad9950bb259569fed6e88bbf0d88db5f85739972b25104dedb84ca6c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-07-security-governance-audit-and-offboarding.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-07-security-governance-audit-and-offboarding.md"
       },
       {
         "digest": "43deddf64655fa84071a04d31d2a4999b9f400beb230d1bcc74efd785d6097fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-08-rollout-migration-and-regression-matrix.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-08-rollout-migration-and-regression-matrix.md"
       },
       {
         "digest": "0634998002f037f16c0445d31b4826c283e39e068b417bd399981faa2fdbf88d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-09-omnivoice-provider-contract-and-gateway.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-09-omnivoice-provider-contract-and-gateway.md"
       },
       {
         "digest": "b1c3a691fd6818d133b8129bc06103f136f3ad231ed3c587e48119db0e9b2464",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-10-omnivoice-media-narration-and-voice-assets.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-10-omnivoice-media-narration-and-voice-assets.md"
       },
       {
         "digest": "ce48e4b06c66c9302835072092f0b07242154fd1e7172468eda758b991017c9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-11-omnivoice-desktop-readback-and-managed-local-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-11-omnivoice-desktop-readback-and-managed-local-runtime.md"
       },
       {
         "digest": "ba98e68c62d87e8f58bf70c92ca13b110f4a7877f822d9223018a13694491dcf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-12-omnivoice-governance-rollout-and-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-12-omnivoice-governance-rollout-and-regression.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -620,137 +620,137 @@
       {
         "digest": "84c1795df556af860bd0a6a911c839653b7bed342ab101796b438c2ae00c2681",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-plan.md"
       },
       {
         "digest": "750670159068c1db25c59217eec1768cf90810bb68f781f0845dd31298a12659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/claude-spec.md"
       },
       {
         "digest": "672810db41fc4d90a4dbb98a8fe994b401a72c5dfcc6668727d3366488042587",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "047b5bb9b78122981cdd4b52cfa4e47aa0201ee5d762b257e2b13b6da84aeedb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-01-status.md"
       },
       {
         "digest": "04ba49bae721ab1c8a90e8127fb9e6afd2d63b838e37922150dac97566598d1d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-02-status.md"
       },
       {
         "digest": "d2b63600e39285421570366d98d9117e402ddc18e57bff4908b3a1bff5ce2a55",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-03-status.md"
       },
       {
         "digest": "2a1ffa6947b3ead12760b37441b03b6ba5c96c569fb52e99053320071e30cfd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-04-status.md"
       },
       {
         "digest": "0a16e36ecba881e009c943bbfee21c19ebff08c459a826f40e741b2c1fa01f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-05-status.md"
       },
       {
         "digest": "7409edde418403e48d123af8f5c0458afeb02efa0a341d65a18e0e3bf3ef3b33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-06-status.md"
       },
       {
         "digest": "3dfd584917923509a3d6b23c1e20deab86d5f74c98cf23f58db6c859f4927f52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-07-status.md"
       },
       {
         "digest": "0d4e4aa7372c1bc4c1f56b5fcc95b5383a340049c246c92e77e6b2cc1b53b1a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/implementation/section-08-status.md"
       },
       {
         "digest": "609d09b36fb8c7e5802e8cb456f80614dad8dfd5add0dff615afd342afe49eac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/review-remediation-round-2.md"
       },
       {
         "digest": "07c0d56f410c06063d7b9389718d07b40b55121a931621a7d0ba6f6d673747aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0a5def344471b8a5e0901b5554ac15259b89350411e8c9c7cdd2997d744231d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "801cb00f6153da4b660fee5efd9e2b2771670e9c48ee67999d8b290e08d44ba7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/index.md"
       },
       {
         "digest": "0dea18265917d8d833ab4f2366e157cdcd4926d2db2487adb60cd2003c6adc25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-01-canonical-surface-device-and-contract-foundation.md"
       },
       {
         "digest": "17663b9fc4a4b791ac7b10258b8e3f20635e9b56934ceb8f2d330fde0a090c7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-02-package-trust-sync-and-materialization.md"
       },
       {
         "digest": "642aece7465061c30b63ddcad36df5d26fc779eaf95b29b1f538e6f3d05eef4d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-03-local-file-intelligence-and-workspace-manager.md"
       },
       {
         "digest": "250225447e530a415b1824b8e2b76bd4f6e9a7c3d4d5e4093d2623d4624319ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-04-execution-router-and-pi-runtime-host.md"
       },
       {
         "digest": "7bf895b7d1552bd100890dcf50f03c945c1159e6a651edc9791eba0c9d711e19",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-05-agency-swarm-and-connector-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-05-agency-swarm-and-connector-runtime.md"
       },
       {
         "digest": "2d36843aa6c0a75a7314818fb4e38a13f1fa8bbb7c57e43772fc2aa635fe6f11",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-06-unified-ux-cross-surface-handoff-and-run-labels.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-06-unified-ux-cross-surface-handoff-and-run-labels.md"
       },
       {
         "digest": "4f825f6ad9950bb259569fed6e88bbf0d88db5f85739972b25104dedb84ca6c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-07-security-governance-audit-and-offboarding.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-07-security-governance-audit-and-offboarding.md"
       },
       {
         "digest": "43deddf64655fa84071a04d31d2a4999b9f400beb230d1bcc74efd785d6097fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-08-rollout-migration-and-regression-matrix.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-08-rollout-migration-and-regression-matrix.md"
       },
       {
         "digest": "0634998002f037f16c0445d31b4826c283e39e068b417bd399981faa2fdbf88d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-09-omnivoice-provider-contract-and-gateway.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-09-omnivoice-provider-contract-and-gateway.md"
       },
       {
         "digest": "b1c3a691fd6818d133b8129bc06103f136f3ad231ed3c587e48119db0e9b2464",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-10-omnivoice-media-narration-and-voice-assets.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-10-omnivoice-media-narration-and-voice-assets.md"
       },
       {
         "digest": "ce48e4b06c66c9302835072092f0b07242154fd1e7172468eda758b991017c9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-11-omnivoice-desktop-readback-and-managed-local-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-11-omnivoice-desktop-readback-and-managed-local-runtime.md"
       },
       {
         "digest": "ba98e68c62d87e8f58bf70c92ca13b110f4a7877f822d9223018a13694491dcf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-12-omnivoice-governance-rollout-and-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/075-unified-web-desktop-agent-platform/sections/section-12-omnivoice-governance-rollout-and-regression.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

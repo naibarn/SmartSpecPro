@@ -17,7 +17,7 @@
       {
         "digest": "0440a34181f920c8ca061748e3ef5a209a59748d3ec38405d1ff283b255e8079",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/001-workflow-scripts/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "0440a34181f920c8ca061748e3ef5a209a59748d3ec38405d1ff283b255e8079",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/001-workflow-scripts/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/plan.md"
       },
       {
         "excerpt": "error = SpecNotFoundError(\"spec-001\")",
@@ -94,13 +94,13 @@
       {
         "digest": "0440a34181f920c8ca061748e3ef5a209a59748d3ec38405d1ff283b255e8079",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/001-workflow-scripts/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/001-workflow-scripts/spec.md",
     "digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
@@ -153,7 +153,7 @@
       {
         "digest": "0440a34181f920c8ca061748e3ef5a209a59748d3ec38405d1ff283b255e8079",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/001-workflow-scripts/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/plan.md"
       },
       {
         "excerpt": "error = SpecNotFoundError(\"spec-001\")",
@@ -232,7 +232,7 @@
       {
         "digest": "0440a34181f920c8ca061748e3ef5a209a59748d3ec38405d1ff283b255e8079",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/001-workflow-scripts/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/001-workflow-scripts/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

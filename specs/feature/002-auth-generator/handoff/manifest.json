@@ -17,7 +17,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/002-auth-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/002-auth-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -80,13 +80,13 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/002-auth-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/002-auth-generator/spec.md",
     "digest": "f3d1bf8163bc0767ecf53b6fb2acd6c3c84ce0e3cfff748c0cf1ecf57a5709d0",
@@ -139,7 +139,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/002-auth-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
       }
     ],
     "stale_fields": [],
@@ -167,7 +167,7 @@
       {
         "digest": "cd9b9a026a4a9e57b8c2877d36b86efed59232715f4872808c59221563eceb39",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/002-auth-generator/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/002-auth-generator/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

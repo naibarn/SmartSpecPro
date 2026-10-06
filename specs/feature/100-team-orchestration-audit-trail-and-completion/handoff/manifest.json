@@ -17,42 +17,42 @@
       {
         "digest": "ef9f610b18eb3aa2bf117f230e31002b5c1ab9270c8d5ff71a1d642f11df2e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
       },
       {
         "digest": "6fdc9fba1f704953ef14821c0ddec5d602ce3d4c8ce8632c4fb7a10462f3f2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
       },
       {
         "digest": "802a011829a54fa8b23f9ac5b1d34c34c7907f751252775ee3aaaa491d3f2053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "23e93986f906402fdfcc0feaab2225406419b67e8fe121c321f08ec97427a8dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
       },
       {
         "digest": "512405c19225cb4dfcc7a5564932e1fa40e0a5f6847460934d82fd8268078cb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
       },
       {
         "digest": "ba5e23f31e6078f0fc1643435335c60a08fe3e5f5cb8947a18f929b9c618badf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
       },
       {
         "digest": "63b72e159cc6a3bdfa444344ba3ff66d1490f8035285bfedb77624d9d9a13f03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
       },
       {
         "digest": "031855132f0420c3cc9aa670b02ef2d48d05ad5e66233dd0e3d3186339f0b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
       }
     ],
     "predecessors": [],
@@ -83,42 +83,42 @@
       {
         "digest": "ef9f610b18eb3aa2bf117f230e31002b5c1ab9270c8d5ff71a1d642f11df2e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
       },
       {
         "digest": "6fdc9fba1f704953ef14821c0ddec5d602ce3d4c8ce8632c4fb7a10462f3f2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
       },
       {
         "digest": "802a011829a54fa8b23f9ac5b1d34c34c7907f751252775ee3aaaa491d3f2053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "23e93986f906402fdfcc0feaab2225406419b67e8fe121c321f08ec97427a8dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
       },
       {
         "digest": "512405c19225cb4dfcc7a5564932e1fa40e0a5f6847460934d82fd8268078cb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
       },
       {
         "digest": "ba5e23f31e6078f0fc1643435335c60a08fe3e5f5cb8947a18f929b9c618badf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
       },
       {
         "digest": "63b72e159cc6a3bdfa444344ba3ff66d1490f8035285bfedb77624d9d9a13f03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
       },
       {
         "digest": "031855132f0420c3cc9aa670b02ef2d48d05ad5e66233dd0e3d3186339f0b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -150,48 +150,48 @@
       {
         "digest": "ef9f610b18eb3aa2bf117f230e31002b5c1ab9270c8d5ff71a1d642f11df2e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
       },
       {
         "digest": "6fdc9fba1f704953ef14821c0ddec5d602ce3d4c8ce8632c4fb7a10462f3f2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
       },
       {
         "digest": "802a011829a54fa8b23f9ac5b1d34c34c7907f751252775ee3aaaa491d3f2053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "23e93986f906402fdfcc0feaab2225406419b67e8fe121c321f08ec97427a8dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
       },
       {
         "digest": "512405c19225cb4dfcc7a5564932e1fa40e0a5f6847460934d82fd8268078cb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
       },
       {
         "digest": "ba5e23f31e6078f0fc1643435335c60a08fe3e5f5cb8947a18f929b9c618badf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
       },
       {
         "digest": "63b72e159cc6a3bdfa444344ba3ff66d1490f8035285bfedb77624d9d9a13f03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
       },
       {
         "digest": "031855132f0420c3cc9aa670b02ef2d48d05ad5e66233dd0e3d3186339f0b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
     "digest": "fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
@@ -244,42 +244,42 @@
       {
         "digest": "ef9f610b18eb3aa2bf117f230e31002b5c1ab9270c8d5ff71a1d642f11df2e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
       },
       {
         "digest": "6fdc9fba1f704953ef14821c0ddec5d602ce3d4c8ce8632c4fb7a10462f3f2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
       },
       {
         "digest": "802a011829a54fa8b23f9ac5b1d34c34c7907f751252775ee3aaaa491d3f2053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "23e93986f906402fdfcc0feaab2225406419b67e8fe121c321f08ec97427a8dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
       },
       {
         "digest": "512405c19225cb4dfcc7a5564932e1fa40e0a5f6847460934d82fd8268078cb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
       },
       {
         "digest": "ba5e23f31e6078f0fc1643435335c60a08fe3e5f5cb8947a18f929b9c618badf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
       },
       {
         "digest": "63b72e159cc6a3bdfa444344ba3ff66d1490f8035285bfedb77624d9d9a13f03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
       },
       {
         "digest": "031855132f0420c3cc9aa670b02ef2d48d05ad5e66233dd0e3d3186339f0b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -329,42 +329,42 @@
       {
         "digest": "ef9f610b18eb3aa2bf117f230e31002b5c1ab9270c8d5ff71a1d642f11df2e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-plan.md"
       },
       {
         "digest": "6fdc9fba1f704953ef14821c0ddec5d602ce3d4c8ce8632c4fb7a10462f3f2a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/claude-spec.md"
       },
       {
         "digest": "802a011829a54fa8b23f9ac5b1d34c34c7907f751252775ee3aaaa491d3f2053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/implementation/deep_implement_config.json"
       },
       {
         "digest": "23e93986f906402fdfcc0feaab2225406419b67e8fe121c321f08ec97427a8dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/index.md"
       },
       {
         "digest": "512405c19225cb4dfcc7a5564932e1fa40e0a5f6847460934d82fd8268078cb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-01-ledger-runtime.md"
       },
       {
         "digest": "ba5e23f31e6078f0fc1643435335c60a08fe3e5f5cb8947a18f929b9c618badf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-02-completion-and-audit-policy.md"
       },
       {
         "digest": "63b72e159cc6a3bdfa444344ba3ff66d1490f8035285bfedb77624d9d9a13f03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-03-ledger-dashboard.md"
       },
       {
         "digest": "031855132f0420c3cc9aa670b02ef2d48d05ad5e66233dd0e3d3186339f0b473",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

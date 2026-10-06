@@ -17,92 +17,92 @@
       {
         "digest": "38e833524472f7c0627838c0c50d94bfa3de2820dc538c5c4b20a8b6d7b7de66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "5b5ff1b6cf7f27e20dfc09e8f1169b7c24d2b9f9cc19c603a6afa7585a5e70e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
       },
       {
         "digest": "d326673bf638cf31bfea7c24d605e21c793d813df742d945c49d83e1892ef003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
       },
       {
         "digest": "80e232257794a2ee98f90fd4b3781bab00f21a96571e6370f8915597c0b156de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
       },
       {
         "digest": "71e84a3d9b680c35299ddec5f3659551f7a30bb62f086a2fe07d7ce72b6a6ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
       },
       {
         "digest": "9082e0bf3811bccf5c2a1ecead21834bd11fe318c90c1f72c3b35619e44095a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
       },
       {
         "digest": "f169feca8ac9cc907842777e059f0c6ada7029f9106dba760766e847601415d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
       },
       {
         "digest": "f22f65c0363b7d26afe4c0ee9def9d34a632174d7305aa79a2a07318aa896f4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
       },
       {
         "digest": "5a467943c363cf989a948834e585674de1fd01970917e052e917280889d3604a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
       },
       {
         "digest": "5e77f9ff52995eaa5245780210b710efe51a3966f4960f34bc98a2cdad7393b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
       },
       {
         "digest": "2033920295cd4c0b1961b3715093fd851c2c19fea002cf605b61b1a1c74a0c1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
       },
       {
         "digest": "f00594db392e137326e18bdc1382a6fe4db0c987735edd68917c895727f996e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
       },
       {
         "digest": "5716988fba71a4922325b6a2650f5bf429e2651ddd6ac8fc7433a0f80821e701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
       },
       {
         "digest": "1f50841d77f4b87fb7550876aee81420b3b21d6c1a6ba8191e8dc0f2c579dbd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
       },
       {
         "digest": "a872fbd47dfc09c7e878c613445cbd95cff0739399804424d1922c46d8321c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
       },
       {
         "digest": "e951f1f07694cccac472e103ec6d5d2723b4810ad81dd1856ab0b90794c6161c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
       },
       {
         "digest": "46988017320c2212ce6147299d95ebbd383608ebd85d39b58f9ae861edba46fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
       },
       {
         "digest": "9ac293548fc49261a759f63fbb4479941e2773abdb195ac2bbeb340b616c9492",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "38e833524472f7c0627838c0c50d94bfa3de2820dc538c5c4b20a8b6d7b7de66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "5b5ff1b6cf7f27e20dfc09e8f1169b7c24d2b9f9cc19c603a6afa7585a5e70e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
       },
       {
         "digest": "d326673bf638cf31bfea7c24d605e21c793d813df742d945c49d83e1892ef003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
       },
       {
         "digest": "80e232257794a2ee98f90fd4b3781bab00f21a96571e6370f8915597c0b156de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
       },
       {
         "digest": "71e84a3d9b680c35299ddec5f3659551f7a30bb62f086a2fe07d7ce72b6a6ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
       },
       {
         "digest": "9082e0bf3811bccf5c2a1ecead21834bd11fe318c90c1f72c3b35619e44095a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
       },
       {
         "digest": "f169feca8ac9cc907842777e059f0c6ada7029f9106dba760766e847601415d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
       },
       {
         "digest": "f22f65c0363b7d26afe4c0ee9def9d34a632174d7305aa79a2a07318aa896f4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
       },
       {
         "digest": "5a467943c363cf989a948834e585674de1fd01970917e052e917280889d3604a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
       },
       {
         "digest": "5e77f9ff52995eaa5245780210b710efe51a3966f4960f34bc98a2cdad7393b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
       },
       {
         "digest": "2033920295cd4c0b1961b3715093fd851c2c19fea002cf605b61b1a1c74a0c1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
       },
       {
         "digest": "f00594db392e137326e18bdc1382a6fe4db0c987735edd68917c895727f996e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
       },
       {
         "digest": "5716988fba71a4922325b6a2650f5bf429e2651ddd6ac8fc7433a0f80821e701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
       },
       {
         "digest": "1f50841d77f4b87fb7550876aee81420b3b21d6c1a6ba8191e8dc0f2c579dbd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
       },
       {
         "digest": "a872fbd47dfc09c7e878c613445cbd95cff0739399804424d1922c46d8321c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
       },
       {
         "digest": "e951f1f07694cccac472e103ec6d5d2723b4810ad81dd1856ab0b90794c6161c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
       },
       {
         "digest": "46988017320c2212ce6147299d95ebbd383608ebd85d39b58f9ae861edba46fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
       },
       {
         "digest": "9ac293548fc49261a759f63fbb4479941e2773abdb195ac2bbeb340b616c9492",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -250,98 +250,98 @@
       {
         "digest": "38e833524472f7c0627838c0c50d94bfa3de2820dc538c5c4b20a8b6d7b7de66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "5b5ff1b6cf7f27e20dfc09e8f1169b7c24d2b9f9cc19c603a6afa7585a5e70e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
       },
       {
         "digest": "d326673bf638cf31bfea7c24d605e21c793d813df742d945c49d83e1892ef003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
       },
       {
         "digest": "80e232257794a2ee98f90fd4b3781bab00f21a96571e6370f8915597c0b156de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
       },
       {
         "digest": "71e84a3d9b680c35299ddec5f3659551f7a30bb62f086a2fe07d7ce72b6a6ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
       },
       {
         "digest": "9082e0bf3811bccf5c2a1ecead21834bd11fe318c90c1f72c3b35619e44095a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
       },
       {
         "digest": "f169feca8ac9cc907842777e059f0c6ada7029f9106dba760766e847601415d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
       },
       {
         "digest": "f22f65c0363b7d26afe4c0ee9def9d34a632174d7305aa79a2a07318aa896f4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
       },
       {
         "digest": "5a467943c363cf989a948834e585674de1fd01970917e052e917280889d3604a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
       },
       {
         "digest": "5e77f9ff52995eaa5245780210b710efe51a3966f4960f34bc98a2cdad7393b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
       },
       {
         "digest": "2033920295cd4c0b1961b3715093fd851c2c19fea002cf605b61b1a1c74a0c1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
       },
       {
         "digest": "f00594db392e137326e18bdc1382a6fe4db0c987735edd68917c895727f996e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
       },
       {
         "digest": "5716988fba71a4922325b6a2650f5bf429e2651ddd6ac8fc7433a0f80821e701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
       },
       {
         "digest": "1f50841d77f4b87fb7550876aee81420b3b21d6c1a6ba8191e8dc0f2c579dbd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
       },
       {
         "digest": "a872fbd47dfc09c7e878c613445cbd95cff0739399804424d1922c46d8321c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
       },
       {
         "digest": "e951f1f07694cccac472e103ec6d5d2723b4810ad81dd1856ab0b90794c6161c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
       },
       {
         "digest": "46988017320c2212ce6147299d95ebbd383608ebd85d39b58f9ae861edba46fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
       },
       {
         "digest": "9ac293548fc49261a759f63fbb4479941e2773abdb195ac2bbeb340b616c9492",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md",
     "digest": "9699ec7dfed292c7f14358137e48cd40086b03c55a600ed3fe4a56e1b570a10c",
@@ -394,92 +394,92 @@
       {
         "digest": "38e833524472f7c0627838c0c50d94bfa3de2820dc538c5c4b20a8b6d7b7de66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "5b5ff1b6cf7f27e20dfc09e8f1169b7c24d2b9f9cc19c603a6afa7585a5e70e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
       },
       {
         "digest": "d326673bf638cf31bfea7c24d605e21c793d813df742d945c49d83e1892ef003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
       },
       {
         "digest": "80e232257794a2ee98f90fd4b3781bab00f21a96571e6370f8915597c0b156de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
       },
       {
         "digest": "71e84a3d9b680c35299ddec5f3659551f7a30bb62f086a2fe07d7ce72b6a6ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
       },
       {
         "digest": "9082e0bf3811bccf5c2a1ecead21834bd11fe318c90c1f72c3b35619e44095a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
       },
       {
         "digest": "f169feca8ac9cc907842777e059f0c6ada7029f9106dba760766e847601415d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
       },
       {
         "digest": "f22f65c0363b7d26afe4c0ee9def9d34a632174d7305aa79a2a07318aa896f4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
       },
       {
         "digest": "5a467943c363cf989a948834e585674de1fd01970917e052e917280889d3604a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
       },
       {
         "digest": "5e77f9ff52995eaa5245780210b710efe51a3966f4960f34bc98a2cdad7393b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
       },
       {
         "digest": "2033920295cd4c0b1961b3715093fd851c2c19fea002cf605b61b1a1c74a0c1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
       },
       {
         "digest": "f00594db392e137326e18bdc1382a6fe4db0c987735edd68917c895727f996e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
       },
       {
         "digest": "5716988fba71a4922325b6a2650f5bf429e2651ddd6ac8fc7433a0f80821e701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
       },
       {
         "digest": "1f50841d77f4b87fb7550876aee81420b3b21d6c1a6ba8191e8dc0f2c579dbd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
       },
       {
         "digest": "a872fbd47dfc09c7e878c613445cbd95cff0739399804424d1922c46d8321c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
       },
       {
         "digest": "e951f1f07694cccac472e103ec6d5d2723b4810ad81dd1856ab0b90794c6161c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
       },
       {
         "digest": "46988017320c2212ce6147299d95ebbd383608ebd85d39b58f9ae861edba46fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
       },
       {
         "digest": "9ac293548fc49261a759f63fbb4479941e2773abdb195ac2bbeb340b616c9492",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -529,92 +529,92 @@
       {
         "digest": "38e833524472f7c0627838c0c50d94bfa3de2820dc538c5c4b20a8b6d7b7de66",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "5b5ff1b6cf7f27e20dfc09e8f1169b7c24d2b9f9cc19c603a6afa7585a5e70e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-1-summary.md"
       },
       {
         "digest": "d326673bf638cf31bfea7c24d605e21c793d813df742d945c49d83e1892ef003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-self-review.md"
       },
       {
         "digest": "80e232257794a2ee98f90fd4b3781bab00f21a96571e6370f8915597c0b156de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/reviews/iteration-2-summary.md"
       },
       {
         "digest": "71e84a3d9b680c35299ddec5f3659551f7a30bb62f086a2fe07d7ce72b6a6ea2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/index.md"
       },
       {
         "digest": "9082e0bf3811bccf5c2a1ecead21834bd11fe318c90c1f72c3b35619e44095a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-01-shared-language-and-presentation-contract.md"
       },
       {
         "digest": "f169feca8ac9cc907842777e059f0c6ada7029f9106dba760766e847601415d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-02-navigation-and-origin-return-contract.md"
       },
       {
         "digest": "f22f65c0363b7d26afe4c0ee9def9d34a632174d7305aa79a2a07318aa896f4b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-03-chat-browser-session-integration.md"
       },
       {
         "digest": "5a467943c363cf989a948834e585674de1fd01970917e052e917280889d3604a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-04-agency-browser-session-primitive.md"
       },
       {
         "digest": "5e77f9ff52995eaa5245780210b710efe51a3966f4960f34bc98a2cdad7393b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-05-agency-chat-browser-session-surface.md"
       },
       {
         "digest": "2033920295cd4c0b1961b3715093fd851c2c19fea002cf605b61b1a1c74a0c1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-06-workflow-browser-session-node-semantics.md"
       },
       {
         "digest": "f00594db392e137326e18bdc1382a6fe4db0c987735edd68917c895727f996e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-07-rollout-regression-and-copy-consistency.md"
       },
       {
         "digest": "5716988fba71a4922325b6a2650f5bf429e2651ddd6ac8fc7433a0f80821e701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-08-agency-runtime-browser-session-execution.md"
       },
       {
         "digest": "1f50841d77f4b87fb7550876aee81420b3b21d6c1a6ba8191e8dc0f2c579dbd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-09-browser-session-stream-renderer.md"
       },
       {
         "digest": "a872fbd47dfc09c7e878c613445cbd95cff0739399804424d1922c46d8321c69",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-10-chat-and-agency-natural-browser-invocation.md"
       },
       {
         "digest": "e951f1f07694cccac472e103ec6d5d2723b4810ad81dd1856ab0b90794c6161c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-11-research-and-comparison-contracts.md"
       },
       {
         "digest": "46988017320c2212ce6147299d95ebbd383608ebd85d39b58f9ae861edba46fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-12-login-captcha-and-commitment-gates.md"
       },
       {
         "digest": "9ac293548fc49261a759f63fbb4479941e2773abdb195ac2bbeb340b616c9492",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/042-LiveBrowser-Cross-Surface-Integration/sections/section-13-advanced-rollout-scenario-validation.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

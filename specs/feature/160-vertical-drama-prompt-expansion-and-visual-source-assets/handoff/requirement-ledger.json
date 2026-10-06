@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L18"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L18"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L18",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L18",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L20"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L20"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L20",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L20",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L35"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L35"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L35",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L35",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L36"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L36"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L36",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L37"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L37"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L37",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L38"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L38"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L38",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L39"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L39"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L39",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L40"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L40"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L40",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L41"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L41"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L41",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L42"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L42"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L42",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L42",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L43"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L44"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L44"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L44",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L45"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L45"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L45",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L45",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L46"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L46"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L46",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L47"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L47"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L47",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L48"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L49"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L49"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L49",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L50"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L50"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L50",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L51"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L51"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L51",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L83"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L96"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L103"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L106"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L107"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L173"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L173"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L173",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L181"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L219"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L221"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L244"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L244"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L244",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L267"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L315"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L316"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L316"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L316",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L343"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L344"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L347"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L348"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L351"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L392"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L396"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L404"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L404"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L404",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L408"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L410"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L410"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L410",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L417"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L417"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L417",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L443"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L443"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L443",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L479"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L479"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L479",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L479",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L482"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L482"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L482",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L482",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L484"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L484"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L484",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L485"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L485"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L485",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L487"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L487"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L487",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L501"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L501"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L501",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L503"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L503"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L503",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L503",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L505"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L505"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L505",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L511"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L519"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L519"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L519",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L594"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L594"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L594",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L601"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L601"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L601",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L602"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L603"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L672"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L676"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L676"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L676",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L677"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L677"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L677",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L681"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L682"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L682"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L682",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L687"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L757"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L757"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L757",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L784"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L784"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L784",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L796"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L796"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L796",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L800"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L800"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L800",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L808"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L808"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L808",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L814"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L814"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L814",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L815"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L815"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L815",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L819"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L819"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L819",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L819",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L825"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L825"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L825",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L855"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L855"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L855",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L855",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L861"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L861"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L861",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L861",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L863"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L863"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L863",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L867"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L867"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L867",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L867",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L871"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L871"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L871",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L895"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L895"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L895",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L901"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L901"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L901",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L906"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L906"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L906",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L906",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L907"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L907"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L907",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L907",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L908"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L908"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L908",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L908",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L916"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L916"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L916",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L916",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L961"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L961"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L961",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L961",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L981"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L981"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L981",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L988"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L988"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L988",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L989"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L989"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L989",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L990"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L990"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L990",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L991"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L991"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L991",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L991",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L992"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L992"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L992",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L992",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L993"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L993"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L993",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L994"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L994"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L994",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L994",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L995"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L995"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L995",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L996"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L996"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L996",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L998"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L998"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L998",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1016"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1016"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1016",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1056"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1056"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1056",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1081"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1081"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1081",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1087"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1087"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1087",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1088"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1088"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1088",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1088",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1089"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1089"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1089",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1090"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1090"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1090",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1090",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1091"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1091"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1091",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1092"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1092"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1092",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1096"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1097"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1097"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1097",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1097",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1098"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1098"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1098",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1098",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1099"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1099"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1099",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1099",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1100"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1101"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1102"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1103"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1104"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1108"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1109"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1110"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1111"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1112"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1113"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1114"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1115"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1116"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1120"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1120"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1120",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1121"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1122"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1123"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1124"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1125"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1129"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1129"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1129",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1130"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1131"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1132"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1133"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1133"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1133",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1134"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1138"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1139"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1139"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1139",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1140"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1141"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1142"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1156"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1195"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1199"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1237"
       ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L1237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

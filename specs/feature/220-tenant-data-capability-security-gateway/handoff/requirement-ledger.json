@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L18"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L18"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L18",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L18",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L22"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L22"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L22",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L22",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L24"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L24"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L24",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L26"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L26"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L26",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L26",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L46"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L46"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L46",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L47"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L47"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L47",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L48"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L49"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L49"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L49",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L50"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L50"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L50",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L51"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L51"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L51",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L52"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L53"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L53"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L53",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L54"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L54"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L54",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L55"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L55"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L55",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L61"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L61"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L61",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L92"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L92"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L92",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L98"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L98"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L98",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L115"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L121"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L153"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L153"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L153",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L174"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L174"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L174",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L188"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L211"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L217"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L233"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L233"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L233",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L239"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L254"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L254"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L254",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L260"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L293"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L302"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L302"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L302",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L304"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L304"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L304",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L310"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L335"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L335"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L335",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L337"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L362"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L362"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L362",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L392"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L402"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L402"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L402",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L408"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L439"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L439"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L439",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L467"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L491"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L491"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L491",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L491",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L493"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L493"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L493",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L499"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L499"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L499",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L512"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L512"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L512",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L520"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L520"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L520",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L529"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L537"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L582"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L582"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L582",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L599"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L599"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L599",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L617"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L635"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L663"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L663"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L663",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L701"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L701"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L701",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L723"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L723"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L723",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L747"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L749"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L749"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L749",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L765"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L765"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L765",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L773"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L777"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L783"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L783"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L783",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L793"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L793"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L793",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L813"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L813"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L813",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L837"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L839"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L839"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L839",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L839",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L845"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L845"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L845",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L849"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L849"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L849",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L876"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L876"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L876",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L882"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L882"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L882",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L958"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L958"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L958",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L960"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L960"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L960",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L968"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L968"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L968",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L968",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L999"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L999"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L999",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1000"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1000"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1000",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1001"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1001"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1001",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1002"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1002"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1002",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1003"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1003"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1003",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1004"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1004"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1004",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1005"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1005"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1005",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1011"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1011"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1011",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1012"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1012"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1012",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1012",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1013"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1013"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1013",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1013",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1014"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1014"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1014",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1014",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1015"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1015"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1015",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1021"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1021"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1021",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1022"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1023"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1023"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1023",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1023",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1024"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1024"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1024",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1025"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1025"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1025",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1025",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1026"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1026"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1026",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1027"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1039"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1039"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1039",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1039",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1041"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1041"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1041",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1060"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1060"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1060",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1070"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1070"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1070",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1074"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1074"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1074",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1082"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1082"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1082",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1082",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1084"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1084"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1084",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1084",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1092"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1092"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1092",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1101"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1115"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1116"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1117"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1118"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1119"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1119"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1119",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1120"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1120"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1120",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1128"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1138"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1168"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1210"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1210"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1210",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1212"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1216"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1224"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1224"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1225"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1226"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1226"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1226",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1227"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1236"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1258"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1264"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1265"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1265"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1265",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1266"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1270"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1288"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1315"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1319"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1319"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1319",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1321"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1321"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1321",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1336"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1347"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1353"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1353"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1353",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1371"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1371"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1371",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1385"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1385"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1385",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1400"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1400"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1400",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1406"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1406"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1406",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1406",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1422"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1422"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1422",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1426"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1427"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1427"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1427",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1428"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1428"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1428",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1429"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1429"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1429",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1430"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1430"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1430",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1431"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1432"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1432"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1432",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1433"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1447"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1447"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1447",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1449"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1456"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1456"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1456",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1456",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1470"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1470"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1470",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1475"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1475"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1475",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1477"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1477"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1477",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1494"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1494"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1494",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1508"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1508"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1508",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1508",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1517"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1517"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1517",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1519"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1519"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1519",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1532"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1532"
       ],
-      "authority_source": "specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1532",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/220-tenant-data-capability-security-gateway/spec.md#L1532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

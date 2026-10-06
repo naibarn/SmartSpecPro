@@ -17,57 +17,57 @@
       {
         "digest": "eecd541d7b72bec9df9837301bb6c90451e0b0f37b6872f1da6abd7ec2a3e932",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
       },
       {
         "digest": "57801aa9f12e96c7aa82b5f8fda76f276af03f23350289d945d76c47ad6857c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
       },
       {
         "digest": "c2d1c2f3cdd7dddf1bdb5022fcab658b549a411f5b028f28d43f5c038976a0da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
       },
       {
         "digest": "108b3aeee4f8cf50977c9dd0f897a63581799f966b127547c96e4b9fa9f4fbf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
       },
       {
         "digest": "64f8b9b0ef31252277a643ebb8d22071f85ee5700be10547b9569a49f04477ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
       },
       {
         "digest": "25814d3010dcc5207c0427595a8649d52c4ca4aaebfea681d4b9f6e17d2737cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
       },
       {
         "digest": "e2e52d1272ffe7aff735d94edb68637fcd6667e1b92645d3e48c98262a725a3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
       },
       {
         "digest": "0045fca6f20f74edba7bc171072cfcfe9fc1af666d882e0d99385c58e5820ca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
       },
       {
         "digest": "0769045d3ba834e68f8d9c1e6bf15f6c125bc50278e1e38602c4d994b1285891",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
       },
       {
         "digest": "07716305f16ca2e50d2522650327d3b643c401ed8b06fe576db9fe96dd5203e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
       },
       {
         "digest": "36159cd6aa0353aade37593ec37e1c94af77e94e9bbbd5f6d197e76568a8fa25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
       }
     ],
     "predecessors": [],
@@ -98,57 +98,57 @@
       {
         "digest": "eecd541d7b72bec9df9837301bb6c90451e0b0f37b6872f1da6abd7ec2a3e932",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
       },
       {
         "digest": "57801aa9f12e96c7aa82b5f8fda76f276af03f23350289d945d76c47ad6857c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
       },
       {
         "digest": "c2d1c2f3cdd7dddf1bdb5022fcab658b549a411f5b028f28d43f5c038976a0da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
       },
       {
         "digest": "108b3aeee4f8cf50977c9dd0f897a63581799f966b127547c96e4b9fa9f4fbf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
       },
       {
         "digest": "64f8b9b0ef31252277a643ebb8d22071f85ee5700be10547b9569a49f04477ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
       },
       {
         "digest": "25814d3010dcc5207c0427595a8649d52c4ca4aaebfea681d4b9f6e17d2737cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
       },
       {
         "digest": "e2e52d1272ffe7aff735d94edb68637fcd6667e1b92645d3e48c98262a725a3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
       },
       {
         "digest": "0045fca6f20f74edba7bc171072cfcfe9fc1af666d882e0d99385c58e5820ca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
       },
       {
         "digest": "0769045d3ba834e68f8d9c1e6bf15f6c125bc50278e1e38602c4d994b1285891",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
       },
       {
         "digest": "07716305f16ca2e50d2522650327d3b643c401ed8b06fe576db9fe96dd5203e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
       },
       {
         "digest": "36159cd6aa0353aade37593ec37e1c94af77e94e9bbbd5f6d197e76568a8fa25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -180,63 +180,63 @@
       {
         "digest": "eecd541d7b72bec9df9837301bb6c90451e0b0f37b6872f1da6abd7ec2a3e932",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
       },
       {
         "digest": "57801aa9f12e96c7aa82b5f8fda76f276af03f23350289d945d76c47ad6857c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
       },
       {
         "digest": "c2d1c2f3cdd7dddf1bdb5022fcab658b549a411f5b028f28d43f5c038976a0da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
       },
       {
         "digest": "108b3aeee4f8cf50977c9dd0f897a63581799f966b127547c96e4b9fa9f4fbf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
       },
       {
         "digest": "64f8b9b0ef31252277a643ebb8d22071f85ee5700be10547b9569a49f04477ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
       },
       {
         "digest": "25814d3010dcc5207c0427595a8649d52c4ca4aaebfea681d4b9f6e17d2737cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
       },
       {
         "digest": "e2e52d1272ffe7aff735d94edb68637fcd6667e1b92645d3e48c98262a725a3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
       },
       {
         "digest": "0045fca6f20f74edba7bc171072cfcfe9fc1af666d882e0d99385c58e5820ca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
       },
       {
         "digest": "0769045d3ba834e68f8d9c1e6bf15f6c125bc50278e1e38602c4d994b1285891",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
       },
       {
         "digest": "07716305f16ca2e50d2522650327d3b643c401ed8b06fe576db9fe96dd5203e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
       },
       {
         "digest": "36159cd6aa0353aade37593ec37e1c94af77e94e9bbbd5f6d197e76568a8fa25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md",
     "digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
@@ -289,57 +289,57 @@
       {
         "digest": "eecd541d7b72bec9df9837301bb6c90451e0b0f37b6872f1da6abd7ec2a3e932",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
       },
       {
         "digest": "57801aa9f12e96c7aa82b5f8fda76f276af03f23350289d945d76c47ad6857c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
       },
       {
         "digest": "c2d1c2f3cdd7dddf1bdb5022fcab658b549a411f5b028f28d43f5c038976a0da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
       },
       {
         "digest": "108b3aeee4f8cf50977c9dd0f897a63581799f966b127547c96e4b9fa9f4fbf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
       },
       {
         "digest": "64f8b9b0ef31252277a643ebb8d22071f85ee5700be10547b9569a49f04477ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
       },
       {
         "digest": "25814d3010dcc5207c0427595a8649d52c4ca4aaebfea681d4b9f6e17d2737cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
       },
       {
         "digest": "e2e52d1272ffe7aff735d94edb68637fcd6667e1b92645d3e48c98262a725a3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
       },
       {
         "digest": "0045fca6f20f74edba7bc171072cfcfe9fc1af666d882e0d99385c58e5820ca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
       },
       {
         "digest": "0769045d3ba834e68f8d9c1e6bf15f6c125bc50278e1e38602c4d994b1285891",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
       },
       {
         "digest": "07716305f16ca2e50d2522650327d3b643c401ed8b06fe576db9fe96dd5203e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
       },
       {
         "digest": "36159cd6aa0353aade37593ec37e1c94af77e94e9bbbd5f6d197e76568a8fa25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -389,57 +389,57 @@
       {
         "digest": "eecd541d7b72bec9df9837301bb6c90451e0b0f37b6872f1da6abd7ec2a3e932",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-plan.md"
       },
       {
         "digest": "57801aa9f12e96c7aa82b5f8fda76f276af03f23350289d945d76c47ad6857c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/claude-spec.md"
       },
       {
         "digest": "c2d1c2f3cdd7dddf1bdb5022fcab658b549a411f5b028f28d43f5c038976a0da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/implementation/deep_implement_config.json"
       },
       {
         "digest": "108b3aeee4f8cf50977c9dd0f897a63581799f966b127547c96e4b9fa9f4fbf4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/reviews/self-review-round-1.md"
       },
       {
         "digest": "64f8b9b0ef31252277a643ebb8d22071f85ee5700be10547b9569a49f04477ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/index.md"
       },
       {
         "digest": "25814d3010dcc5207c0427595a8649d52c4ca4aaebfea681d4b9f6e17d2737cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-01-canonical-work-model-and-migration-envelope.md"
       },
       {
         "digest": "e2e52d1272ffe7aff735d94edb68637fcd6667e1b92645d3e48c98262a725a3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-02-work-os-services-and-compatibility-adapter.md"
       },
       {
         "digest": "0045fca6f20f74edba7bc171072cfcfe9fc1af666d882e0d99385c58e5820ca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-03-intake-normalization-and-routing-boundaries.md"
       },
       {
         "digest": "0769045d3ba834e68f8d9c1e6bf15f6c125bc50278e1e38602c4d994b1285891",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-04-approvals-exceptions-outcomes-and-sla-state.md"
       },
       {
         "digest": "07716305f16ca2e50d2522650327d3b643c401ed8b06fe576db9fe96dd5203e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-05-operator-surfaces-timeline-projections-and-monitoring.md"
       },
       {
         "digest": "36159cd6aa0353aade37593ec37e1c94af77e94e9bbbd5f6d197e76568a8fa25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L95"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L95"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L95",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L115"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L116"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L117"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L140"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L147"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L158"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L166"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L170"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L170"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L170",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L172"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L172"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L172",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L191"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L204"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L206"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L216"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L218"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L218"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L218",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L222"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L222"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L222",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L223"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L223"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L223",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L227"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L243"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L243"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L243",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L244"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L244"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L244",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L245"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L245"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L245",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L249"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L250"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L250"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L250",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L251"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L255"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L256"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L257"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L258"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L262"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L263"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L263"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L263",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L264"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L268"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L269"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L270"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L274"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L274"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L274",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L275"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L276"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L276"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L276",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L280"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L281"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L282"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L288"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L292"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L292"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L292",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L293"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L295"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L296"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L296"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L296",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L297"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L297"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L297",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L299"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L307"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L307"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L307",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L308"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L308"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L308",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L309"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L310"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L311"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L311"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L311",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L311",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L312"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L312"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L312",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L313"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L313"
       ],
-      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L313",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

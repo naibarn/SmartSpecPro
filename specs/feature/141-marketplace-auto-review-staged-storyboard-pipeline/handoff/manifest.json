@@ -17,82 +17,82 @@
       {
         "digest": "0e85eb8ccb7cb210614e244cfb80483275ffeafc3d4e4bcfcd9a9a6b4d2f5a5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
       },
       {
         "digest": "9648c27f35e0a47456bec73dd3811bbe294bfe3d106944828456f68addf1f525",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
       },
       {
         "digest": "3cc182da33762e108fb82cd8956a2fd806669cb9b88490ae4035a9eb25ce71dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "7ed6b26541cbeaa6188f8763cbfaeada2a53d6e51ed3d72b4ce579cff00a8fbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
       },
       {
         "digest": "930c7046c326e3efd819aaeb0bf094a3ba1be5c485d4510abbea53453171ab1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5efd3c21009f05ccf93562774af5d969e0bea21dd6d6d132fac2389cab3daff0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
       },
       {
         "digest": "3a85edcf21b91a5c440e596a05e13893c4d0d5aeddf5b3a8d7f491ed6a2cda23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
       },
       {
         "digest": "59681f52468446f669ef689651d91e7eeb5f4d59f2c21e98c151134a8eee97bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
       },
       {
         "digest": "cf75ca43e50036c98657f8a5338d04987cdc0c2a490989d2584cf7df9f8caf85",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
       },
       {
         "digest": "72a5733bfea9486caff72fa1be0584f7af0623f0c1b4861734486cd03a5e430b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
       },
       {
         "digest": "77e0807cd59f96a9c401db498641b20d02c29898f51d800dc071f3ffd3c2f239",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
       },
       {
         "digest": "ede3c5ac310f42847dc3756c7c21719090216b3c32fe2b775bbd629829656633",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
       },
       {
         "digest": "b12e7803f9105489e40fe10fda44f66e09adbfa47861915eb0d7898ad76403d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
       },
       {
         "digest": "97498a2a747eb0b29303ffa2feac13b65f639c4d7e616226b3f5ea2e51d92928",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
       },
       {
         "digest": "0fb11d32b5c4004b9e0cee32a776d3695b88dd0258c696c66ee9c1687e21dfda",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
       },
       {
         "digest": "8b9498c2b6dc0f1d53c58289da3ec8a063b5b805eebe5a2d9be64fa6f8397fa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
       }
     ],
     "predecessors": [],
@@ -123,82 +123,82 @@
       {
         "digest": "0e85eb8ccb7cb210614e244cfb80483275ffeafc3d4e4bcfcd9a9a6b4d2f5a5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
       },
       {
         "digest": "9648c27f35e0a47456bec73dd3811bbe294bfe3d106944828456f68addf1f525",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
       },
       {
         "digest": "3cc182da33762e108fb82cd8956a2fd806669cb9b88490ae4035a9eb25ce71dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "7ed6b26541cbeaa6188f8763cbfaeada2a53d6e51ed3d72b4ce579cff00a8fbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
       },
       {
         "digest": "930c7046c326e3efd819aaeb0bf094a3ba1be5c485d4510abbea53453171ab1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5efd3c21009f05ccf93562774af5d969e0bea21dd6d6d132fac2389cab3daff0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
       },
       {
         "digest": "3a85edcf21b91a5c440e596a05e13893c4d0d5aeddf5b3a8d7f491ed6a2cda23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
       },
       {
         "digest": "59681f52468446f669ef689651d91e7eeb5f4d59f2c21e98c151134a8eee97bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
       },
       {
         "digest": "cf75ca43e50036c98657f8a5338d04987cdc0c2a490989d2584cf7df9f8caf85",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
       },
       {
         "digest": "72a5733bfea9486caff72fa1be0584f7af0623f0c1b4861734486cd03a5e430b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
       },
       {
         "digest": "77e0807cd59f96a9c401db498641b20d02c29898f51d800dc071f3ffd3c2f239",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
       },
       {
         "digest": "ede3c5ac310f42847dc3756c7c21719090216b3c32fe2b775bbd629829656633",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
       },
       {
         "digest": "b12e7803f9105489e40fe10fda44f66e09adbfa47861915eb0d7898ad76403d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
       },
       {
         "digest": "97498a2a747eb0b29303ffa2feac13b65f639c4d7e616226b3f5ea2e51d92928",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
       },
       {
         "digest": "0fb11d32b5c4004b9e0cee32a776d3695b88dd0258c696c66ee9c1687e21dfda",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
       },
       {
         "digest": "8b9498c2b6dc0f1d53c58289da3ec8a063b5b805eebe5a2d9be64fa6f8397fa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -230,88 +230,88 @@
       {
         "digest": "0e85eb8ccb7cb210614e244cfb80483275ffeafc3d4e4bcfcd9a9a6b4d2f5a5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
       },
       {
         "digest": "9648c27f35e0a47456bec73dd3811bbe294bfe3d106944828456f68addf1f525",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
       },
       {
         "digest": "3cc182da33762e108fb82cd8956a2fd806669cb9b88490ae4035a9eb25ce71dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "7ed6b26541cbeaa6188f8763cbfaeada2a53d6e51ed3d72b4ce579cff00a8fbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
       },
       {
         "digest": "930c7046c326e3efd819aaeb0bf094a3ba1be5c485d4510abbea53453171ab1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5efd3c21009f05ccf93562774af5d969e0bea21dd6d6d132fac2389cab3daff0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
       },
       {
         "digest": "3a85edcf21b91a5c440e596a05e13893c4d0d5aeddf5b3a8d7f491ed6a2cda23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
       },
       {
         "digest": "59681f52468446f669ef689651d91e7eeb5f4d59f2c21e98c151134a8eee97bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
       },
       {
         "digest": "cf75ca43e50036c98657f8a5338d04987cdc0c2a490989d2584cf7df9f8caf85",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
       },
       {
         "digest": "72a5733bfea9486caff72fa1be0584f7af0623f0c1b4861734486cd03a5e430b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
       },
       {
         "digest": "77e0807cd59f96a9c401db498641b20d02c29898f51d800dc071f3ffd3c2f239",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
       },
       {
         "digest": "ede3c5ac310f42847dc3756c7c21719090216b3c32fe2b775bbd629829656633",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
       },
       {
         "digest": "b12e7803f9105489e40fe10fda44f66e09adbfa47861915eb0d7898ad76403d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
       },
       {
         "digest": "97498a2a747eb0b29303ffa2feac13b65f639c4d7e616226b3f5ea2e51d92928",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
       },
       {
         "digest": "0fb11d32b5c4004b9e0cee32a776d3695b88dd0258c696c66ee9c1687e21dfda",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
       },
       {
         "digest": "8b9498c2b6dc0f1d53c58289da3ec8a063b5b805eebe5a2d9be64fa6f8397fa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
     "digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
@@ -364,82 +364,82 @@
       {
         "digest": "0e85eb8ccb7cb210614e244cfb80483275ffeafc3d4e4bcfcd9a9a6b4d2f5a5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
       },
       {
         "digest": "9648c27f35e0a47456bec73dd3811bbe294bfe3d106944828456f68addf1f525",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
       },
       {
         "digest": "3cc182da33762e108fb82cd8956a2fd806669cb9b88490ae4035a9eb25ce71dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "7ed6b26541cbeaa6188f8763cbfaeada2a53d6e51ed3d72b4ce579cff00a8fbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
       },
       {
         "digest": "930c7046c326e3efd819aaeb0bf094a3ba1be5c485d4510abbea53453171ab1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5efd3c21009f05ccf93562774af5d969e0bea21dd6d6d132fac2389cab3daff0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
       },
       {
         "digest": "3a85edcf21b91a5c440e596a05e13893c4d0d5aeddf5b3a8d7f491ed6a2cda23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
       },
       {
         "digest": "59681f52468446f669ef689651d91e7eeb5f4d59f2c21e98c151134a8eee97bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
       },
       {
         "digest": "cf75ca43e50036c98657f8a5338d04987cdc0c2a490989d2584cf7df9f8caf85",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
       },
       {
         "digest": "72a5733bfea9486caff72fa1be0584f7af0623f0c1b4861734486cd03a5e430b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
       },
       {
         "digest": "77e0807cd59f96a9c401db498641b20d02c29898f51d800dc071f3ffd3c2f239",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
       },
       {
         "digest": "ede3c5ac310f42847dc3756c7c21719090216b3c32fe2b775bbd629829656633",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
       },
       {
         "digest": "b12e7803f9105489e40fe10fda44f66e09adbfa47861915eb0d7898ad76403d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
       },
       {
         "digest": "97498a2a747eb0b29303ffa2feac13b65f639c4d7e616226b3f5ea2e51d92928",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
       },
       {
         "digest": "0fb11d32b5c4004b9e0cee32a776d3695b88dd0258c696c66ee9c1687e21dfda",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
       },
       {
         "digest": "8b9498c2b6dc0f1d53c58289da3ec8a063b5b805eebe5a2d9be64fa6f8397fa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -516,82 +516,82 @@
       {
         "digest": "0e85eb8ccb7cb210614e244cfb80483275ffeafc3d4e4bcfcd9a9a6b4d2f5a5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-plan.md"
       },
       {
         "digest": "9648c27f35e0a47456bec73dd3811bbe294bfe3d106944828456f68addf1f525",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/claude-spec.md"
       },
       {
         "digest": "3cc182da33762e108fb82cd8956a2fd806669cb9b88490ae4035a9eb25ce71dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json"
       },
       {
         "digest": "7ed6b26541cbeaa6188f8763cbfaeada2a53d6e51ed3d72b4ce579cff00a8fbf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/finalization-evidence.md"
       },
       {
         "digest": "930c7046c326e3efd819aaeb0bf094a3ba1be5c485d4510abbea53453171ab1f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5efd3c21009f05ccf93562774af5d969e0bea21dd6d6d132fac2389cab3daff0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/reviews/self-review-round-1.md"
       },
       {
         "digest": "3a85edcf21b91a5c440e596a05e13893c4d0d5aeddf5b3a8d7f491ed6a2cda23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/index.md"
       },
       {
         "digest": "59681f52468446f669ef689651d91e7eeb5f4d59f2c21e98c151134a8eee97bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-01-foundation-contracts.md"
       },
       {
         "digest": "cf75ca43e50036c98657f8a5338d04987cdc0c2a490989d2584cf7df9f8caf85",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-02-architecture-dispatch.md"
       },
       {
         "digest": "72a5733bfea9486caff72fa1be0584f7af0623f0c1b4861734486cd03a5e430b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-03-checkpoint-spend-guard.md"
       },
       {
         "digest": "77e0807cd59f96a9c401db498641b20d02c29898f51d800dc071f3ffd3c2f239",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-04-story-arc-planner.md"
       },
       {
         "digest": "ede3c5ac310f42847dc3756c7c21719090216b3c32fe2b775bbd629829656633",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-05-image-prompt-and-generation.md"
       },
       {
         "digest": "b12e7803f9105489e40fe10fda44f66e09adbfa47861915eb0d7898ad76403d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-06-video-director-and-video-gate.md"
       },
       {
         "digest": "97498a2a747eb0b29303ffa2feac13b65f639c4d7e616226b3f5ea2e51d92928",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-07-audio-assembly-and-render-gates.md"
       },
       {
         "digest": "0fb11d32b5c4004b9e0cee32a776d3695b88dd0258c696c66ee9c1687e21dfda",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-08-ui-checkpoint-workflow.md"
       },
       {
         "digest": "8b9498c2b6dc0f1d53c58289da3ec8a063b5b805eebe5a2d9be64fa6f8397fa6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

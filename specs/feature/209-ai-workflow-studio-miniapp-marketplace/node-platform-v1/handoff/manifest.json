@@ -17,77 +17,77 @@
       {
         "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
       },
       {
         "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
       },
       {
         "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
       },
       {
         "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
       },
       {
         "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
       },
       {
         "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
       },
       {
         "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
       },
       {
         "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
       },
       {
         "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
       },
       {
         "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
       },
       {
         "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
       },
       {
         "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
       },
       {
         "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
       },
       {
         "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
       },
       {
         "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
       },
       {
         "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
       },
       {
         "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
       },
       {
         "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
       },
       {
         "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
       },
       {
         "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
       },
       {
         "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
       },
       {
         "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
       },
       {
         "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
       },
       {
         "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
       },
       {
         "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
       },
       {
         "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
       },
       {
         "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
       },
       {
         "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
       },
       {
         "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,83 +220,83 @@
       {
         "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
       },
       {
         "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
       },
       {
         "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
       },
       {
         "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
       },
       {
         "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
       },
       {
         "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
       },
       {
         "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
       },
       {
         "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
       },
       {
         "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
       },
       {
         "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
       },
       {
         "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
       },
       {
         "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
       },
       {
         "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
       },
       {
         "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
       },
       {
         "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/spec.md",
     "digest": "0586e05aa8a7359415215599ac618328fca1271239e29dfe950ae9d6f2621a16",
@@ -349,77 +349,77 @@
       {
         "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
       },
       {
         "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
       },
       {
         "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
       },
       {
         "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
       },
       {
         "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
       },
       {
         "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
       },
       {
         "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
       },
       {
         "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
       },
       {
         "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
       },
       {
         "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
       },
       {
         "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
       },
       {
         "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
       },
       {
         "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
       },
       {
         "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
       },
       {
         "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
       }
     ],
     "stale_fields": [],
@@ -447,77 +447,77 @@
       {
         "digest": "1dd606315723c88666295483f0aefc3e4e9a19c427c028c76bcc1aeed0fbc61e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-plan.md"
       },
       {
         "digest": "4476f3dafb3813f3997817bc4dda5fdb59829b439f58bc63334c3029878b2a56",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/claude-spec.md"
       },
       {
         "digest": "311179fc469129cd8a9a6d21216f509075dfe1937bc623511c5b7f753ab5b61f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/index.md"
       },
       {
         "digest": "4105ed726e58ae9333c0e23a29f9fc34d3fdd4bcae36d7ad52c509801f953a30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-01-foundation-registry.md"
       },
       {
         "digest": "21559e2b5cfd62247bcc10843029525df048c7b6a19a61a3125454afe04ea659",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-02-data-bindings-readiness.md"
       },
       {
         "digest": "fb40713d95ddca28c694a2e396569a64f1304937ae631eb928f83e0c1b59b53c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-03-graph-subflows-layout.md"
       },
       {
         "digest": "4040806ec0e6ed9e9dd514c682a4e0436db61a9d0a469806a19b3ee8b1f30c8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-04-core-data-adapters.md"
       },
       {
         "digest": "eb037d677ec2cf07b8ddf08c6ba420d7bf42448560c23193898b58c3353a6abe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-05-control-human-runtime.md"
       },
       {
         "digest": "43a7908361011e5f95134a57756872270ca45d86493acf9ee3af6d97d77f47dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-06-ai-agent-skill-adapters.md"
       },
       {
         "digest": "8fe6798a014ffe9889bd1ae0b9956eda3b9c92b6daad46ce25eeeb6419969a9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-07-tools-media-adapters.md"
       },
       {
         "digest": "f3087fbf8916d04ef70831d5d1da64c76fcf57c8484e5679e02c92a6cb596404",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-08-library-marketplace-reuse.md"
       },
       {
         "digest": "62292d163e8f96ce29861b7afc5a0a9f51162aa878cb72c3948832d0fdcea03f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-09-canonical-execution-projection.md"
       },
       {
         "digest": "c5b59227749c9d5adc45f3f425f381af0d02099a2fb9a67bfadadee5e41d4003",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-10-mockup-studio-ui.md"
       },
       {
         "digest": "90c8254752c3296ef15a4ba1aaeba1c2e3d554de474553de18fae62195fe317a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-11-ai-draft-edit.md"
       },
       {
         "digest": "c0cb59b99d962205dcea677620243e9ff04df0e116f3a1d2db0d0ab979eaf701",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1/sections/section-12-certification-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

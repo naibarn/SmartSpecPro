@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L112"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L113"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L114"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L115"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L116"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L117"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L118"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L119"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L119"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L119",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L123"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L124"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L125"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L126"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L126"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L126",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L127"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L186"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L186"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L186",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L427"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L427"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L427",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L440"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L440"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L440",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L440",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L499"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L499"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L499",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L518"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L518"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L518",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L520"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L520"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L520",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L521"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L522"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L522"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L522",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L523"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L523"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L523",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L524"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L524",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L525"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L526"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L526"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L526",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L527"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L527"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L527",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L613"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L613"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L613",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L627"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L659"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L706"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L706",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L731"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L731"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L731",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L735"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L735"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L735",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L748"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L753"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L753"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L753",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L753",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L755"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L756"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L756"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L756",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L757"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L757"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L757",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L766"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L766"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L766",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L766",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L767"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L767"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L767",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L768"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L768"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L768",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L769"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L769"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L769",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L769",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L773"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L774"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L775"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L775"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L775",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L776"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L776"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L776",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L777"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L778"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L778"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L778",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L779"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L783"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L783"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L783",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L784"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L784"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L784",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L785"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L785"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L785",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L786"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L786"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L786",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L787"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L787"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L787",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L804"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L804"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L804",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L805"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L805"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L805",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L806"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L806"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L806",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L807"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L807"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L807",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L807",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L821"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L821"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L821",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L849"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L849"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L849",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L849",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L850"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L850"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L850",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L851"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L851"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L851",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L853"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L853"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L853",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L853",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L854"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L854"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L854",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L854",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L855"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L855"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L855",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L855",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L856"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L856"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L856",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L856",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L926"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L926"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L926",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L998"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L998"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L998",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1014"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1014"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1014",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1014",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1015"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1015"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1015",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1016"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1016"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1016",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1017"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1017"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1017",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1018"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1019"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1019"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1019",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1020"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1020"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1020",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1020",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1021"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1021"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1021",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1022"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1023"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1023"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1023",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1023",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1027"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1028"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1028"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1028",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1028",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1029"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1029"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1029",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1033"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1033"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1033",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1033",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1034"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1034"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1034",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1034",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1035"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1035"
       ],
-      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1035",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L1035",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

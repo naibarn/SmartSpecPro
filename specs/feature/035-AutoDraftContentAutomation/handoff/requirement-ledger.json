@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L44"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L44"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L44",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L105"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L106"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L107"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L108"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L109"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L110"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1018"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1617"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1619"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1621"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1622"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1623"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1624"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1625"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1626"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1626"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1626",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1628"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1652"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1942"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1942"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1942",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1942",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1971"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1971"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1971",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1971",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1973"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1973"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1973",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1973",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1988"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1988"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1988",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L1988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2007"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2007"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2007",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2009"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2009"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2009",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2009",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2018"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2031"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2031"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2031",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2031",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2115"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2150"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2150"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2150",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2230"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2232"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2233"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2233"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2233",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2234"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2379"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2432"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2432"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2432",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2446"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2450"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2450"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2450",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2450",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2458"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2458"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2458",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2468"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2470"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2470"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2470",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2477"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2477"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2477",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2481"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2481"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2481",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2506"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2506"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2506",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2506",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2510"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2510"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2510",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2559"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2559"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2559",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2621"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2622"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2623"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2624"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2625"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2626"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2626"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2626",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2627"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2628"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2632"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2632"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2632",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2633"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2634"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2635"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2636"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2637"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2638"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2638"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2638",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2639"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2639"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2639",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2640"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2641"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2641"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2641",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2641",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2642"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2643"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2644"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2644"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2644",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2645"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2645"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2645",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2646"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2646"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2646",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2647"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2647"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2647",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2647",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2648"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2648"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2648",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2649"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2657"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2657"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2657",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2658"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2659"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2660"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2660"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2660",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2661"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2662"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2662"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2662",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2662",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2663"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2663"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2663",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2667"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2667"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2667",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2667",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2668"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2668"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2668",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2669"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2669"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2669",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2670"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2671"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2671"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2671",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2672"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2673"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2677"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2677"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2677",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2678"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2678"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2678",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2679"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2679"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2679",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2680"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2680"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2680",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2681"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2682"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2682"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2682",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2683"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2683"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2683",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2684"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2684"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2684",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2685"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2685"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2685",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2686"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2686"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2686",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2687"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2688"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2763"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2763"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2763",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2763",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2873"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2873"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2873",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L2873",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L3036"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L3036"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L3036",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L3036",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L3040"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L3040"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L3040",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/spec.md#L3040",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
