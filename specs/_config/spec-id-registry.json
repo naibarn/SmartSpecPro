@@ -18,7 +18,7 @@
         "owner Spec first-introduction commit 6add6c180f3014e77ca4ab245f5279ef459c5be3"
       ],
       "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
-      "integrated_sha": null,
+      "integrated_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
       "effective_state": "ACTIVE_CANONICAL_IDENTITY",
       "semantic_reference_repair_status": "COMPLETE"
     },
@@ -36,7 +36,7 @@
         "owner Spec first-introduction commit 812a5eb8db048d5422c3db9f7c6c5669fa8f7046"
       ],
       "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
-      "integrated_sha": null,
+      "integrated_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
       "effective_state": "ACTIVE_CANONICAL_IDENTITY",
       "semantic_reference_repair_status": "COMPLETE"
     },
@@ -54,7 +54,7 @@
         "owner Spec first-introduction commit 13a313d474df163d6741ccf10e50df8aac2e30f0"
       ],
       "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
-      "integrated_sha": null,
+      "integrated_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
       "effective_state": "ACTIVE_CANONICAL_IDENTITY",
       "semantic_reference_repair_status": "COMPLETE"
     },
@@ -72,7 +72,7 @@
         "owner Spec first-introduction commit 0729e3bc8bc9ed1f640086641044dec57a1b29d5"
       ],
       "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
-      "integrated_sha": null,
+      "integrated_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
       "effective_state": "ACTIVE_CANONICAL_IDENTITY",
       "semantic_reference_repair_status": "COMPLETE"
     },
@@ -90,7 +90,7 @@
         "owner Spec first-introduction commit 3901a2682d271a0385e5d3614525d98c900c146d"
       ],
       "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
-      "integrated_sha": null,
+      "integrated_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
       "effective_state": "ACTIVE_CANONICAL_IDENTITY",
       "semantic_reference_repair_status": "COMPLETE"
     },
@@ -108,7 +108,7 @@
         "owner Spec first-introduction commit 6074d9bdf154f34791cbbea0474280d795eb123d"
       ],
       "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
-      "integrated_sha": null,
+      "integrated_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
       "effective_state": "ACTIVE_CANONICAL_IDENTITY",
       "semantic_reference_repair_status": "COMPLETE"
     }

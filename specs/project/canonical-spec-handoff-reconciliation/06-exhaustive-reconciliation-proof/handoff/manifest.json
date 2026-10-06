@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "7b77144c08c065f0f01666d419d694eb2ec51689",
+    "expected_canonical_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "Begin REVIEW_DUPLICATE_SPEC_ID_GROUPS for IDs 000, 014, 031, 045, 058, 059, 162, and 164. Keep each unresolved until source evidence determines authority; then resume the remaining evidence-based reconciliation queue. Do not mark repository-wide Spec reconciliation or Canonical Spec Handoff migration complete.",
-    "next_ready_workunit": "REVIEW_DUPLICATE_SPEC_ID_GROUPS",
+    "next_action": "Continue evidence-led review of the remaining 331 ambiguity-review records. Do not repeat the resolved eight duplicate-ID groups, and do not mark repository-wide Spec reconciliation or Canonical Spec Handoff migration complete.",
+    "next_ready_workunit": "REVIEW_REMAINING_RECONCILIATION_RECORDS",
     "reactivation_predicate": null,
-    "resume_point": "SpecV9 recovered/canonical Spec upload predicate is satisfied at 6ab8fc6d290a7e42dd7df195aa433f5d092edc74. Revalidated against origin/main 0a840d75a75e61f32dacb12e0b292dfb81cc3864: 303 canonical Specs, 459 indexed records, 300 relationship candidate edges, and 327 open ambiguity-review records. Candidate import disposition evidence: specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/canonical-candidate-import-reconciled-20261006.md. Next ready workunit REVIEW_DUPLICATE_SPEC_ID_GROUPS; overall migration remains open.",
+    "resume_point": "The eight duplicate-ID groups 000, 014, 031, 045, 058, 059, 162, and 164 have deterministic dispositions in duplicate-authority-resolution-20261006.md, integrated at ba706ada52550427c8d9efdde206aacac7b38e3a. Post-integration checks are recorded in duplicate-spec-postintegration-20261006.md. Continue by selecting the next justified records from spec-handoff next; 331 ambiguity-review records remain.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -78,7 +78,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 21,
+  "generation": 24,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -103,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "7b77144c08c065f0f01666d419d694eb2ec51689",
+    "canonical_sha": "ba706ada52550427c8d9efdde206aacac7b38e3a",
     "integrated": true,
-    "integrated_at": "2026-10-06T04:51:06Z"
+    "integrated_at": "2026-10-06T10:01:46Z"
   },
   "lifecycle": {
     "current_state": "WORKING",
@@ -145,6 +145,11 @@
         "kind": "SPECV9_UPLOAD_INTEGRATED",
         "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/specv9-integrated-6ab8fc6d.md",
         "sha": "ea79fed36e905410ed8d9567969f333458f6269de448cf59bf1d92a95269a863"
+      },
+      {
+        "kind": "DUPLICATE_ID_RECONCILIATION_POSTINTEGRATION",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-spec-postintegration-20261006.md",
+        "sha": "1295f0a56f674940d09a070faea30b95244616f24a6eb446056f542c298a34b5"
       }
     ],
     "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -209,6 +214,11 @@
           "kind": "SPECV9_UPLOAD_INTEGRATED",
           "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/specv9-integrated-6ab8fc6d.md",
           "sha": "ea79fed36e905410ed8d9567969f333458f6269de448cf59bf1d92a95269a863"
+        },
+        {
+          "kind": "DUPLICATE_ID_RECONCILIATION_POSTINTEGRATION",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-spec-postintegration-20261006.md",
+          "sha": "1295f0a56f674940d09a070faea30b95244616f24a6eb446056f542c298a34b5"
         }
       ],
       "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -283,7 +293,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:51:36.436037Z",
+  "updated_at": "2026-10-06T10:04:46.771754Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
