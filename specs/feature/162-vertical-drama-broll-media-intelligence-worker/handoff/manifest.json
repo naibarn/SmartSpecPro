@@ -24,97 +24,97 @@
       {
         "digest": "036150b3f6a41891f2268eb9445c5352c614228890f126833dd2828efa4270da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "31da35d5499ae693413b3a774a7518caa19bd35af11f224a7c4a58f3cdb591a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9707be1295e3168b417ce5b231605eded76706f1ee6495838e63824467c341d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
       },
       {
         "digest": "8815299e4754ca44dbd49b5b8a4c10314571660b0134c88514147abca8732493",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "f523daf6af509503ea343f9a1902151f470d9f71c90bd2b9e225ff023b60778d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
       },
       {
         "digest": "8bdcd5a47826ca7c779887c88f952b9b9ce45c7a406901acf1beefa970f145d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
       },
       {
         "digest": "1b0e94c55072b9b58cbe5a3ab5c693b12983f719c3d69e62de64cbec987cb154",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
       },
       {
         "digest": "4e76ee55d0aaa253e401a3eae7c39de51601c03c5f321c8367022140fb75bebb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
       },
       {
         "digest": "0e6bcf8e4535b7cbfd5411f9c19e1ec2ef61fb2235c8e3ce1775039db1b2d8a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3ba7506cd9cc2ad2636299c5e935f5f5384ed0fcf4c5881cb044c3a967acf1b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
       },
       {
         "digest": "e72b26b059013e3562f8c4dfe2079e619d438d176e83ec77a40bfdc32aa0d5df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
       },
       {
         "digest": "05bed26e279ddce98bbadc36291ddd27ff3e9ee52de86bf36d11e274287b49d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
       },
       {
         "digest": "29dee46f85665eaefb3bb824d39f2899e635e7ab2846a0707cce9fa550df976b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
       },
       {
         "digest": "35d5246e07b0b1f0f0a95e6c1234ee709d4e348b18d24c4382d22925ef71606f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
       },
       {
         "digest": "3b35f45a63e95a575b1c1669e29e194683d2a4329c5cfcca90f34671f2e3c24f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
       },
       {
         "digest": "64ea55879ece46f09e76c57cbe17f3e24b01ab27611c46b5ed15f75c76f6c553",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
       },
       {
         "digest": "741c773ead893c7eca2135afda086989bfd7ef8b0eaf9f28752bb060f97fd641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
       },
       {
         "digest": "43d21e16e6778d64741ed9e4a4ce2c1a2809aaaa200ac88cd921b53966dad3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
       },
       {
         "digest": "3becb2b523e25625c449069a82c2f49b53704d1219f75f434f58ab75511c5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
       }
     ],
     "predecessors": [],
@@ -145,97 +145,97 @@
       {
         "digest": "036150b3f6a41891f2268eb9445c5352c614228890f126833dd2828efa4270da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "31da35d5499ae693413b3a774a7518caa19bd35af11f224a7c4a58f3cdb591a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9707be1295e3168b417ce5b231605eded76706f1ee6495838e63824467c341d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
       },
       {
         "digest": "8815299e4754ca44dbd49b5b8a4c10314571660b0134c88514147abca8732493",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "f523daf6af509503ea343f9a1902151f470d9f71c90bd2b9e225ff023b60778d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
       },
       {
         "digest": "8bdcd5a47826ca7c779887c88f952b9b9ce45c7a406901acf1beefa970f145d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
       },
       {
         "digest": "1b0e94c55072b9b58cbe5a3ab5c693b12983f719c3d69e62de64cbec987cb154",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
       },
       {
         "digest": "4e76ee55d0aaa253e401a3eae7c39de51601c03c5f321c8367022140fb75bebb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
       },
       {
         "digest": "0e6bcf8e4535b7cbfd5411f9c19e1ec2ef61fb2235c8e3ce1775039db1b2d8a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3ba7506cd9cc2ad2636299c5e935f5f5384ed0fcf4c5881cb044c3a967acf1b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
       },
       {
         "digest": "e72b26b059013e3562f8c4dfe2079e619d438d176e83ec77a40bfdc32aa0d5df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
       },
       {
         "digest": "05bed26e279ddce98bbadc36291ddd27ff3e9ee52de86bf36d11e274287b49d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
       },
       {
         "digest": "29dee46f85665eaefb3bb824d39f2899e635e7ab2846a0707cce9fa550df976b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
       },
       {
         "digest": "35d5246e07b0b1f0f0a95e6c1234ee709d4e348b18d24c4382d22925ef71606f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
       },
       {
         "digest": "3b35f45a63e95a575b1c1669e29e194683d2a4329c5cfcca90f34671f2e3c24f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
       },
       {
         "digest": "64ea55879ece46f09e76c57cbe17f3e24b01ab27611c46b5ed15f75c76f6c553",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
       },
       {
         "digest": "741c773ead893c7eca2135afda086989bfd7ef8b0eaf9f28752bb060f97fd641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
       },
       {
         "digest": "43d21e16e6778d64741ed9e4a4ce2c1a2809aaaa200ac88cd921b53966dad3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
       },
       {
         "digest": "3becb2b523e25625c449069a82c2f49b53704d1219f75f434f58ab75511c5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -267,103 +267,103 @@
       {
         "digest": "036150b3f6a41891f2268eb9445c5352c614228890f126833dd2828efa4270da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "31da35d5499ae693413b3a774a7518caa19bd35af11f224a7c4a58f3cdb591a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9707be1295e3168b417ce5b231605eded76706f1ee6495838e63824467c341d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
       },
       {
         "digest": "8815299e4754ca44dbd49b5b8a4c10314571660b0134c88514147abca8732493",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "f523daf6af509503ea343f9a1902151f470d9f71c90bd2b9e225ff023b60778d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
       },
       {
         "digest": "8bdcd5a47826ca7c779887c88f952b9b9ce45c7a406901acf1beefa970f145d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
       },
       {
         "digest": "1b0e94c55072b9b58cbe5a3ab5c693b12983f719c3d69e62de64cbec987cb154",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
       },
       {
         "digest": "4e76ee55d0aaa253e401a3eae7c39de51601c03c5f321c8367022140fb75bebb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
       },
       {
         "digest": "0e6bcf8e4535b7cbfd5411f9c19e1ec2ef61fb2235c8e3ce1775039db1b2d8a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3ba7506cd9cc2ad2636299c5e935f5f5384ed0fcf4c5881cb044c3a967acf1b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
       },
       {
         "digest": "e72b26b059013e3562f8c4dfe2079e619d438d176e83ec77a40bfdc32aa0d5df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
       },
       {
         "digest": "05bed26e279ddce98bbadc36291ddd27ff3e9ee52de86bf36d11e274287b49d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
       },
       {
         "digest": "29dee46f85665eaefb3bb824d39f2899e635e7ab2846a0707cce9fa550df976b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
       },
       {
         "digest": "35d5246e07b0b1f0f0a95e6c1234ee709d4e348b18d24c4382d22925ef71606f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
       },
       {
         "digest": "3b35f45a63e95a575b1c1669e29e194683d2a4329c5cfcca90f34671f2e3c24f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
       },
       {
         "digest": "64ea55879ece46f09e76c57cbe17f3e24b01ab27611c46b5ed15f75c76f6c553",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
       },
       {
         "digest": "741c773ead893c7eca2135afda086989bfd7ef8b0eaf9f28752bb060f97fd641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
       },
       {
         "digest": "43d21e16e6778d64741ed9e4a4ce2c1a2809aaaa200ac88cd921b53966dad3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
       },
       {
         "digest": "3becb2b523e25625c449069a82c2f49b53704d1219f75f434f58ab75511c5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
     "digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
@@ -416,102 +416,102 @@
       {
         "digest": "036150b3f6a41891f2268eb9445c5352c614228890f126833dd2828efa4270da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "31da35d5499ae693413b3a774a7518caa19bd35af11f224a7c4a58f3cdb591a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9707be1295e3168b417ce5b231605eded76706f1ee6495838e63824467c341d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
       },
       {
         "digest": "8815299e4754ca44dbd49b5b8a4c10314571660b0134c88514147abca8732493",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "f523daf6af509503ea343f9a1902151f470d9f71c90bd2b9e225ff023b60778d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
       },
       {
         "digest": "8bdcd5a47826ca7c779887c88f952b9b9ce45c7a406901acf1beefa970f145d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
       },
       {
         "digest": "1b0e94c55072b9b58cbe5a3ab5c693b12983f719c3d69e62de64cbec987cb154",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
       },
       {
         "digest": "4e76ee55d0aaa253e401a3eae7c39de51601c03c5f321c8367022140fb75bebb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
       },
       {
         "digest": "0e6bcf8e4535b7cbfd5411f9c19e1ec2ef61fb2235c8e3ce1775039db1b2d8a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3ba7506cd9cc2ad2636299c5e935f5f5384ed0fcf4c5881cb044c3a967acf1b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
       },
       {
         "digest": "e72b26b059013e3562f8c4dfe2079e619d438d176e83ec77a40bfdc32aa0d5df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
       },
       {
         "digest": "05bed26e279ddce98bbadc36291ddd27ff3e9ee52de86bf36d11e274287b49d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
       },
       {
         "digest": "29dee46f85665eaefb3bb824d39f2899e635e7ab2846a0707cce9fa550df976b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
       },
       {
         "digest": "35d5246e07b0b1f0f0a95e6c1234ee709d4e348b18d24c4382d22925ef71606f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
       },
       {
         "digest": "3b35f45a63e95a575b1c1669e29e194683d2a4329c5cfcca90f34671f2e3c24f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
       },
       {
         "digest": "64ea55879ece46f09e76c57cbe17f3e24b01ab27611c46b5ed15f75c76f6c553",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
       },
       {
         "digest": "741c773ead893c7eca2135afda086989bfd7ef8b0eaf9f28752bb060f97fd641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
       },
       {
         "digest": "43d21e16e6778d64741ed9e4a4ce2c1a2809aaaa200ac88cd921b53966dad3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
       },
       {
         "digest": "3becb2b523e25625c449069a82c2f49b53704d1219f75f434f58ab75511c5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
       },
       {
         "digest": "cb79971217631a7ac560146d74e93ee834029e61cf762d2e77a4fb243365877b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-06-integration-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-06-integration-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -561,102 +561,102 @@
       {
         "digest": "036150b3f6a41891f2268eb9445c5352c614228890f126833dd2828efa4270da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-plan.md"
       },
       {
         "digest": "31da35d5499ae693413b3a774a7518caa19bd35af11f224a7c4a58f3cdb591a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/claude-spec.md"
       },
       {
         "digest": "9707be1295e3168b417ce5b231605eded76706f1ee6495838e63824467c341d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/completeness-audit.md"
       },
       {
         "digest": "8815299e4754ca44dbd49b5b8a4c10314571660b0134c88514147abca8732493",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/deep_implement_config.json"
       },
       {
         "digest": "f523daf6af509503ea343f9a1902151f470d9f71c90bd2b9e225ff023b60778d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-6-restart-and-mcp.md"
       },
       {
         "digest": "8bdcd5a47826ca7c779887c88f952b9b9ce45c7a406901acf1beefa970f145d7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/gap-review-round-7-final-clean.md"
       },
       {
         "digest": "1b0e94c55072b9b58cbe5a3ab5c693b12983f719c3d69e62de64cbec987cb154",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/implementation/sections-completed.md"
       },
       {
         "digest": "4e76ee55d0aaa253e401a3eae7c39de51601c03c5f321c8367022140fb75bebb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/scorecard.md"
       },
       {
         "digest": "0e6bcf8e4535b7cbfd5411f9c19e1ec2ef61fb2235c8e3ce1775039db1b2d8a3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-1.md"
       },
       {
         "digest": "3ba7506cd9cc2ad2636299c5e935f5f5384ed0fcf4c5881cb044c3a967acf1b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-2.md"
       },
       {
         "digest": "e72b26b059013e3562f8c4dfe2079e619d438d176e83ec77a40bfdc32aa0d5df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-3.md"
       },
       {
         "digest": "05bed26e279ddce98bbadc36291ddd27ff3e9ee52de86bf36d11e274287b49d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-4.md"
       },
       {
         "digest": "29dee46f85665eaefb3bb824d39f2899e635e7ab2846a0707cce9fa550df976b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/reviews/self-review-round-5.md"
       },
       {
         "digest": "35d5246e07b0b1f0f0a95e6c1234ee709d4e348b18d24c4382d22925ef71606f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/index.md"
       },
       {
         "digest": "3b35f45a63e95a575b1c1669e29e194683d2a4329c5cfcca90f34671f2e3c24f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-01-media-contracts.md"
       },
       {
         "digest": "64ea55879ece46f09e76c57cbe17f3e24b01ab27611c46b5ed15f75c76f6c553",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-02-media-persistence-services.md"
       },
       {
         "digest": "741c773ead893c7eca2135afda086989bfd7ef8b0eaf9f28752bb060f97fd641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-03-worker-local-pipeline.md"
       },
       {
         "digest": "43d21e16e6778d64741ed9e4a4ce2c1a2809aaaa200ac88cd921b53966dad3bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-04-comfy-mcp-shot-generation.md"
       },
       {
         "digest": "3becb2b523e25625c449069a82c2f49b53704d1219f75f434f58ab75511c5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-05-media-workspace-ui.md"
       },
       {
         "digest": "cb79971217631a7ac560146d74e93ee834029e61cf762d2e77a4fb243365877b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-06-integration-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-06-integration-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

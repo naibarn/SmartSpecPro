@@ -17,92 +17,92 @@
       {
         "digest": "b09e43ee006eee84472328beeaded8111c452fb6869f6d0ad0ef8148ad405260",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-plan.md"
       },
       {
         "digest": "6e88d596d605518c711f007e86fb78f1b981103ce0ef5683c064e87a5e417b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-spec.md"
       },
       {
         "digest": "6602f68fe31b9f74db95c9721148d1f8159be0c80a5e04623aaf6327e288c827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "8f28f15fdd8cb87f7996568564d9ff1bcb965c9321dc636c858b55ed1aa05c23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "181c9dad4ba47e88a16b36297cf9255ea983f3316bccf4a57b9eba8f6cf8112f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/index.md"
       },
       {
         "digest": "e1467104f4744bdfabeeef96a6b8d0c5bcad42cb5b098b284968bc9e14aa1752",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
       },
       {
         "digest": "8b1ef8e6f237b806b5d96f7b17883b6a1c11d65df14f7e1bc24cb2bbac75cb8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
       },
       {
         "digest": "9c604834b5de86b139d5aa89ef69e98698d70dad57145069837464b13852d466",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
       },
       {
         "digest": "46d36a6e4c25e84edb33026a4639f24e756b6740e55b76543d4fd0a8642157a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
       },
       {
         "digest": "4a75debf70f54ca45a9d60f35f96f1e05775421bc880d8b53e8adb247faeab25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
       },
       {
         "digest": "988c14668fdd43a98a95c5d2b84d113ccf0c65cef4a9a2952e3ee26308ee63c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
       },
       {
         "digest": "f313b390bd0a9dcea85ea0cabec777f69cd63b850e3c6ed8acb6278f7c5560e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
       },
       {
         "digest": "2e69021bf605d8fe74f3efe628362fb0182029d5a1fb16a8cc632d504070284a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
       },
       {
         "digest": "56a899a3f1cfcec6b8dcd96b136fe489f5c2aaa5cc8df2321dd2aed94bcb4799",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
       },
       {
         "digest": "5a4ae0a9c37be5bfedf7ac6bab9f3e4bd84df060219b11d1180c54c584613b12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
       },
       {
         "digest": "f3edd040457c6f7335963d4b3f8051dfefcc98f94cb5e6c1c6070413afab0eb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
       },
       {
         "digest": "be9dc420621b363469b07d4f2539ec78559788dbe45322722e12685931c67fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
       },
       {
         "digest": "45211a0d0143dea0cc91b9cc950947943583b103f859f8796efe55984dc809ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "b09e43ee006eee84472328beeaded8111c452fb6869f6d0ad0ef8148ad405260",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-plan.md"
       },
       {
         "digest": "6e88d596d605518c711f007e86fb78f1b981103ce0ef5683c064e87a5e417b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-spec.md"
       },
       {
         "digest": "6602f68fe31b9f74db95c9721148d1f8159be0c80a5e04623aaf6327e288c827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "8f28f15fdd8cb87f7996568564d9ff1bcb965c9321dc636c858b55ed1aa05c23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "181c9dad4ba47e88a16b36297cf9255ea983f3316bccf4a57b9eba8f6cf8112f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/index.md"
       },
       {
         "digest": "e1467104f4744bdfabeeef96a6b8d0c5bcad42cb5b098b284968bc9e14aa1752",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
       },
       {
         "digest": "8b1ef8e6f237b806b5d96f7b17883b6a1c11d65df14f7e1bc24cb2bbac75cb8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
       },
       {
         "digest": "9c604834b5de86b139d5aa89ef69e98698d70dad57145069837464b13852d466",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
       },
       {
         "digest": "46d36a6e4c25e84edb33026a4639f24e756b6740e55b76543d4fd0a8642157a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
       },
       {
         "digest": "4a75debf70f54ca45a9d60f35f96f1e05775421bc880d8b53e8adb247faeab25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
       },
       {
         "digest": "988c14668fdd43a98a95c5d2b84d113ccf0c65cef4a9a2952e3ee26308ee63c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
       },
       {
         "digest": "f313b390bd0a9dcea85ea0cabec777f69cd63b850e3c6ed8acb6278f7c5560e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
       },
       {
         "digest": "2e69021bf605d8fe74f3efe628362fb0182029d5a1fb16a8cc632d504070284a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
       },
       {
         "digest": "56a899a3f1cfcec6b8dcd96b136fe489f5c2aaa5cc8df2321dd2aed94bcb4799",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
       },
       {
         "digest": "5a4ae0a9c37be5bfedf7ac6bab9f3e4bd84df060219b11d1180c54c584613b12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
       },
       {
         "digest": "f3edd040457c6f7335963d4b3f8051dfefcc98f94cb5e6c1c6070413afab0eb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
       },
       {
         "digest": "be9dc420621b363469b07d4f2539ec78559788dbe45322722e12685931c67fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
       },
       {
         "digest": "45211a0d0143dea0cc91b9cc950947943583b103f859f8796efe55984dc809ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -250,98 +250,98 @@
       {
         "digest": "b09e43ee006eee84472328beeaded8111c452fb6869f6d0ad0ef8148ad405260",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-plan.md"
       },
       {
         "digest": "6e88d596d605518c711f007e86fb78f1b981103ce0ef5683c064e87a5e417b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-spec.md"
       },
       {
         "digest": "6602f68fe31b9f74db95c9721148d1f8159be0c80a5e04623aaf6327e288c827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "8f28f15fdd8cb87f7996568564d9ff1bcb965c9321dc636c858b55ed1aa05c23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "181c9dad4ba47e88a16b36297cf9255ea983f3316bccf4a57b9eba8f6cf8112f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/index.md"
       },
       {
         "digest": "e1467104f4744bdfabeeef96a6b8d0c5bcad42cb5b098b284968bc9e14aa1752",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
       },
       {
         "digest": "8b1ef8e6f237b806b5d96f7b17883b6a1c11d65df14f7e1bc24cb2bbac75cb8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
       },
       {
         "digest": "9c604834b5de86b139d5aa89ef69e98698d70dad57145069837464b13852d466",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
       },
       {
         "digest": "46d36a6e4c25e84edb33026a4639f24e756b6740e55b76543d4fd0a8642157a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
       },
       {
         "digest": "4a75debf70f54ca45a9d60f35f96f1e05775421bc880d8b53e8adb247faeab25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
       },
       {
         "digest": "988c14668fdd43a98a95c5d2b84d113ccf0c65cef4a9a2952e3ee26308ee63c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
       },
       {
         "digest": "f313b390bd0a9dcea85ea0cabec777f69cd63b850e3c6ed8acb6278f7c5560e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
       },
       {
         "digest": "2e69021bf605d8fe74f3efe628362fb0182029d5a1fb16a8cc632d504070284a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
       },
       {
         "digest": "56a899a3f1cfcec6b8dcd96b136fe489f5c2aaa5cc8df2321dd2aed94bcb4799",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
       },
       {
         "digest": "5a4ae0a9c37be5bfedf7ac6bab9f3e4bd84df060219b11d1180c54c584613b12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
       },
       {
         "digest": "f3edd040457c6f7335963d4b3f8051dfefcc98f94cb5e6c1c6070413afab0eb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
       },
       {
         "digest": "be9dc420621b363469b07d4f2539ec78559788dbe45322722e12685931c67fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
       },
       {
         "digest": "45211a0d0143dea0cc91b9cc950947943583b103f859f8796efe55984dc809ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/053-agency-agentic-intelligence/spec.md",
     "digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
@@ -394,92 +394,92 @@
       {
         "digest": "b09e43ee006eee84472328beeaded8111c452fb6869f6d0ad0ef8148ad405260",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-plan.md"
       },
       {
         "digest": "6e88d596d605518c711f007e86fb78f1b981103ce0ef5683c064e87a5e417b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-spec.md"
       },
       {
         "digest": "6602f68fe31b9f74db95c9721148d1f8159be0c80a5e04623aaf6327e288c827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "8f28f15fdd8cb87f7996568564d9ff1bcb965c9321dc636c858b55ed1aa05c23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "181c9dad4ba47e88a16b36297cf9255ea983f3316bccf4a57b9eba8f6cf8112f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/index.md"
       },
       {
         "digest": "e1467104f4744bdfabeeef96a6b8d0c5bcad42cb5b098b284968bc9e14aa1752",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
       },
       {
         "digest": "8b1ef8e6f237b806b5d96f7b17883b6a1c11d65df14f7e1bc24cb2bbac75cb8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
       },
       {
         "digest": "9c604834b5de86b139d5aa89ef69e98698d70dad57145069837464b13852d466",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
       },
       {
         "digest": "46d36a6e4c25e84edb33026a4639f24e756b6740e55b76543d4fd0a8642157a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
       },
       {
         "digest": "4a75debf70f54ca45a9d60f35f96f1e05775421bc880d8b53e8adb247faeab25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
       },
       {
         "digest": "988c14668fdd43a98a95c5d2b84d113ccf0c65cef4a9a2952e3ee26308ee63c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
       },
       {
         "digest": "f313b390bd0a9dcea85ea0cabec777f69cd63b850e3c6ed8acb6278f7c5560e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
       },
       {
         "digest": "2e69021bf605d8fe74f3efe628362fb0182029d5a1fb16a8cc632d504070284a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
       },
       {
         "digest": "56a899a3f1cfcec6b8dcd96b136fe489f5c2aaa5cc8df2321dd2aed94bcb4799",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
       },
       {
         "digest": "5a4ae0a9c37be5bfedf7ac6bab9f3e4bd84df060219b11d1180c54c584613b12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
       },
       {
         "digest": "f3edd040457c6f7335963d4b3f8051dfefcc98f94cb5e6c1c6070413afab0eb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
       },
       {
         "digest": "be9dc420621b363469b07d4f2539ec78559788dbe45322722e12685931c67fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
       },
       {
         "digest": "45211a0d0143dea0cc91b9cc950947943583b103f859f8796efe55984dc809ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -880,92 +880,92 @@
       {
         "digest": "b09e43ee006eee84472328beeaded8111c452fb6869f6d0ad0ef8148ad405260",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-plan.md"
       },
       {
         "digest": "6e88d596d605518c711f007e86fb78f1b981103ce0ef5683c064e87a5e417b3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/claude-spec.md"
       },
       {
         "digest": "6602f68fe31b9f74db95c9721148d1f8159be0c80a5e04623aaf6327e288c827",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "8f28f15fdd8cb87f7996568564d9ff1bcb965c9321dc636c858b55ed1aa05c23",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "181c9dad4ba47e88a16b36297cf9255ea983f3316bccf4a57b9eba8f6cf8112f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/index.md"
       },
       {
         "digest": "e1467104f4744bdfabeeef96a6b8d0c5bcad42cb5b098b284968bc9e14aa1752",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-01-foundation.md"
       },
       {
         "digest": "8b1ef8e6f237b806b5d96f7b17883b6a1c11d65df14f7e1bc24cb2bbac75cb8d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-02-orchestrator-agentic.md"
       },
       {
         "digest": "9c604834b5de86b139d5aa89ef69e98698d70dad57145069837464b13852d466",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-03-frontend-level1.md"
       },
       {
         "digest": "46d36a6e4c25e84edb33026a4639f24e756b6740e55b76543d4fd0a8642157a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-04-feature-flags.md"
       },
       {
         "digest": "4a75debf70f54ca45a9d60f35f96f1e05775421bc880d8b53e8adb247faeab25",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-05-react-executor.md"
       },
       {
         "digest": "988c14668fdd43a98a95c5d2b84d113ccf0c65cef4a9a2952e3ee26308ee63c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-06-working-memory.md"
       },
       {
         "digest": "f313b390bd0a9dcea85ea0cabec777f69cd63b850e3c6ed8acb6278f7c5560e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-07-cost-controls.md"
       },
       {
         "digest": "2e69021bf605d8fe74f3efe628362fb0182029d5a1fb16a8cc632d504070284a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-08-react-integration.md"
       },
       {
         "digest": "56a899a3f1cfcec6b8dcd96b136fe489f5c2aaa5cc8df2321dd2aed94bcb4799",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-09-db-migration.md"
       },
       {
         "digest": "5a4ae0a9c37be5bfedf7ac6bab9f3e4bd84df060219b11d1180c54c584613b12",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-10-autonomous-executor.md"
       },
       {
         "digest": "f3edd040457c6f7335963d4b3f8051dfefcc98f94cb5e6c1c6070413afab0eb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-11-execution-memory.md"
       },
       {
         "digest": "be9dc420621b363469b07d4f2539ec78559788dbe45322722e12685931c67fa7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-12-long-term-memory.md"
       },
       {
         "digest": "45211a0d0143dea0cc91b9cc950947943583b103f859f8796efe55984dc809ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/053-agency-agentic-intelligence/sections/section-13-frontend-level3.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

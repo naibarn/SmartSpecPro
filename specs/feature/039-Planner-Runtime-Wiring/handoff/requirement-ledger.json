@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/039-Planner-Runtime-Wiring/spec.md#L115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L115"
       ],
-      "authority_source": "specs/feature/039-Planner-Runtime-Wiring/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,13 +27,13 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/039-Planner-Runtime-Wiring/spec.md#L180",
-        "specs/feature/039-Planner-Runtime-Wiring/spec.md#L207",
-        "specs/feature/039-Planner-Runtime-Wiring/spec.md#L232",
-        "specs/feature/039-Planner-Runtime-Wiring/spec.md#L276",
-        "specs/feature/039-Planner-Runtime-Wiring/spec.md#L300"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L180",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L207",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L232",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L276",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L300"
       ],
-      "authority_source": "specs/feature/039-Planner-Runtime-Wiring/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/039-Planner-Runtime-Wiring/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

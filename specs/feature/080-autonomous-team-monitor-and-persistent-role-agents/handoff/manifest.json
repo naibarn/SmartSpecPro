@@ -17,77 +17,77 @@
       {
         "digest": "10ad34b6c1a4821c5a746258259057520a49d1a3e3696612709ab114551b29b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
       },
       {
         "digest": "b42259ed0c3cecbefce7cc2d58e654a8b7fe6f9ab60b0d7b4a42f7411602329e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
       },
       {
         "digest": "2967582bf73f47c16227f01a69f0d2b747fe1f6965eda84b808a1435beb3cb4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
       },
       {
         "digest": "2eb397f0bb45ac27e2e7f950e6142a70d394e352680100867ad66373d7e568f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
       },
       {
         "digest": "ab4bbf567c697683c41c2db9fc3b6c844f0eae1a153b86467da34496a685fcbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "ca1dabc137b3d4bc1f5bda3db7d79db1edafe13f57d4ff99a0ce141c18e6e7f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
       },
       {
         "digest": "064ea623e3610e5379496e5bf5867f61dd6befbd42128264412cd7c103bd1b75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
       },
       {
         "digest": "abdabf4bc4a54285afbc206cd87b8772dc41ec08e17fd4bc9ff5bfa38a12a285",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
       },
       {
         "digest": "3becfc265befefa602b47b382ee1838309c58e71eb8828a3e2d463a82876bcf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
       },
       {
         "digest": "e12fc94610d14fe6359af468812f816c17859d0fec2b7e01314627615db345f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
       },
       {
         "digest": "9cf0c086ad372d689cc5969fca80b6eee26fa621588e286a44f9c188ce7bd0c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
       },
       {
         "digest": "ed5c094f3fea0b44a9676b2d7ac135b8899ae0a54cd4ec30efceeefd6f6bad3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
       },
       {
         "digest": "e9ce0010253564feaf640087176a6e6096bcd884b4319d4f7634d52cc9afc489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
       },
       {
         "digest": "269152b9f8a61a213a17696716524e07c93e437ca072bd28604b5a8f4d2bc81a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
       },
       {
         "digest": "1fead64627cbb15131a2436dba97abf378a819191666686dbdaee93b432671a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
       }
     ],
     "predecessors": [],
@@ -118,77 +118,77 @@
       {
         "digest": "10ad34b6c1a4821c5a746258259057520a49d1a3e3696612709ab114551b29b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
       },
       {
         "digest": "b42259ed0c3cecbefce7cc2d58e654a8b7fe6f9ab60b0d7b4a42f7411602329e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
       },
       {
         "digest": "2967582bf73f47c16227f01a69f0d2b747fe1f6965eda84b808a1435beb3cb4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
       },
       {
         "digest": "2eb397f0bb45ac27e2e7f950e6142a70d394e352680100867ad66373d7e568f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
       },
       {
         "digest": "ab4bbf567c697683c41c2db9fc3b6c844f0eae1a153b86467da34496a685fcbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "ca1dabc137b3d4bc1f5bda3db7d79db1edafe13f57d4ff99a0ce141c18e6e7f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
       },
       {
         "digest": "064ea623e3610e5379496e5bf5867f61dd6befbd42128264412cd7c103bd1b75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
       },
       {
         "digest": "abdabf4bc4a54285afbc206cd87b8772dc41ec08e17fd4bc9ff5bfa38a12a285",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
       },
       {
         "digest": "3becfc265befefa602b47b382ee1838309c58e71eb8828a3e2d463a82876bcf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
       },
       {
         "digest": "e12fc94610d14fe6359af468812f816c17859d0fec2b7e01314627615db345f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
       },
       {
         "digest": "9cf0c086ad372d689cc5969fca80b6eee26fa621588e286a44f9c188ce7bd0c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
       },
       {
         "digest": "ed5c094f3fea0b44a9676b2d7ac135b8899ae0a54cd4ec30efceeefd6f6bad3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
       },
       {
         "digest": "e9ce0010253564feaf640087176a6e6096bcd884b4319d4f7634d52cc9afc489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
       },
       {
         "digest": "269152b9f8a61a213a17696716524e07c93e437ca072bd28604b5a8f4d2bc81a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
       },
       {
         "digest": "1fead64627cbb15131a2436dba97abf378a819191666686dbdaee93b432671a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -220,83 +220,83 @@
       {
         "digest": "10ad34b6c1a4821c5a746258259057520a49d1a3e3696612709ab114551b29b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
       },
       {
         "digest": "b42259ed0c3cecbefce7cc2d58e654a8b7fe6f9ab60b0d7b4a42f7411602329e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
       },
       {
         "digest": "2967582bf73f47c16227f01a69f0d2b747fe1f6965eda84b808a1435beb3cb4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
       },
       {
         "digest": "2eb397f0bb45ac27e2e7f950e6142a70d394e352680100867ad66373d7e568f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
       },
       {
         "digest": "ab4bbf567c697683c41c2db9fc3b6c844f0eae1a153b86467da34496a685fcbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "ca1dabc137b3d4bc1f5bda3db7d79db1edafe13f57d4ff99a0ce141c18e6e7f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
       },
       {
         "digest": "064ea623e3610e5379496e5bf5867f61dd6befbd42128264412cd7c103bd1b75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
       },
       {
         "digest": "abdabf4bc4a54285afbc206cd87b8772dc41ec08e17fd4bc9ff5bfa38a12a285",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
       },
       {
         "digest": "3becfc265befefa602b47b382ee1838309c58e71eb8828a3e2d463a82876bcf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
       },
       {
         "digest": "e12fc94610d14fe6359af468812f816c17859d0fec2b7e01314627615db345f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
       },
       {
         "digest": "9cf0c086ad372d689cc5969fca80b6eee26fa621588e286a44f9c188ce7bd0c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
       },
       {
         "digest": "ed5c094f3fea0b44a9676b2d7ac135b8899ae0a54cd4ec30efceeefd6f6bad3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
       },
       {
         "digest": "e9ce0010253564feaf640087176a6e6096bcd884b4319d4f7634d52cc9afc489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
       },
       {
         "digest": "269152b9f8a61a213a17696716524e07c93e437ca072bd28604b5a8f4d2bc81a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
       },
       {
         "digest": "1fead64627cbb15131a2436dba97abf378a819191666686dbdaee93b432671a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md",
     "digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
@@ -349,77 +349,77 @@
       {
         "digest": "10ad34b6c1a4821c5a746258259057520a49d1a3e3696612709ab114551b29b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
       },
       {
         "digest": "b42259ed0c3cecbefce7cc2d58e654a8b7fe6f9ab60b0d7b4a42f7411602329e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
       },
       {
         "digest": "2967582bf73f47c16227f01a69f0d2b747fe1f6965eda84b808a1435beb3cb4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
       },
       {
         "digest": "2eb397f0bb45ac27e2e7f950e6142a70d394e352680100867ad66373d7e568f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
       },
       {
         "digest": "ab4bbf567c697683c41c2db9fc3b6c844f0eae1a153b86467da34496a685fcbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "ca1dabc137b3d4bc1f5bda3db7d79db1edafe13f57d4ff99a0ce141c18e6e7f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
       },
       {
         "digest": "064ea623e3610e5379496e5bf5867f61dd6befbd42128264412cd7c103bd1b75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
       },
       {
         "digest": "abdabf4bc4a54285afbc206cd87b8772dc41ec08e17fd4bc9ff5bfa38a12a285",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
       },
       {
         "digest": "3becfc265befefa602b47b382ee1838309c58e71eb8828a3e2d463a82876bcf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
       },
       {
         "digest": "e12fc94610d14fe6359af468812f816c17859d0fec2b7e01314627615db345f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
       },
       {
         "digest": "9cf0c086ad372d689cc5969fca80b6eee26fa621588e286a44f9c188ce7bd0c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
       },
       {
         "digest": "ed5c094f3fea0b44a9676b2d7ac135b8899ae0a54cd4ec30efceeefd6f6bad3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
       },
       {
         "digest": "e9ce0010253564feaf640087176a6e6096bcd884b4319d4f7634d52cc9afc489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
       },
       {
         "digest": "269152b9f8a61a213a17696716524e07c93e437ca072bd28604b5a8f4d2bc81a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
       },
       {
         "digest": "1fead64627cbb15131a2436dba97abf378a819191666686dbdaee93b432671a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -469,77 +469,77 @@
       {
         "digest": "10ad34b6c1a4821c5a746258259057520a49d1a3e3696612709ab114551b29b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-plan.md"
       },
       {
         "digest": "b42259ed0c3cecbefce7cc2d58e654a8b7fe6f9ab60b0d7b4a42f7411602329e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/claude-spec.md"
       },
       {
         "digest": "2967582bf73f47c16227f01a69f0d2b747fe1f6965eda84b808a1435beb3cb4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/deep_implement_config.json"
       },
       {
         "digest": "2eb397f0bb45ac27e2e7f950e6142a70d394e352680100867ad66373d7e568f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/implementation/final-merge-gate-review.md"
       },
       {
         "digest": "ab4bbf567c697683c41c2db9fc3b6c844f0eae1a153b86467da34496a685fcbc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/section-cross-consistency-review.md"
       },
       {
         "digest": "ca1dabc137b3d4bc1f5bda3db7d79db1edafe13f57d4ff99a0ce141c18e6e7f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/reviews/self-review-round-1.md"
       },
       {
         "digest": "064ea623e3610e5379496e5bf5867f61dd6befbd42128264412cd7c103bd1b75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/index.md"
       },
       {
         "digest": "abdabf4bc4a54285afbc206cd87b8772dc41ec08e17fd4bc9ff5bfa38a12a285",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-01-role-contracts-bindings-and-persistence.md"
       },
       {
         "digest": "3becfc265befefa602b47b382ee1838309c58e71eb8828a3e2d463a82876bcf2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-02-routine-scheduler-queue-and-checkpoints.md"
       },
       {
         "digest": "e12fc94610d14fe6359af468812f816c17859d0fec2b7e01314627615db345f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-03-role-workpack-resolution-and-execution-inheritance.md"
       },
       {
         "digest": "9cf0c086ad372d689cc5969fca80b6eee26fa621588e286a44f9c188ce7bd0c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-04-role-monitor-aggregation-and-control-backend.md"
       },
       {
         "digest": "ed5c094f3fea0b44a9676b2d7ac135b8899ae0a54cd4ec30efceeefd6f6bad3c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-05-typed-role-communication-delegation-and-exceptions.md"
       },
       {
         "digest": "e9ce0010253564feaf640087176a6e6096bcd884b4319d4f7634d52cc9afc489",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-06-memory-improvement-and-promotion-gates.md"
       },
       {
         "digest": "269152b9f8a61a213a17696716524e07c93e437ca072bd28604b5a8f4d2bc81a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-07-role-monitor-ui-and-operator-surfaces.md"
       },
       {
         "digest": "1fead64627cbb15131a2436dba97abf378a819191666686dbdaee93b432671a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

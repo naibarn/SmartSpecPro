@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L100"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L109"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L137"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L137"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L137",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L138"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L144"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L155"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L159"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L159"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L159",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L163"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L187"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L188"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L190"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L191"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L194"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L196"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L196"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L196",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L197"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L197"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L197",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L199"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L200"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L201"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L201"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L201",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L202"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L202"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L202",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L203"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L203"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L203",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L205"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L205"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L205",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L209"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L209"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L209",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L216"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L218"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L218"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L218",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L223"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L223"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L223",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L224"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L224"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L225"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L226"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L226"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L226",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L227"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L229"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L230"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L237"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L239"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L241"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L244"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L244"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L244",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L246"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L246"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L246",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L248"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L248"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L248",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L271"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L325"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L325"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L325",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L327"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L327"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L327",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L327",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L332"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L366"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L367"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L367"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L367",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L367",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L372"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L377"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L378"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L388"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L388"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L388",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L389"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L390"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L393"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L393"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L393",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L396"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L401"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L412"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L412"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L412",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L419"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L419"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L419",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L426"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L433"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L444"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L444"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L444",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L452"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L452"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L452",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L458"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L458"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L458",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L462"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L462"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L462",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L467"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L468"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L485"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L485"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L485",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L500"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L504"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L504"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L504",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L504",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L521"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L547"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L547"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L547",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L552"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L552"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L552",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L562"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L562"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L562",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L570"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L632"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L632"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L632",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L636"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L658"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L666"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L669"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L669"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L669",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L672"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L713"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L713"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L713",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L731"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L731"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L731",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L734"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L734"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L734",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L737"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L737"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L737",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L746"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L758"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L766"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L766"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L766",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L766",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L776"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L776"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L776",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L777"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L781"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L789"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L791"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L792"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L792"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L792",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L795"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L795"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L795",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L795",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L821"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L821"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L821",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L821",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L826"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L826"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L826",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L826",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L827"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L827"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L827",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L829"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L829"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L829",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L833"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L833"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L833",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L833",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L834"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L834"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L834",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L834",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L852"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L852"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L852",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L853"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L853"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L853",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L853",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L863"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L863"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L863",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L884"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L884"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L884",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L966"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L966"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L966",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L966",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L976"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L976"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L976",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L976",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L978"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L978"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L978",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L978",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L981"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L981"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L981",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L990"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L990"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L990",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L990",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L994"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L994"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L994",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L994",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L997"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L997"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L997",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1001"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1001"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1001",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1033"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1033"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1033",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1033",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1034"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1034"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1034",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1034",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1040"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1040"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1040",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1040",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1065"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1065"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1065",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1065",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1072"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1072"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1072",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1074"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1074"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1074",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1079"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1079"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1079",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1080"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1080"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1080",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1083"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1083"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1083",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1094"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1094"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1094",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1095"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1095"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1095",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1099"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1099"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1099",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1099",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1105"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1139"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1139"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1139",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1140"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1141"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1162"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1183"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1200"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1211"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1215"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1219"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1236"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1257"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1263"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1263"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1263",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1269"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1272"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1273"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1273"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1273",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1275"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1285"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1290"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1290"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1290",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1310"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1323"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1333"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1333"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1333",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1338"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1338"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1338",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1340"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1376"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1377"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1392"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1393"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1393"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1393",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1410"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1410"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1410",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1413"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1413"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1413",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1474"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1474"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1474",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1480"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1492"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1492"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1492",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1492",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1495"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1495"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1495",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1496"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1496"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1496",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1501"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1501"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1501",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1511"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1512"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1512"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1512",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1514"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1514"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1514",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1549"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1549"
       ],
-      "authority_source": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1549",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md#L1549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

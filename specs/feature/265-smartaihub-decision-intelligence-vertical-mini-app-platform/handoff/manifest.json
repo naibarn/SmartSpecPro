@@ -16,7 +16,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2685",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2685",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       },
@@ -30,7 +30,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L3132",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L3132",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       },
@@ -44,7 +44,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L8",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L8",
         "source_digest": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c",
         "successor_spec_id": "266"
       }
@@ -60,47 +60,47 @@
       {
         "digest": "f7d636bea5ee1f4a143f878918a5a50055fba48ec9bda90cba086ec522ba7869",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "d1253f039d3df124ff41bb53d3fca44606886c70b0cbeb860e45403a5bd8c36a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
       },
       {
         "digest": "05075164fb205ad809dd29fa5de5a3e0d5548b49b698d18f6d7e6f2232d5a6da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
       },
       {
         "digest": "f015a1944b46f4c6f108667f71cca314160d2421931eaf54cf4d0ea2d1b6bf62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
       },
       {
         "digest": "962b665d6d0b33a2a749604e9c6ad57f636fa64a00f8f052f5c06e60367d090f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
       },
       {
         "digest": "3d426240abf0ea0c1897b9140ed342a36adb2b674d7f3c288559db90d6712389",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
       },
       {
         "digest": "205d71abb8931d834279f73abef79ed64d9e4e1939d1224206a6258457528b7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
       },
       {
         "digest": "bc7a3d31e284b9d86e837bf84088fd43d726a9f440a4664f1df10ca5890e8643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
       },
       {
         "digest": "c3b318356f9beefe7d98ea7ab2bdb1c36ab085dfdf460c73f98d6564a50fb7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
       }
     ],
     "predecessors": [],
@@ -131,47 +131,47 @@
       {
         "digest": "f7d636bea5ee1f4a143f878918a5a50055fba48ec9bda90cba086ec522ba7869",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "d1253f039d3df124ff41bb53d3fca44606886c70b0cbeb860e45403a5bd8c36a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
       },
       {
         "digest": "05075164fb205ad809dd29fa5de5a3e0d5548b49b698d18f6d7e6f2232d5a6da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
       },
       {
         "digest": "f015a1944b46f4c6f108667f71cca314160d2421931eaf54cf4d0ea2d1b6bf62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
       },
       {
         "digest": "962b665d6d0b33a2a749604e9c6ad57f636fa64a00f8f052f5c06e60367d090f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
       },
       {
         "digest": "3d426240abf0ea0c1897b9140ed342a36adb2b674d7f3c288559db90d6712389",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
       },
       {
         "digest": "205d71abb8931d834279f73abef79ed64d9e4e1939d1224206a6258457528b7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
       },
       {
         "digest": "bc7a3d31e284b9d86e837bf84088fd43d726a9f440a4664f1df10ca5890e8643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
       },
       {
         "digest": "c3b318356f9beefe7d98ea7ab2bdb1c36ab085dfdf460c73f98d6564a50fb7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
       },
       {
         "excerpt": "/** Spec 265 project identity and private decision state. */",
@@ -217,53 +217,53 @@
       {
         "digest": "f7d636bea5ee1f4a143f878918a5a50055fba48ec9bda90cba086ec522ba7869",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "d1253f039d3df124ff41bb53d3fca44606886c70b0cbeb860e45403a5bd8c36a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
       },
       {
         "digest": "05075164fb205ad809dd29fa5de5a3e0d5548b49b698d18f6d7e6f2232d5a6da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
       },
       {
         "digest": "f015a1944b46f4c6f108667f71cca314160d2421931eaf54cf4d0ea2d1b6bf62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
       },
       {
         "digest": "962b665d6d0b33a2a749604e9c6ad57f636fa64a00f8f052f5c06e60367d090f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
       },
       {
         "digest": "3d426240abf0ea0c1897b9140ed342a36adb2b674d7f3c288559db90d6712389",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
       },
       {
         "digest": "205d71abb8931d834279f73abef79ed64d9e4e1939d1224206a6258457528b7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
       },
       {
         "digest": "bc7a3d31e284b9d86e837bf84088fd43d726a9f440a4664f1df10ca5890e8643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
       },
       {
         "digest": "c3b318356f9beefe7d98ea7ab2bdb1c36ab085dfdf460c73f98d6564a50fb7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md",
     "digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
@@ -316,47 +316,47 @@
       {
         "digest": "f7d636bea5ee1f4a143f878918a5a50055fba48ec9bda90cba086ec522ba7869",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "d1253f039d3df124ff41bb53d3fca44606886c70b0cbeb860e45403a5bd8c36a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
       },
       {
         "digest": "05075164fb205ad809dd29fa5de5a3e0d5548b49b698d18f6d7e6f2232d5a6da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
       },
       {
         "digest": "f015a1944b46f4c6f108667f71cca314160d2421931eaf54cf4d0ea2d1b6bf62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
       },
       {
         "digest": "962b665d6d0b33a2a749604e9c6ad57f636fa64a00f8f052f5c06e60367d090f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
       },
       {
         "digest": "3d426240abf0ea0c1897b9140ed342a36adb2b674d7f3c288559db90d6712389",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
       },
       {
         "digest": "205d71abb8931d834279f73abef79ed64d9e4e1939d1224206a6258457528b7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
       },
       {
         "digest": "bc7a3d31e284b9d86e837bf84088fd43d726a9f440a4664f1df10ca5890e8643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
       },
       {
         "digest": "c3b318356f9beefe7d98ea7ab2bdb1c36ab085dfdf460c73f98d6564a50fb7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
       },
       {
         "excerpt": "/** Spec 265 project identity and private decision state. */",
@@ -435,47 +435,47 @@
       {
         "digest": "f7d636bea5ee1f4a143f878918a5a50055fba48ec9bda90cba086ec522ba7869",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/implementation/deep_implement_config.json"
       },
       {
         "digest": "d1253f039d3df124ff41bb53d3fca44606886c70b0cbeb860e45403a5bd8c36a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/index.md"
       },
       {
         "digest": "05075164fb205ad809dd29fa5de5a3e0d5548b49b698d18f6d7e6f2232d5a6da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-01-decision-domain-and-persistence.md"
       },
       {
         "digest": "f015a1944b46f4c6f108667f71cca314160d2421931eaf54cf4d0ea2d1b6bf62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-02-intent-template-and-evidence-planning.md"
       },
       {
         "digest": "962b665d6d0b33a2a749604e9c6ad57f636fa64a00f8f052f5c06e60367d090f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-03-analysis-calculation-readiness-and-safety.md"
       },
       {
         "digest": "3d426240abf0ea0c1897b9140ed342a36adb2b674d7f3c288559db90d6712389",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-04-spec266-research-and-evidence-integration.md"
       },
       {
         "digest": "205d71abb8931d834279f73abef79ed64d9e4e1939d1224206a6258457528b7a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-05-workspace-chat-map-and-field-data.md"
       },
       {
         "digest": "bc7a3d31e284b9d86e837bf84088fd43d726a9f440a4664f1df10ca5890e8643",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-06-watches-miniapppacks-commercial.md"
       },
       {
         "digest": "c3b318356f9beefe7d98ea7ab2bdb1c36ab085dfdf460c73f98d6564a50fb7ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/sections/section-07-api-observability-evaluation-migration.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

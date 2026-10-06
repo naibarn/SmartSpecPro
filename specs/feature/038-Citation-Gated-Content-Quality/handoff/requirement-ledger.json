@@ -1,13 +1,13 @@
 {
-  "generation": 4,
+  "generation": 5,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L37"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L37"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L37",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L38"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L38"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L38",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L39"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L39"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L39",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L40"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L40"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L40",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L40",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L41"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L41"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L41",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L42"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L42"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L42",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L42",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L126"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L126"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L126",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L129"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L129"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L129",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L130"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L131"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L180"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L183"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L184"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L185"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L185"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L185",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L186"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L186"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L186",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L274"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L274"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L274",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L275"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L276"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L276"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L276",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L277"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L285"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L288"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L289"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L289"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L289",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L290"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L290"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L290",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L291"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L291"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L291",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L332"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L335"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L335"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L335",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L336"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L337"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L368"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L369"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L370"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L378"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L381"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L382"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L383"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L383"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L383",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L446"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L449"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -851,9 +851,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L517"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L517"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L517",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -873,9 +873,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L518"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L518"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L518",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -895,9 +895,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L519"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L519"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L519",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -917,9 +917,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L520"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L520"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L520",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -939,9 +939,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L521"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -961,9 +961,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L522"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L522"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L522",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -983,9 +983,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L523"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L523"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L523",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1005,9 +1005,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L524"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L524",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1027,9 +1027,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L525"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1049,9 +1049,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L526"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L526"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L526",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1071,9 +1071,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L527"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L527"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L527",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1093,9 +1093,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L528"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L528"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L528",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1115,9 +1115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L529"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1137,9 +1137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L530"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L530"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L530",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1159,9 +1159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L531"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L531"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L531",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1181,9 +1181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L618"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1203,9 +1203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L619"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1225,9 +1225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L620"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1247,9 +1247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L621"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1269,9 +1269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L622"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1291,9 +1291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L623"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1313,9 +1313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L624"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1367,9 +1367,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L635"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1389,9 +1389,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L636"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1411,9 +1411,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L637"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1433,9 +1433,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L638"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L638"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L638",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1455,9 +1455,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L639"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L639"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L639",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1477,9 +1477,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L640"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1499,9 +1499,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L641"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L641"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L641",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L641",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1521,9 +1521,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L642"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1543,9 +1543,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L663"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L663"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L663",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L663",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1565,9 +1565,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L664"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L664"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L664",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1587,9 +1587,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L665"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L665"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L665",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1609,9 +1609,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L666"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1631,9 +1631,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L667"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L667"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L667",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L667",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1653,9 +1653,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L668"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L668"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L668",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1675,9 +1675,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L669"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L669"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L669",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1697,9 +1697,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L670"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1719,9 +1719,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L678"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L678"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L678",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1741,9 +1741,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L681"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1763,9 +1763,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L682"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L682"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L682",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1785,9 +1785,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L726"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L726"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L726",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1807,9 +1807,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L727"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L727"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L727",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1829,9 +1829,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L728"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L728"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L728",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1851,9 +1851,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L729"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L729"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L729",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1873,9 +1873,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L730"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L730"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L730",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1895,9 +1895,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L736"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L736"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L736",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L736",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1917,9 +1917,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L739"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1939,9 +1939,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L740"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L740"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L740",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1961,9 +1961,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L746"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1983,9 +1983,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L747"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2005,9 +2005,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L748"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2027,9 +2027,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L749"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L749"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L749",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2049,9 +2049,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L750"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L750"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L750",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2071,9 +2071,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L751"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L751"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L751",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2093,9 +2093,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L752"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L752"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L752",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2115,9 +2115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L753"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L753"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L753",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L753",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2137,9 +2137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L754"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L754"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L754",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2159,9 +2159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L755"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2213,9 +2213,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L876"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L876"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L876",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2235,9 +2235,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L877"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L877"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L877",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2257,9 +2257,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L878"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L878"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L878",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2279,9 +2279,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L879"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L879"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L879",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2301,9 +2301,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L880"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L880"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L880",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L880",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2323,9 +2323,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L881"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L881"
       ],
-      "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L881",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/038-Citation-Gated-Content-Quality/spec.md#L881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

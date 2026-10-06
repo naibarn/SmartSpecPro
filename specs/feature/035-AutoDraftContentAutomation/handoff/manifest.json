@@ -17,82 +17,82 @@
       {
         "digest": "1583878679131cac07fa539694894487fa1a0b0b012d98b31f22adb0cef456f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
       },
       {
         "digest": "a31f578b8c68ec072f22ac54c88c164754cf272693ef7d3102f80f6ebda131a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
       },
       {
         "digest": "b3f4ac63724e273516bef45db634d2d38e9795690b946649d3d0bb118e30784c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
       },
       {
         "digest": "7c62b8a3e74ecce35929317cf74aa8c4bd1235255594c25ec4aef353e389eca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "4cc336cc80cfb61ed3750c2b31d94570648f445883d830ae2022d844f0aa7d33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/index.md"
       },
       {
         "digest": "ae05d732b1e735817105b738534186ff2e4ae3a9ab64df9602000db39a1cab62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
       },
       {
         "digest": "86355c1cb037bd6d61a85506f90de9b119370ba477a5c884c05d80db84cc45dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
       },
       {
         "digest": "2eb062f6610244baf4713c0d87065896fa84b3f8728861f670411da9624c0a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
       },
       {
         "digest": "51d9b3d7b07a242fb2c54f8b612585b430c177bf84c4d43d9559c97f822a9886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
       },
       {
         "digest": "b9cd25d42d59c4c7a9156395972ea6cd56e81c3e0b8023aab907f700831e99d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
       },
       {
         "digest": "48c5c01d55a6d7a34884b76607b45bf0bf028aaa540196f6b4e7a2b502b1949d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
       },
       {
         "digest": "1e79d1ca17459c500a58771adc9879ab6d37df0291cf444aa3a4748000de3b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
       },
       {
         "digest": "72bc92cd4e8a0f4e3f17818a9f64f78cedf107bda7db357e1fb5351b6ef3c958",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
       },
       {
         "digest": "5cd426cbd76b5ec69a1541e08311520404ce0cf52a32c6eb6d384947c0627bf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
       },
       {
         "digest": "0d4bc2f192dbf13c21f279f15c3f276ee9919aa01fdb924e4310f1bcf9908c5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
       },
       {
         "digest": "e0bc91451a150aecab01c7ab3b404f861572d2efad649ec050f155e6779b1806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
       }
     ],
     "predecessors": [],
@@ -123,82 +123,82 @@
       {
         "digest": "1583878679131cac07fa539694894487fa1a0b0b012d98b31f22adb0cef456f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
       },
       {
         "digest": "a31f578b8c68ec072f22ac54c88c164754cf272693ef7d3102f80f6ebda131a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
       },
       {
         "digest": "b3f4ac63724e273516bef45db634d2d38e9795690b946649d3d0bb118e30784c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
       },
       {
         "digest": "7c62b8a3e74ecce35929317cf74aa8c4bd1235255594c25ec4aef353e389eca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "4cc336cc80cfb61ed3750c2b31d94570648f445883d830ae2022d844f0aa7d33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/index.md"
       },
       {
         "digest": "ae05d732b1e735817105b738534186ff2e4ae3a9ab64df9602000db39a1cab62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
       },
       {
         "digest": "86355c1cb037bd6d61a85506f90de9b119370ba477a5c884c05d80db84cc45dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
       },
       {
         "digest": "2eb062f6610244baf4713c0d87065896fa84b3f8728861f670411da9624c0a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
       },
       {
         "digest": "51d9b3d7b07a242fb2c54f8b612585b430c177bf84c4d43d9559c97f822a9886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
       },
       {
         "digest": "b9cd25d42d59c4c7a9156395972ea6cd56e81c3e0b8023aab907f700831e99d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
       },
       {
         "digest": "48c5c01d55a6d7a34884b76607b45bf0bf028aaa540196f6b4e7a2b502b1949d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
       },
       {
         "digest": "1e79d1ca17459c500a58771adc9879ab6d37df0291cf444aa3a4748000de3b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
       },
       {
         "digest": "72bc92cd4e8a0f4e3f17818a9f64f78cedf107bda7db357e1fb5351b6ef3c958",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
       },
       {
         "digest": "5cd426cbd76b5ec69a1541e08311520404ce0cf52a32c6eb6d384947c0627bf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
       },
       {
         "digest": "0d4bc2f192dbf13c21f279f15c3f276ee9919aa01fdb924e4310f1bcf9908c5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
       },
       {
         "digest": "e0bc91451a150aecab01c7ab3b404f861572d2efad649ec050f155e6779b1806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
       },
       {
         "excerpt": "// Spec 035: Content Automation Engine — Level 3 Schema (Phase 2 forward-design)",
@@ -251,88 +251,88 @@
       {
         "digest": "1583878679131cac07fa539694894487fa1a0b0b012d98b31f22adb0cef456f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
       },
       {
         "digest": "a31f578b8c68ec072f22ac54c88c164754cf272693ef7d3102f80f6ebda131a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
       },
       {
         "digest": "b3f4ac63724e273516bef45db634d2d38e9795690b946649d3d0bb118e30784c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
       },
       {
         "digest": "7c62b8a3e74ecce35929317cf74aa8c4bd1235255594c25ec4aef353e389eca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "4cc336cc80cfb61ed3750c2b31d94570648f445883d830ae2022d844f0aa7d33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/index.md"
       },
       {
         "digest": "ae05d732b1e735817105b738534186ff2e4ae3a9ab64df9602000db39a1cab62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
       },
       {
         "digest": "86355c1cb037bd6d61a85506f90de9b119370ba477a5c884c05d80db84cc45dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
       },
       {
         "digest": "2eb062f6610244baf4713c0d87065896fa84b3f8728861f670411da9624c0a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
       },
       {
         "digest": "51d9b3d7b07a242fb2c54f8b612585b430c177bf84c4d43d9559c97f822a9886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
       },
       {
         "digest": "b9cd25d42d59c4c7a9156395972ea6cd56e81c3e0b8023aab907f700831e99d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
       },
       {
         "digest": "48c5c01d55a6d7a34884b76607b45bf0bf028aaa540196f6b4e7a2b502b1949d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
       },
       {
         "digest": "1e79d1ca17459c500a58771adc9879ab6d37df0291cf444aa3a4748000de3b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
       },
       {
         "digest": "72bc92cd4e8a0f4e3f17818a9f64f78cedf107bda7db357e1fb5351b6ef3c958",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
       },
       {
         "digest": "5cd426cbd76b5ec69a1541e08311520404ce0cf52a32c6eb6d384947c0627bf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
       },
       {
         "digest": "0d4bc2f192dbf13c21f279f15c3f276ee9919aa01fdb924e4310f1bcf9908c5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
       },
       {
         "digest": "e0bc91451a150aecab01c7ab3b404f861572d2efad649ec050f155e6779b1806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/035-AutoDraftContentAutomation/spec.md",
     "digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
@@ -385,82 +385,82 @@
       {
         "digest": "1583878679131cac07fa539694894487fa1a0b0b012d98b31f22adb0cef456f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
       },
       {
         "digest": "a31f578b8c68ec072f22ac54c88c164754cf272693ef7d3102f80f6ebda131a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
       },
       {
         "digest": "b3f4ac63724e273516bef45db634d2d38e9795690b946649d3d0bb118e30784c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
       },
       {
         "digest": "7c62b8a3e74ecce35929317cf74aa8c4bd1235255594c25ec4aef353e389eca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "4cc336cc80cfb61ed3750c2b31d94570648f445883d830ae2022d844f0aa7d33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/index.md"
       },
       {
         "digest": "ae05d732b1e735817105b738534186ff2e4ae3a9ab64df9602000db39a1cab62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
       },
       {
         "digest": "86355c1cb037bd6d61a85506f90de9b119370ba477a5c884c05d80db84cc45dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
       },
       {
         "digest": "2eb062f6610244baf4713c0d87065896fa84b3f8728861f670411da9624c0a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
       },
       {
         "digest": "51d9b3d7b07a242fb2c54f8b612585b430c177bf84c4d43d9559c97f822a9886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
       },
       {
         "digest": "b9cd25d42d59c4c7a9156395972ea6cd56e81c3e0b8023aab907f700831e99d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
       },
       {
         "digest": "48c5c01d55a6d7a34884b76607b45bf0bf028aaa540196f6b4e7a2b502b1949d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
       },
       {
         "digest": "1e79d1ca17459c500a58771adc9879ab6d37df0291cf444aa3a4748000de3b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
       },
       {
         "digest": "72bc92cd4e8a0f4e3f17818a9f64f78cedf107bda7db357e1fb5351b6ef3c958",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
       },
       {
         "digest": "5cd426cbd76b5ec69a1541e08311520404ce0cf52a32c6eb6d384947c0627bf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
       },
       {
         "digest": "0d4bc2f192dbf13c21f279f15c3f276ee9919aa01fdb924e4310f1bcf9908c5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
       },
       {
         "digest": "e0bc91451a150aecab01c7ab3b404f861572d2efad649ec050f155e6779b1806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
       },
       {
         "excerpt": "// Spec 035: Content Automation Engine — Level 3 Schema (Phase 2 forward-design)",
@@ -580,82 +580,82 @@
       {
         "digest": "1583878679131cac07fa539694894487fa1a0b0b012d98b31f22adb0cef456f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-plan.md"
       },
       {
         "digest": "a31f578b8c68ec072f22ac54c88c164754cf272693ef7d3102f80f6ebda131a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/claude-spec.md"
       },
       {
         "digest": "b3f4ac63724e273516bef45db634d2d38e9795690b946649d3d0bb118e30784c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json"
       },
       {
         "digest": "7c62b8a3e74ecce35929317cf74aa8c4bd1235255594c25ec4aef353e389eca1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/reviews/iteration-1-opus.md"
       },
       {
         "digest": "4cc336cc80cfb61ed3750c2b31d94570648f445883d830ae2022d844f0aa7d33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/index.md"
       },
       {
         "digest": "ae05d732b1e735817105b738534186ff2e4ae3a9ab64df9602000db39a1cab62",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-01-shared-infra.md"
       },
       {
         "digest": "86355c1cb037bd6d61a85506f90de9b119370ba477a5c884c05d80db84cc45dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-02-auto-draft-tool.md"
       },
       {
         "digest": "2eb062f6610244baf4713c0d87065896fa84b3f8728861f670411da9624c0a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-03-model-suggest-tool.md"
       },
       {
         "digest": "51d9b3d7b07a242fb2c54f8b612585b430c177bf84c4d43d9559c97f822a9886",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-04-file-parse-tool.md"
       },
       {
         "digest": "b9cd25d42d59c4c7a9156395972ea6cd56e81c3e0b8023aab907f700831e99d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-05-schedule-draft-tool.md"
       },
       {
         "digest": "48c5c01d55a6d7a34884b76607b45bf0bf028aaa540196f6b4e7a2b502b1949d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-06-python-registration.md"
       },
       {
         "digest": "1e79d1ca17459c500a58771adc9879ab6d37df0291cf444aa3a4748000de3b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-07-agent-template.md"
       },
       {
         "digest": "72bc92cd4e8a0f4e3f17818a9f64f78cedf107bda7db357e1fb5351b6ef3c958",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-08-skill-discovery-stub.md"
       },
       {
         "digest": "5cd426cbd76b5ec69a1541e08311520404ce0cf52a32c6eb6d384947c0627bf6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-09-ui-changes.md"
       },
       {
         "digest": "0d4bc2f192dbf13c21f279f15c3f276ee9919aa01fdb924e4310f1bcf9908c5e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-10-l3-schema.md"
       },
       {
         "digest": "e0bc91451a150aecab01c7ab3b404f861572d2efad649ec050f155e6779b1806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/035-AutoDraftContentAutomation/sections/section-11-integration-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

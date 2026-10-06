@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L31"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L59"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L59"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L59",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L62"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L62"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L62",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L73"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L73"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L73",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L130"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L170"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L170"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L170",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L178"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L184"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L190"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L194"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L202"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L202"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L202",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L207"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L217"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L225"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L227"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L230"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L270"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L293"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L301"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L301"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L301",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L303"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L303"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L303",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L321"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L321"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L321",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L323"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L332"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L339"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L339"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L339",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L355"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L355"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L355",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L366"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L392"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L396"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L397"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L397"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L397",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L398"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L398"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L398",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L399"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L400"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L400"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L400",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L401"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L427"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L427"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L427",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L431"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L439"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L439"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L439",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L443"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L443"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L443",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L455"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L455"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L455",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L455",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L459"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L463"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L471"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L471"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L471",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L475"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L475"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L475",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L483"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L483"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L483",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L495"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L495"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L495",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L503"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L503"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L503",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L503",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L526"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L526"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L526",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L542"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L542"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L542",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L546"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L546"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L546",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L558"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L558"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L558",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L558",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L562"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L562"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L562",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L566"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L566"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L566",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L570"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L574"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L574"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L574",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L578"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L578"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L578",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L582"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L582"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L582",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L592"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L609"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L609"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L609",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L613"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L613"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L613",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L613",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L625"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L629"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L633"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L637"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L645"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L645"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L645",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L649"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L653"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L653"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L653",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L661"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L665"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L665"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L665",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L669"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L669"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L669",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L673"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L692"
       ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

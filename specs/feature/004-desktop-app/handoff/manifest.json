@@ -17,7 +17,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/004-desktop-app/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/004-desktop-app/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
       },
       {
         "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
@@ -87,13 +87,13 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/004-desktop-app/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/004-desktop-app/spec.md",
     "digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
@@ -146,7 +146,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/004-desktop-app/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
       },
       {
         "excerpt": "spec_id = Column(String(100), nullable=True, index=True)  # e.g., \"SPEC-004-DESKTOP-APP\"",
@@ -211,7 +211,7 @@
       {
         "digest": "83b188a3f77436d97f7c0295c820aea87e877b7d2a79186699f6c74ed52e0dc4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/004-desktop-app/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/004-desktop-app/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

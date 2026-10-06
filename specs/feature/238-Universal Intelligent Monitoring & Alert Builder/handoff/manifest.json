@@ -14,7 +14,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "238",
         "relation_text": "merged",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "238",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L37",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L37",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "238",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L550",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "238",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L554",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L554",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "238",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L621",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "238",
         "relation_text": "merged",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -124,7 +124,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -140,7 +140,7 @@
           "R2",
           "R20"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       }
@@ -210,7 +210,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md",
     "digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",

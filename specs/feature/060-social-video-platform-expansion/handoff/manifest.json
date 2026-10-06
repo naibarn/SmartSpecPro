@@ -17,47 +17,47 @@
       {
         "digest": "9f0bf46d2d726983806026a5f3fd54ffc13de26db425cc9e46802b2904539bc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-plan.md"
       },
       {
         "digest": "0e98edef6750ded2605cdd403054a4a402d4fefda3995400fcc927ed877eb953",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-spec.md"
       },
       {
         "digest": "0f007b3790a7238315025db10c989c4e4b7cec301e2dfb583f3f607b106f4dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "5d22cca1ed04126ca44a495cd294ba3bd70f1fcc8048dd0c56b99a38fe361696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/index.md"
       },
       {
         "digest": "daa4255774dc4549c324944ddabb89d068fd9ad748e7c4beb06bd8230fd38753",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
       },
       {
         "digest": "a884068fa1675fb97b6df9fea88921eabe433f0eeffbf8e4a9284f18c1c95649",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
       },
       {
         "digest": "87363a2378658581a7b3441ce3a0dde40a45c9fee73daeeeeb71b464a8cc6c21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
       },
       {
         "digest": "c76b9666f584ff4d6ab902f95a475659837ee9208cd6406980fc70841fc62604",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
       },
       {
         "digest": "d4f2ff46dd789579bc69438cca9478b9217d028397e0a8682fe4e4335855da29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
       }
     ],
     "predecessors": [],
@@ -88,47 +88,47 @@
       {
         "digest": "9f0bf46d2d726983806026a5f3fd54ffc13de26db425cc9e46802b2904539bc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-plan.md"
       },
       {
         "digest": "0e98edef6750ded2605cdd403054a4a402d4fefda3995400fcc927ed877eb953",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-spec.md"
       },
       {
         "digest": "0f007b3790a7238315025db10c989c4e4b7cec301e2dfb583f3f607b106f4dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "5d22cca1ed04126ca44a495cd294ba3bd70f1fcc8048dd0c56b99a38fe361696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/index.md"
       },
       {
         "digest": "daa4255774dc4549c324944ddabb89d068fd9ad748e7c4beb06bd8230fd38753",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
       },
       {
         "digest": "a884068fa1675fb97b6df9fea88921eabe433f0eeffbf8e4a9284f18c1c95649",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
       },
       {
         "digest": "87363a2378658581a7b3441ce3a0dde40a45c9fee73daeeeeb71b464a8cc6c21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
       },
       {
         "digest": "c76b9666f584ff4d6ab902f95a475659837ee9208cd6406980fc70841fc62604",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
       },
       {
         "digest": "d4f2ff46dd789579bc69438cca9478b9217d028397e0a8682fe4e4335855da29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -160,53 +160,53 @@
       {
         "digest": "9f0bf46d2d726983806026a5f3fd54ffc13de26db425cc9e46802b2904539bc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-plan.md"
       },
       {
         "digest": "0e98edef6750ded2605cdd403054a4a402d4fefda3995400fcc927ed877eb953",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-spec.md"
       },
       {
         "digest": "0f007b3790a7238315025db10c989c4e4b7cec301e2dfb583f3f607b106f4dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "5d22cca1ed04126ca44a495cd294ba3bd70f1fcc8048dd0c56b99a38fe361696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/index.md"
       },
       {
         "digest": "daa4255774dc4549c324944ddabb89d068fd9ad748e7c4beb06bd8230fd38753",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
       },
       {
         "digest": "a884068fa1675fb97b6df9fea88921eabe433f0eeffbf8e4a9284f18c1c95649",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
       },
       {
         "digest": "87363a2378658581a7b3441ce3a0dde40a45c9fee73daeeeeb71b464a8cc6c21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
       },
       {
         "digest": "c76b9666f584ff4d6ab902f95a475659837ee9208cd6406980fc70841fc62604",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
       },
       {
         "digest": "d4f2ff46dd789579bc69438cca9478b9217d028397e0a8682fe4e4335855da29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/060-social-video-platform-expansion/spec.md",
     "digest": "fd92dccc7f48d3dfb933bfb6bf8d661e932f4c60ef651f4e0042fc5159b8b4f7",
@@ -259,47 +259,47 @@
       {
         "digest": "9f0bf46d2d726983806026a5f3fd54ffc13de26db425cc9e46802b2904539bc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-plan.md"
       },
       {
         "digest": "0e98edef6750ded2605cdd403054a4a402d4fefda3995400fcc927ed877eb953",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-spec.md"
       },
       {
         "digest": "0f007b3790a7238315025db10c989c4e4b7cec301e2dfb583f3f607b106f4dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "5d22cca1ed04126ca44a495cd294ba3bd70f1fcc8048dd0c56b99a38fe361696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/index.md"
       },
       {
         "digest": "daa4255774dc4549c324944ddabb89d068fd9ad748e7c4beb06bd8230fd38753",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
       },
       {
         "digest": "a884068fa1675fb97b6df9fea88921eabe433f0eeffbf8e4a9284f18c1c95649",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
       },
       {
         "digest": "87363a2378658581a7b3441ce3a0dde40a45c9fee73daeeeeb71b464a8cc6c21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
       },
       {
         "digest": "c76b9666f584ff4d6ab902f95a475659837ee9208cd6406980fc70841fc62604",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
       },
       {
         "digest": "d4f2ff46dd789579bc69438cca9478b9217d028397e0a8682fe4e4335855da29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
       }
     ],
     "stale_fields": [],
@@ -327,47 +327,47 @@
       {
         "digest": "9f0bf46d2d726983806026a5f3fd54ffc13de26db425cc9e46802b2904539bc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-plan.md"
       },
       {
         "digest": "0e98edef6750ded2605cdd403054a4a402d4fefda3995400fcc927ed877eb953",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/claude-spec.md"
       },
       {
         "digest": "0f007b3790a7238315025db10c989c4e4b7cec301e2dfb583f3f607b106f4dab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/implementation/deep_implement_config.json"
       },
       {
         "digest": "5d22cca1ed04126ca44a495cd294ba3bd70f1fcc8048dd0c56b99a38fe361696",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/index.md"
       },
       {
         "digest": "daa4255774dc4549c324944ddabb89d068fd9ad748e7c4beb06bd8230fd38753",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-01-provider-contracts-and-catalogs.md"
       },
       {
         "digest": "a884068fa1675fb97b6df9fea88921eabe433f0eeffbf8e4a9284f18c1c95649",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-02-tiktok-adapter-and-validation.md"
       },
       {
         "digest": "87363a2378658581a7b3441ce3a0dde40a45c9fee73daeeeeb71b464a8cc6c21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-03-youtube-adapter-and-shorts-classification.md"
       },
       {
         "digest": "c76b9666f584ff4d6ab902f95a475659837ee9208cd6406980fc70841fc62604",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-04-workflow-and-agency-integration.md"
       },
       {
         "digest": "d4f2ff46dd789579bc69438cca9478b9217d028397e0a8682fe4e4335855da29",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/060-social-video-platform-expansion/sections/section-05-tests-rollout-and-operational-guardrails.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

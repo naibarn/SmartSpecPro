@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L43"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L65"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L65"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L65",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L66"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L66"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L66",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L67"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L67"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L67",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L68"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L68"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L68",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L69"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L69"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L69",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L70"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L71"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L71"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L71",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L81"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L81"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L81",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L82"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L82"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L82",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L94"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L94"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L94",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L95"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L95"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L95",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L96"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L97"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L97"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L97",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L97",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L98"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L98"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L98",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L99"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L99"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L99",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L103"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L104"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L105"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L106"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L112"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L113"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L114"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L115"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L117"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L119"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L119"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L119",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L120"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L120"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L120",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L121"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L122"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L123"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L127"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L131"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L132"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L133"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L133"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L133",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L135"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L137"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L137"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L137",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L138"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L139"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L139"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L139",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L140"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L141"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L147"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L182"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L182"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L182",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L183"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L184"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L204"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L216"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L218"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L218"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L218",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L234"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L236"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L240"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L240",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L242"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L253"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L253"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L253",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L294"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L302"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L302"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L302",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L310"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L312"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L312"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L312",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L318"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L318"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L318",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L337"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L342"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L344"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L363"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L377"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L381"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L390"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L411"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L411"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L411",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L411",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L430"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L430"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L430",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L438"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L438"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L438",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L442"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L442"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L442",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L450"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L450"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L450",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L450",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L462"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L462"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L462",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L463"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L464"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L464"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L464",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L478"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L478"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L478",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L479"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L479"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L479",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L479",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L480"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L481"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L481"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L481",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L481",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L482"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L482"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L482",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L482",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L483"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L483"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L483",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L484"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L484"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L484",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L485"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L485"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L485",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L486"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L486"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L486",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L487"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L487"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L487",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L488"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L488"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L488",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L489"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L489"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L489",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L490"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L490"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L490",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L496"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L496"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L496",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L497"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L497"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L497",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L498"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L498"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L498",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L499"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L499"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L499",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L500"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L501"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L501"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L501",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L505"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L505"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L505",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L505",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L509"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L509"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L509",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L510"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L510"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L510",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L510",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L511"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L512"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L512"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L512",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L513"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L513"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L513",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L513",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L514"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L514"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L514",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L515"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L515"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L515",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L516"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L516"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L516",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L517"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L517"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L517",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L523"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L523"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L523",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L524"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L524",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L525"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L531"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L531"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L531",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L532"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L532"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L532",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L533"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L533"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L533",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L534"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L534"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L534",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L540"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L540"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L540",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L541"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L541",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L542"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L542"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L542",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L543"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L543"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L543",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L544"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L544"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L544",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L545"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L545"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L545",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L546"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L546"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L546",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L562"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L562"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L562",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L649"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L650"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L650"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L650",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L673"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L674"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L674"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L674",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L675"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L675"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L675",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L676"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L676"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L676",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L677"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L677"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L677",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L678"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L678"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L678",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L679"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L679"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L679",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L680"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L680"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L680",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L681"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L682"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L682"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L682",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L683"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L683"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L683",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L684"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L684"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L684",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L685"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L685"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L685",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L686"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L686"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L686",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L687"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L688"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L689"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L690"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L690"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L690",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L691"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L692"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L693"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L693"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L693",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L694"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L694"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L694",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L695"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L695"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L695",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L695",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L696"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L696"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L696",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L717"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L717"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L717",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L748"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L801"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L801"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L801",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L801",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L817"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L817"
       ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L817",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/110-magnific-media-provider-models/spec.md#L817",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

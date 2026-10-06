@@ -17,67 +17,67 @@
       {
         "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-plan.md"
       },
       {
         "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-spec.md"
       },
       {
         "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
       },
       {
         "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
       },
       {
         "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/index.md"
       },
       {
         "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
       },
       {
         "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
       },
       {
         "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
       },
       {
         "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
       },
       {
         "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
       },
       {
         "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
       },
       {
         "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
       },
       {
         "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-plan.md"
       },
       {
         "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-spec.md"
       },
       {
         "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
       },
       {
         "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
       },
       {
         "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/index.md"
       },
       {
         "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
       },
       {
         "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
       },
       {
         "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
       },
       {
         "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
       },
       {
         "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
       },
       {
         "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
       },
       {
         "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
       },
       {
         "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,73 +200,73 @@
       {
         "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-plan.md"
       },
       {
         "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-spec.md"
       },
       {
         "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
       },
       {
         "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
       },
       {
         "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/index.md"
       },
       {
         "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
       },
       {
         "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
       },
       {
         "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
       },
       {
         "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
       },
       {
         "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
       },
       {
         "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
       },
       {
         "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
       },
       {
         "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/017-VirtualWorkflowExam/spec.md",
     "digest": "c808fd31f67c8663ad46b104b7cbde297d8fa4719384d32a4c07af93cbc9740a",
@@ -319,67 +319,67 @@
       {
         "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-plan.md"
       },
       {
         "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-spec.md"
       },
       {
         "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
       },
       {
         "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
       },
       {
         "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/index.md"
       },
       {
         "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
       },
       {
         "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
       },
       {
         "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
       },
       {
         "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
       },
       {
         "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
       },
       {
         "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
       },
       {
         "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
       },
       {
         "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -624,67 +624,67 @@
       {
         "digest": "8e0246712e54342cd12a173ef9503265dd3a277f4b5cbe4bcdafe6d8bbe19228",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-plan.md"
       },
       {
         "digest": "74198892b3fd2982e9705e99422700fb69452e20ff6be1a6a6467073f2444076",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/claude-spec.md"
       },
       {
         "digest": "2716e12a1d4805b84ff29727b6dc74c977945127e999172ae0bf74f020840f26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/deep_implement_config.json"
       },
       {
         "digest": "3649e766cc61c7f8bafc6bbde35e34253d71133c8d66db60f0f37f606ba60c59",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/implementation/usage.md"
       },
       {
         "digest": "7c72a1c4d9fd48ecaebaea5794000cbf8664b887409bf3bcd979668c4bf14263",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/index.md"
       },
       {
         "digest": "0768b2d9a26d369edfc9514355f089e6b5672d806605d1b00730161d857eda0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-01-schema-extension.md"
       },
       {
         "digest": "bf103b09ddd2ffa77c82c36b2ca22ff6a41547d7062609e53bbad941c75758fa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-02-svg-generator.md"
       },
       {
         "digest": "f064e010df0e50c250bb59b82d6e3cd788645e09ab52f0bc1b0f14443f7e3230",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-03-template-json-files.md"
       },
       {
         "digest": "bb9a485c337e25a598d867d27c9ff7a7667aafc58cdadc0dd7c0cac5d218d2a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-04-seeder-script.md"
       },
       {
         "digest": "7ce7b18e708cc69d13148ab4ce517ffeaabc0570f23a076c6eaf6d90fbd106c4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-05-trpc-endpoints.md"
       },
       {
         "digest": "b785206cc6a0ec0161587521eb383eb5301bc326cc9d62ce4622a7ac6ab3fd78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-06-gallery-frontend.md"
       },
       {
         "digest": "e9956c2c694988788252b52905b64b793989d5d3960e412d3333729a28499264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-07-python-validator.md"
       },
       {
         "digest": "bccf0ea7e50707ac04f16ff482b3d6464582f73d559e33138348024aa57a86c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/017-VirtualWorkflowExam/sections/section-08-python-generator.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

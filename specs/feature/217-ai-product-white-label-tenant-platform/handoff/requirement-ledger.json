@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L18"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L18"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L18",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L18",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L22"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L22"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L22",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L22",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L39"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L39"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L39",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L62"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L62"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L62",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L100"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L126"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L126"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L126",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L176"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L176"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L176",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L204"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L206"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L212"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L232"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L291"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L291"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L291",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L315"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L317"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L347"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L353"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L353"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L353",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L369"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L398"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L398"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L398",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L404"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L404"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L404",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L449"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L457"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L457"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L457",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L457",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L472"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L472"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L472",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L484"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L484"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L484",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L489"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L489"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L489",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L491"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L491"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L491",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L491",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L501"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L501"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L501",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L507"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L507"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L507",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L519"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L519"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L519",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L548"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L548"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L548",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L554"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L554"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L554",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L569"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L569"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L569",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L586"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L620"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L630"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L630"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L630",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L644"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L644"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L644",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L666"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L692"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L707"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L748"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L782"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L782"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L782",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L824"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L824"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L824",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L830"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L830"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L830",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L841"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L841"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L841",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L841",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L859"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L859"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L859",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L860"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L860"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L860",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L861"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L861"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L861",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L861",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L862"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L862"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L862",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L862",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L863"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L863"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L863",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L864"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L864"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L864",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L864",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L865"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L865"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L865",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L866"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L866"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L866",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L866",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L888"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L888"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L888",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L888",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L920"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L920"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L920",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L920",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L932"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L932"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L932",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L932",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L947"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L947"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L947",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L947",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L969"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L969"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L969",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L979"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L979"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L979",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L985"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L985"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L985",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L985",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L996"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L996"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L996",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L996",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1004"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1004"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1004",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1026"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1026"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1026",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1027"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1028"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1028"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1028",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1028",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1029"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1029"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1029",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1030"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1030"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1030",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1031"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1031"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1031",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1031",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1032"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1032"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1032",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1033"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1033"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1033",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1033",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1034"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1034"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1034",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1034",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1035"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1035"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1035",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1035",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1041"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1041"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1041",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1042"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1042"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1042",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1042",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1043"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1043"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1043",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1044"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1044"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1044",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1044",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1045"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1045"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1045",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1045",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1046"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1046"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1046",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1046",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1052"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1052"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1052",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1052",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1053"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1053"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1053",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1053",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1054"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1054"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1054",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1054",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1055"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1055"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1055",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1056"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1056"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1056",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1057"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1057"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1057",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1087"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1087"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1087",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1099"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1099"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1099",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1099",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1107"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1111"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1117"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1127"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1135"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1154"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1154"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1154",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1160"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1161"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1162"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1163"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1164"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1170"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1170"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1170",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1179"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1197"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1197"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1197",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1214"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1214"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1214",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1218"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1218"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1218",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1238"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1242"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1257"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1290"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1290"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1290",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1303"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1303"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1303",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1307"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1307"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1307",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1308"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1308"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1308",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1309"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1310"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1311"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1311"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1311",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1311",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1312"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1312"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1312",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1312",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1313"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1313"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1313",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1313",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1322"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1344"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1350"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1350"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1350",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1351"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1352"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1352"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1352",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1356"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1376"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1378"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1382"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1395"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1395"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1395",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1396"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1397"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1397"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1397",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1399"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1402"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1402"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1402",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1406"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1406"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1406",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1406",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1408"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1424"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1424"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1424",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1426"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1442"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1442"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1442",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1444"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1444"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1444",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1446"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1473"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1473"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1473",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1478"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1478"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1478",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1483"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1483"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1483",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1501"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1501"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1501",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1515"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1515"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1515",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1517"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1517"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1517",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1525"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1535"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1535"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1535",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1536"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1536"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1536",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1537"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1538"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1538"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1538",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1539"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1539"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1539",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1540"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1540"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1540",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1541"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1541",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1542"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1542"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1542",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1542",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1557"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1557"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1557",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1566"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1566"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1566",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1566",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1568"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1585"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1585"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1585",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1585",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1599"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1599"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1599",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1599",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1606"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1606"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1606",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1608"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1608"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1608",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1608",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1610"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1610"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1610",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1612"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1612"
       ],
-      "authority_source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1612",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/217-ai-product-white-label-tenant-platform/spec.md#L1612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

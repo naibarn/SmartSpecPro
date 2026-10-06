@@ -17,97 +17,97 @@
       {
         "digest": "bcecad41347866ec9296760672cdb207606c078c7d837a2b59244954742f40ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
       },
       {
         "digest": "17931c72fa552046fa9a5994e24d24ca32e5faa0ec729934c61bb746362538d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
       },
       {
         "digest": "ca3541d7394728facbe7ce362ef423c6024925b96062b6602b18a1d82fb3aaae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
       },
       {
         "digest": "7b396da4e910cffe53d78e8465e2ef84a9ec2ba67058aa6917bd5b72a6921a35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
       },
       {
         "digest": "3da451459ec38bcc9ba78ad1a91e75343c8cedafb036da92fdf967631ab9fbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
       },
       {
         "digest": "a3b699b5d0ae2027e201a099cec0a35641dcaa1b04e5a26131f0101c668ce5da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
       },
       {
         "digest": "f4f7306f30fd1cf9abcadc680c097dcc30609b97bd886cfa6e24a4bd7e9f05c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
       },
       {
         "digest": "5a167625693b73022ae0d847d48321579f40ebc256b77b422661f9b756d41223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
       },
       {
         "digest": "77227ca7e638699351a6ca9721a74e5ef5b6c1aeb07ad9505fe6d24a6fad6127",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
       },
       {
         "digest": "08b6da6241df2b9a8f59e808de0758866ac3f5fb55685573a15c9e9b30dd2b06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
       },
       {
         "digest": "e137403ca4a7a6ec30efa9d2b3fa7487b29565052c303551e9d19c9b0fa23dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
       },
       {
         "digest": "6bda3e0be0c1e9244c91e96e2750b851eebb628efb59a59851c09bbcb3da69a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
       },
       {
         "digest": "4a19f678c54ab3a3c43a5e937dc869704085fb350015b99082b28f64e7587e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
       },
       {
         "digest": "ae5c10eaa65f2541c7ef88d9c8299910f30e465bc88399d3ddf40d61bd6da648",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
       },
       {
         "digest": "56fc2aca4b80e5104d3c5f84b117473349442fd4ccf2e5cdce22a5a834a07b4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "93efee8a991ee67d182939d52350fb5618a9ac3ecf66dc8d511209c9fe7cf381",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
       },
       {
         "digest": "1106dd130845c67c42b3d9113ffca206056a7c914bc096435b6e5fbce604754b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
       },
       {
         "digest": "ec7a1da3f6bde4ccf99fbd6d96638aabfa0126ab9bf5f769cca9c5a55a22be9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
       },
       {
         "digest": "442ac409fd19a3d53a78dff458870a6fb51735f043063124f58e88ae3b51f6ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "bcecad41347866ec9296760672cdb207606c078c7d837a2b59244954742f40ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
       },
       {
         "digest": "17931c72fa552046fa9a5994e24d24ca32e5faa0ec729934c61bb746362538d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
       },
       {
         "digest": "ca3541d7394728facbe7ce362ef423c6024925b96062b6602b18a1d82fb3aaae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
       },
       {
         "digest": "7b396da4e910cffe53d78e8465e2ef84a9ec2ba67058aa6917bd5b72a6921a35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
       },
       {
         "digest": "3da451459ec38bcc9ba78ad1a91e75343c8cedafb036da92fdf967631ab9fbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
       },
       {
         "digest": "a3b699b5d0ae2027e201a099cec0a35641dcaa1b04e5a26131f0101c668ce5da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
       },
       {
         "digest": "f4f7306f30fd1cf9abcadc680c097dcc30609b97bd886cfa6e24a4bd7e9f05c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
       },
       {
         "digest": "5a167625693b73022ae0d847d48321579f40ebc256b77b422661f9b756d41223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
       },
       {
         "digest": "77227ca7e638699351a6ca9721a74e5ef5b6c1aeb07ad9505fe6d24a6fad6127",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
       },
       {
         "digest": "08b6da6241df2b9a8f59e808de0758866ac3f5fb55685573a15c9e9b30dd2b06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
       },
       {
         "digest": "e137403ca4a7a6ec30efa9d2b3fa7487b29565052c303551e9d19c9b0fa23dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
       },
       {
         "digest": "6bda3e0be0c1e9244c91e96e2750b851eebb628efb59a59851c09bbcb3da69a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
       },
       {
         "digest": "4a19f678c54ab3a3c43a5e937dc869704085fb350015b99082b28f64e7587e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
       },
       {
         "digest": "ae5c10eaa65f2541c7ef88d9c8299910f30e465bc88399d3ddf40d61bd6da648",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
       },
       {
         "digest": "56fc2aca4b80e5104d3c5f84b117473349442fd4ccf2e5cdce22a5a834a07b4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "93efee8a991ee67d182939d52350fb5618a9ac3ecf66dc8d511209c9fe7cf381",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
       },
       {
         "digest": "1106dd130845c67c42b3d9113ffca206056a7c914bc096435b6e5fbce604754b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
       },
       {
         "digest": "ec7a1da3f6bde4ccf99fbd6d96638aabfa0126ab9bf5f769cca9c5a55a22be9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
       },
       {
         "digest": "442ac409fd19a3d53a78dff458870a6fb51735f043063124f58e88ae3b51f6ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "bcecad41347866ec9296760672cdb207606c078c7d837a2b59244954742f40ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
       },
       {
         "digest": "17931c72fa552046fa9a5994e24d24ca32e5faa0ec729934c61bb746362538d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
       },
       {
         "digest": "ca3541d7394728facbe7ce362ef423c6024925b96062b6602b18a1d82fb3aaae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
       },
       {
         "digest": "7b396da4e910cffe53d78e8465e2ef84a9ec2ba67058aa6917bd5b72a6921a35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
       },
       {
         "digest": "3da451459ec38bcc9ba78ad1a91e75343c8cedafb036da92fdf967631ab9fbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
       },
       {
         "digest": "a3b699b5d0ae2027e201a099cec0a35641dcaa1b04e5a26131f0101c668ce5da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
       },
       {
         "digest": "f4f7306f30fd1cf9abcadc680c097dcc30609b97bd886cfa6e24a4bd7e9f05c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
       },
       {
         "digest": "5a167625693b73022ae0d847d48321579f40ebc256b77b422661f9b756d41223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
       },
       {
         "digest": "77227ca7e638699351a6ca9721a74e5ef5b6c1aeb07ad9505fe6d24a6fad6127",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
       },
       {
         "digest": "08b6da6241df2b9a8f59e808de0758866ac3f5fb55685573a15c9e9b30dd2b06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
       },
       {
         "digest": "e137403ca4a7a6ec30efa9d2b3fa7487b29565052c303551e9d19c9b0fa23dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
       },
       {
         "digest": "6bda3e0be0c1e9244c91e96e2750b851eebb628efb59a59851c09bbcb3da69a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
       },
       {
         "digest": "4a19f678c54ab3a3c43a5e937dc869704085fb350015b99082b28f64e7587e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
       },
       {
         "digest": "ae5c10eaa65f2541c7ef88d9c8299910f30e465bc88399d3ddf40d61bd6da648",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
       },
       {
         "digest": "56fc2aca4b80e5104d3c5f84b117473349442fd4ccf2e5cdce22a5a834a07b4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "93efee8a991ee67d182939d52350fb5618a9ac3ecf66dc8d511209c9fe7cf381",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
       },
       {
         "digest": "1106dd130845c67c42b3d9113ffca206056a7c914bc096435b6e5fbce604754b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
       },
       {
         "digest": "ec7a1da3f6bde4ccf99fbd6d96638aabfa0126ab9bf5f769cca9c5a55a22be9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
       },
       {
         "digest": "442ac409fd19a3d53a78dff458870a6fb51735f043063124f58e88ae3b51f6ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md",
     "digest": "b310c406a52c0090054600186272e68f416cc0529cf9f6741090359f218101b7",
@@ -409,222 +409,222 @@
       {
         "digest": "bcecad41347866ec9296760672cdb207606c078c7d837a2b59244954742f40ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
       },
       {
         "digest": "17931c72fa552046fa9a5994e24d24ca32e5faa0ec729934c61bb746362538d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
       },
       {
         "digest": "ca3541d7394728facbe7ce362ef423c6024925b96062b6602b18a1d82fb3aaae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
       },
       {
         "digest": "7b396da4e910cffe53d78e8465e2ef84a9ec2ba67058aa6917bd5b72a6921a35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
       },
       {
         "digest": "3da451459ec38bcc9ba78ad1a91e75343c8cedafb036da92fdf967631ab9fbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
       },
       {
         "digest": "a3b699b5d0ae2027e201a099cec0a35641dcaa1b04e5a26131f0101c668ce5da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
       },
       {
         "digest": "f4f7306f30fd1cf9abcadc680c097dcc30609b97bd886cfa6e24a4bd7e9f05c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
       },
       {
         "digest": "5a167625693b73022ae0d847d48321579f40ebc256b77b422661f9b756d41223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
       },
       {
         "digest": "77227ca7e638699351a6ca9721a74e5ef5b6c1aeb07ad9505fe6d24a6fad6127",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
       },
       {
         "digest": "08b6da6241df2b9a8f59e808de0758866ac3f5fb55685573a15c9e9b30dd2b06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
       },
       {
         "digest": "e137403ca4a7a6ec30efa9d2b3fa7487b29565052c303551e9d19c9b0fa23dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
       },
       {
         "digest": "6bda3e0be0c1e9244c91e96e2750b851eebb628efb59a59851c09bbcb3da69a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
       },
       {
         "digest": "4a19f678c54ab3a3c43a5e937dc869704085fb350015b99082b28f64e7587e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
       },
       {
         "digest": "ae5c10eaa65f2541c7ef88d9c8299910f30e465bc88399d3ddf40d61bd6da648",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
       },
       {
         "digest": "56fc2aca4b80e5104d3c5f84b117473349442fd4ccf2e5cdce22a5a834a07b4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "93efee8a991ee67d182939d52350fb5618a9ac3ecf66dc8d511209c9fe7cf381",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
       },
       {
         "digest": "1106dd130845c67c42b3d9113ffca206056a7c914bc096435b6e5fbce604754b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
       },
       {
         "digest": "ec7a1da3f6bde4ccf99fbd6d96638aabfa0126ab9bf5f769cca9c5a55a22be9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
       },
       {
         "digest": "442ac409fd19a3d53a78dff458870a6fb51735f043063124f58e88ae3b51f6ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
       },
       {
         "digest": "81517c1975438244830e61ef0cb73843b638bdf28aa8f2d7de57e348586ea9b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-01-project-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-01-project-adapter.md"
       },
       {
         "digest": "1dcccf7d872d765af5f4ffbebe48f72f65a142c78a9faf234bc4c9681fbb7962",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-02-operation-bridge.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-02-operation-bridge.md"
       },
       {
         "digest": "92461234331cc4c8561cfadd413174acd4dfa4752d310b001c960dbddda9021d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-03-timeline-change-sets.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-03-timeline-change-sets.md"
       },
       {
         "digest": "e30bb9c4c83880419c2744baea59e37b01eeb32d0a20c3a3c528bfda4ab3a210",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-04-ai-tools-transcript.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-04-ai-tools-transcript.md"
       },
       {
         "digest": "fe10ce130d49c27c611e14c16fe4c92629cdfe803da7b159b43bc017c0111cef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-05-preview-render-qc.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-05-preview-render-qc.md"
       },
       {
         "digest": "f2ebfc782268a9880d735b54e7577491dc05edb3310050a3685dd1f4241d3d5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-06-acceptance-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-06-acceptance-rollout.md"
       },
       {
         "digest": "be7f5c46d46c8b42653b76caf8fbc6429fc7aa98d18c19363201c8e3e2b3290a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/index.md"
       },
       {
         "digest": "80aa153358cbd3c8507582627484a84f6dba52dfd9fd0c324c4f7dc19f826ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-01-ui-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-01-ui-foundation.md"
       },
       {
         "digest": "c47974907a6a5197f6d74c8a423db6c2164e3b9f2ebaacf31a2cce8fc15324e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-02-revision-conflict-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-02-revision-conflict-ux.md"
       },
       {
         "digest": "931762f0a8201944d5c4b1aa111b1ebd421b75643d2ace78d5fd3e45ad54e6d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-03-execution-capability-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-03-execution-capability-jobs.md"
       },
       {
         "digest": "09d605e7ead002385d7db3020ec17a0ad68ec1b91030fba0d95ac2b40cd84e9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-04-ai-review-transcript-qc.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-04-ai-review-transcript-qc.md"
       },
       {
         "digest": "37416ac909921163bfc3f660172c5e3eec285e2fe55f157f645eb2c87927c70e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-05-responsive-visual-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-05-responsive-visual-consistency.md"
       },
       {
         "digest": "075efba401cffeaae63ff01fc24503ee6a6dba784cfe03a58b9976ddc30db6bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-06-browser-evidence-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-06-browser-evidence-rollout.md"
       },
       {
         "digest": "f2b2047fb228f15a65e875284ca7e4b3e29e0d208a0404792ecbe26a76300af0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "1257ebaeb07f21c167ba949885ef450d91a6ee57051ee78bbb3f518444485747",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-ux-improvement-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-ux-improvement-spec.md"
       },
       {
         "digest": "3daf54c0fbef3948a25706bb2027f3370c53a0b5eebb705a260089d73110c1d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "1d1cc96e14fa29494d48cc5f1772703c103802740db60d14c11ae4e72fb4d443",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-1.md"
       },
       {
         "digest": "75165383590d35d27362bdd82306c5fc01e0b3eaa59a220106595ec49d1073a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-2.md"
       },
       {
         "digest": "3c38873a67ec536030c661831d80c17e1eff38e582181ca9c875abbaf75acef5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/index.md"
       },
       {
         "digest": "2634219ee7025887c58795ec44d7f2fe20ef0842dc74865dc3e41ee324c72d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-01-project-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-01-project-adapter.md"
       },
       {
         "digest": "379a1c2c14a5326393cc20f4ae025e781a9b7588903655f23d71e7c9a80887f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-02-operation-bridge.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-02-operation-bridge.md"
       },
       {
         "digest": "382e1c64855c84315426e4264eefcc1ac7342e2499a1883f2ab68fe08eb07bd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-03-timeline-change-sets.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-03-timeline-change-sets.md"
       },
       {
         "digest": "cd4f0ec16c37ff65317a84b5fb92e0d27d59c3d79fe7bb31c7ff357a6b7da6a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-04-ai-tools-transcript.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-04-ai-tools-transcript.md"
       },
       {
         "digest": "a6b13da17d8c228b3172acb60ffbed4867736c69ad6fe6a8b5d7195f2797095a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-05-preview-render-qc.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-05-preview-render-qc.md"
       },
       {
         "digest": "772d26ce9b77411788d74a221642c3fd1b103be8ec12673154ec82f615ae906f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-06-acceptance-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-06-acceptance-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -836,222 +836,222 @@
       {
         "digest": "bcecad41347866ec9296760672cdb207606c078c7d837a2b59244954742f40ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-plan.md"
       },
       {
         "digest": "17931c72fa552046fa9a5994e24d24ca32e5faa0ec729934c61bb746362538d1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/claude-spec.md"
       },
       {
         "digest": "ca3541d7394728facbe7ce362ef423c6024925b96062b6602b18a1d82fb3aaae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/15-round-audit-2026-09-18.md"
       },
       {
         "digest": "7b396da4e910cffe53d78e8465e2ef84a9ec2ba67058aa6917bd5b72a6921a35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/17-round-audit-2026-09-18.md"
       },
       {
         "digest": "3da451459ec38bcc9ba78ad1a91e75343c8cedafb036da92fdf967631ab9fbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/follow-up-audit-2026-09-18.md"
       },
       {
         "digest": "a3b699b5d0ae2027e201a099cec0a35641dcaa1b04e5a26131f0101c668ce5da",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/audits/ui-ux-10-round-audit-2026-09-18.md"
       },
       {
         "digest": "f4f7306f30fd1cf9abcadc680c097dcc30609b97bd886cfa6e24a4bd7e9f05c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-interview.md"
       },
       {
         "digest": "5a167625693b73022ae0d847d48321579f40ebc256b77b422661f9b756d41223",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan-tdd.md"
       },
       {
         "digest": "77227ca7e638699351a6ca9721a74e5ef5b6c1aeb07ad9505fe6d24a6fad6127",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-plan.md"
       },
       {
         "digest": "08b6da6241df2b9a8f59e808de0758866ac3f5fb55685573a15c9e9b30dd2b06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-research.md"
       },
       {
         "digest": "e137403ca4a7a6ec30efa9d2b3fa7487b29565052c303551e9d19c9b0fa23dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/claude-spec.md"
       },
       {
         "digest": "6bda3e0be0c1e9244c91e96e2750b851eebb628efb59a59851c09bbcb3da69a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/completion.md"
       },
       {
         "digest": "4a19f678c54ab3a3c43a5e937dc869704085fb350015b99082b28f64e7587e2f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_implement_config.json"
       },
       {
         "digest": "ae5c10eaa65f2541c7ef88d9c8299910f30e465bc88399d3ddf40d61bd6da648",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/deep_plan_config.json"
       },
       {
         "digest": "56fc2aca4b80e5104d3c5f84b117473349442fd4ccf2e5cdce22a5a834a07b4f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/deep_implement_config.json"
       },
       {
         "digest": "93efee8a991ee67d182939d52350fb5618a9ac3ecf66dc8d511209c9fe7cf381",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation/usage.md"
       },
       {
         "digest": "1106dd130845c67c42b3d9113ffca206056a7c914bc096435b6e5fbce604754b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/review.md"
       },
       {
         "digest": "ec7a1da3f6bde4ccf99fbd6d96638aabfa0126ab9bf5f769cca9c5a55a22be9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-1.md"
       },
       {
         "digest": "442ac409fd19a3d53a78dff458870a6fb51735f043063124f58e88ae3b51f6ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/reviews/self-review-round-2.md"
       },
       {
         "digest": "81517c1975438244830e61ef0cb73843b638bdf28aa8f2d7de57e348586ea9b6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-01-project-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-01-project-adapter.md"
       },
       {
         "digest": "1dcccf7d872d765af5f4ffbebe48f72f65a142c78a9faf234bc4c9681fbb7962",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-02-operation-bridge.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-02-operation-bridge.md"
       },
       {
         "digest": "92461234331cc4c8561cfadd413174acd4dfa4752d310b001c960dbddda9021d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-03-timeline-change-sets.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-03-timeline-change-sets.md"
       },
       {
         "digest": "e30bb9c4c83880419c2744baea59e37b01eeb32d0a20c3a3c528bfda4ab3a210",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-04-ai-tools-transcript.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-04-ai-tools-transcript.md"
       },
       {
         "digest": "fe10ce130d49c27c611e14c16fe4c92629cdfe803da7b159b43bc017c0111cef",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-05-preview-render-qc.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-05-preview-render-qc.md"
       },
       {
         "digest": "f2ebfc782268a9880d735b54e7577491dc05edb3310050a3685dd1f4241d3d5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-06-acceptance-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/section-06-acceptance-rollout.md"
       },
       {
         "digest": "be7f5c46d46c8b42653b76caf8fbc6429fc7aa98d18c19363201c8e3e2b3290a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/index.md"
       },
       {
         "digest": "80aa153358cbd3c8507582627484a84f6dba52dfd9fd0c324c4f7dc19f826ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-01-ui-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-01-ui-foundation.md"
       },
       {
         "digest": "c47974907a6a5197f6d74c8a423db6c2164e3b9f2ebaacf31a2cce8fc15324e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-02-revision-conflict-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-02-revision-conflict-ux.md"
       },
       {
         "digest": "931762f0a8201944d5c4b1aa111b1ebd421b75643d2ace78d5fd3e45ad54e6d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-03-execution-capability-jobs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-03-execution-capability-jobs.md"
       },
       {
         "digest": "09d605e7ead002385d7db3020ec17a0ad68ec1b91030fba0d95ac2b40cd84e9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-04-ai-review-transcript-qc.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-04-ai-review-transcript-qc.md"
       },
       {
         "digest": "37416ac909921163bfc3f660172c5e3eec285e2fe55f157f645eb2c87927c70e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-05-responsive-visual-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-05-responsive-visual-consistency.md"
       },
       {
         "digest": "075efba401cffeaae63ff01fc24503ee6a6dba784cfe03a58b9976ddc30db6bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-06-browser-evidence-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/section-06-browser-evidence-rollout.md"
       },
       {
         "digest": "f2b2047fb228f15a65e875284ca7e4b3e29e0d208a0404792ecbe26a76300af0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "1257ebaeb07f21c167ba949885ef450d91a6ee57051ee78bbb3f518444485747",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-ux-improvement-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/ui-ux-improvement-spec.md"
       },
       {
         "digest": "3daf54c0fbef3948a25706bb2027f3370c53a0b5eebb705a260089d73110c1d0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "1d1cc96e14fa29494d48cc5f1772703c103802740db60d14c11ae4e72fb4d443",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-1.md"
       },
       {
         "digest": "75165383590d35d27362bdd82306c5fc01e0b3eaa59a220106595ec49d1073a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/reviews/self-review-round-2.md"
       },
       {
         "digest": "3c38873a67ec536030c661831d80c17e1eff38e582181ca9c875abbaf75acef5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/index.md"
       },
       {
         "digest": "2634219ee7025887c58795ec44d7f2fe20ef0842dc74865dc3e41ee324c72d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-01-project-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-01-project-adapter.md"
       },
       {
         "digest": "379a1c2c14a5326393cc20f4ae025e781a9b7588903655f23d71e7c9a80887f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-02-operation-bridge.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-02-operation-bridge.md"
       },
       {
         "digest": "382e1c64855c84315426e4264eefcc1ac7342e2499a1883f2ab68fe08eb07bd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-03-timeline-change-sets.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-03-timeline-change-sets.md"
       },
       {
         "digest": "cd4f0ec16c37ff65317a84b5fb92e0d27d59c3d79fe7bb31c7ff357a6b7da6a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-04-ai-tools-transcript.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-04-ai-tools-transcript.md"
       },
       {
         "digest": "a6b13da17d8c228b3172acb60ffbed4867736c69ad6fe6a8b5d7195f2797095a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-05-preview-render-qc.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-05-preview-render-qc.md"
       },
       {
         "digest": "772d26ce9b77411788d74a221642c3fd1b103be8ec12673154ec82f615ae906f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-06-acceptance-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/202-ai_rough_cut_video_editor_unified/sections/section-06-acceptance-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 102 unresolved of 105
 - Next action: Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.
-- Manifest generation: 11
+- Manifest generation: 12
 
 ## Source-declared status and relationship claims
 

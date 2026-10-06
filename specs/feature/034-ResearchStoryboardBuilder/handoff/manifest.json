@@ -17,92 +17,92 @@
       {
         "digest": "f7df26e4acd2741f35a5134a6e86b6d83eda80a7bbcca703693291a7ed0b0f81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "49644200f1fd3fdef08cd683de21011bd5c2663d4da1d083012e1903e0826665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
       },
       {
         "digest": "c75394754d75f207fa5ea9c81f20d08585faa5c06c3f72c2d0d58d25f3c7836f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
       },
       {
         "digest": "e8b8c08b4259566db038f8440505379e38e449df5c255b474859e7d792ab21ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
       },
       {
         "digest": "de5efccf26da500110b136b95662322bd5934beba8e95e25cad958132e5c8cf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
       },
       {
         "digest": "29076cbc0ff46ef99629ac7918da9e3fb37fca3ac8ecff813691b50b42140f7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
       },
       {
         "digest": "fb26914f5b30f2f97bfd856377aa92f524ec1a7ac972ff468627155e5b702bcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
       },
       {
         "digest": "18cfe730733b4f04b1fd37670f60911b34c4355c6b26ef26673e85c977964aa1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
       },
       {
         "digest": "b02562d44f08e7a3f60f35fcb8ace6f96e2ae7d417b4119c50986eade96a4b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
       },
       {
         "digest": "b1e2afc734954b658daf2c90e1dac6e096074c6d0fd98244df2005eaa0a3f496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
       },
       {
         "digest": "ea629f402bbc578916c08cc5ac7fa50c626f853873cd44ae0e5e31225b0979c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
       },
       {
         "digest": "f0fc6b074b84a90d55363311f1f7f6a78ceee6e5acca9ed87b05700dc13e9f7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
       },
       {
         "digest": "fd1f74b645d7d86ac286afdd3218c6be2a9c838edd38597d2fa29d635cc5e4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
       },
       {
         "digest": "0686404e685da8828ef6477b565f1a11ab47c9b0a68a58ac5a1fc49dca8f1b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
       },
       {
         "digest": "4388dff68fbcc4236eb07c13f59624201b33c6abee27b5f8e6da82a3bfa39ea3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
       },
       {
         "digest": "35deb6bdff51dbbad1e449aa1914256ecd98e9278ce4a179fe9eccc93348feb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
       },
       {
         "digest": "3db57489e89492438da8ebc510b7d94a8aa5b1854f18a795071ddb818177e22f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
       },
       {
         "digest": "5a9d9f58ec23811971fd5b86aab7e12dffd5284333a43a878fc9269127502697",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "f7df26e4acd2741f35a5134a6e86b6d83eda80a7bbcca703693291a7ed0b0f81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "49644200f1fd3fdef08cd683de21011bd5c2663d4da1d083012e1903e0826665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
       },
       {
         "digest": "c75394754d75f207fa5ea9c81f20d08585faa5c06c3f72c2d0d58d25f3c7836f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
       },
       {
         "digest": "e8b8c08b4259566db038f8440505379e38e449df5c255b474859e7d792ab21ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
       },
       {
         "digest": "de5efccf26da500110b136b95662322bd5934beba8e95e25cad958132e5c8cf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
       },
       {
         "digest": "29076cbc0ff46ef99629ac7918da9e3fb37fca3ac8ecff813691b50b42140f7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
       },
       {
         "digest": "fb26914f5b30f2f97bfd856377aa92f524ec1a7ac972ff468627155e5b702bcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
       },
       {
         "digest": "18cfe730733b4f04b1fd37670f60911b34c4355c6b26ef26673e85c977964aa1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
       },
       {
         "digest": "b02562d44f08e7a3f60f35fcb8ace6f96e2ae7d417b4119c50986eade96a4b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
       },
       {
         "digest": "b1e2afc734954b658daf2c90e1dac6e096074c6d0fd98244df2005eaa0a3f496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
       },
       {
         "digest": "ea629f402bbc578916c08cc5ac7fa50c626f853873cd44ae0e5e31225b0979c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
       },
       {
         "digest": "f0fc6b074b84a90d55363311f1f7f6a78ceee6e5acca9ed87b05700dc13e9f7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
       },
       {
         "digest": "fd1f74b645d7d86ac286afdd3218c6be2a9c838edd38597d2fa29d635cc5e4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
       },
       {
         "digest": "0686404e685da8828ef6477b565f1a11ab47c9b0a68a58ac5a1fc49dca8f1b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
       },
       {
         "digest": "4388dff68fbcc4236eb07c13f59624201b33c6abee27b5f8e6da82a3bfa39ea3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
       },
       {
         "digest": "35deb6bdff51dbbad1e449aa1914256ecd98e9278ce4a179fe9eccc93348feb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
       },
       {
         "digest": "3db57489e89492438da8ebc510b7d94a8aa5b1854f18a795071ddb818177e22f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
       },
       {
         "digest": "5a9d9f58ec23811971fd5b86aab7e12dffd5284333a43a878fc9269127502697",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
       },
       {
         "excerpt": "it(\"API shape matches expected Spec 034 contract\", async () => {",
@@ -257,98 +257,98 @@
       {
         "digest": "f7df26e4acd2741f35a5134a6e86b6d83eda80a7bbcca703693291a7ed0b0f81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "49644200f1fd3fdef08cd683de21011bd5c2663d4da1d083012e1903e0826665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
       },
       {
         "digest": "c75394754d75f207fa5ea9c81f20d08585faa5c06c3f72c2d0d58d25f3c7836f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
       },
       {
         "digest": "e8b8c08b4259566db038f8440505379e38e449df5c255b474859e7d792ab21ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
       },
       {
         "digest": "de5efccf26da500110b136b95662322bd5934beba8e95e25cad958132e5c8cf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
       },
       {
         "digest": "29076cbc0ff46ef99629ac7918da9e3fb37fca3ac8ecff813691b50b42140f7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
       },
       {
         "digest": "fb26914f5b30f2f97bfd856377aa92f524ec1a7ac972ff468627155e5b702bcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
       },
       {
         "digest": "18cfe730733b4f04b1fd37670f60911b34c4355c6b26ef26673e85c977964aa1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
       },
       {
         "digest": "b02562d44f08e7a3f60f35fcb8ace6f96e2ae7d417b4119c50986eade96a4b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
       },
       {
         "digest": "b1e2afc734954b658daf2c90e1dac6e096074c6d0fd98244df2005eaa0a3f496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
       },
       {
         "digest": "ea629f402bbc578916c08cc5ac7fa50c626f853873cd44ae0e5e31225b0979c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
       },
       {
         "digest": "f0fc6b074b84a90d55363311f1f7f6a78ceee6e5acca9ed87b05700dc13e9f7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
       },
       {
         "digest": "fd1f74b645d7d86ac286afdd3218c6be2a9c838edd38597d2fa29d635cc5e4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
       },
       {
         "digest": "0686404e685da8828ef6477b565f1a11ab47c9b0a68a58ac5a1fc49dca8f1b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
       },
       {
         "digest": "4388dff68fbcc4236eb07c13f59624201b33c6abee27b5f8e6da82a3bfa39ea3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
       },
       {
         "digest": "35deb6bdff51dbbad1e449aa1914256ecd98e9278ce4a179fe9eccc93348feb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
       },
       {
         "digest": "3db57489e89492438da8ebc510b7d94a8aa5b1854f18a795071ddb818177e22f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
       },
       {
         "digest": "5a9d9f58ec23811971fd5b86aab7e12dffd5284333a43a878fc9269127502697",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/034-ResearchStoryboardBuilder/spec.md",
     "digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
@@ -401,92 +401,92 @@
       {
         "digest": "f7df26e4acd2741f35a5134a6e86b6d83eda80a7bbcca703693291a7ed0b0f81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "49644200f1fd3fdef08cd683de21011bd5c2663d4da1d083012e1903e0826665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
       },
       {
         "digest": "c75394754d75f207fa5ea9c81f20d08585faa5c06c3f72c2d0d58d25f3c7836f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
       },
       {
         "digest": "e8b8c08b4259566db038f8440505379e38e449df5c255b474859e7d792ab21ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
       },
       {
         "digest": "de5efccf26da500110b136b95662322bd5934beba8e95e25cad958132e5c8cf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
       },
       {
         "digest": "29076cbc0ff46ef99629ac7918da9e3fb37fca3ac8ecff813691b50b42140f7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
       },
       {
         "digest": "fb26914f5b30f2f97bfd856377aa92f524ec1a7ac972ff468627155e5b702bcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
       },
       {
         "digest": "18cfe730733b4f04b1fd37670f60911b34c4355c6b26ef26673e85c977964aa1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
       },
       {
         "digest": "b02562d44f08e7a3f60f35fcb8ace6f96e2ae7d417b4119c50986eade96a4b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
       },
       {
         "digest": "b1e2afc734954b658daf2c90e1dac6e096074c6d0fd98244df2005eaa0a3f496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
       },
       {
         "digest": "ea629f402bbc578916c08cc5ac7fa50c626f853873cd44ae0e5e31225b0979c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
       },
       {
         "digest": "f0fc6b074b84a90d55363311f1f7f6a78ceee6e5acca9ed87b05700dc13e9f7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
       },
       {
         "digest": "fd1f74b645d7d86ac286afdd3218c6be2a9c838edd38597d2fa29d635cc5e4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
       },
       {
         "digest": "0686404e685da8828ef6477b565f1a11ab47c9b0a68a58ac5a1fc49dca8f1b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
       },
       {
         "digest": "4388dff68fbcc4236eb07c13f59624201b33c6abee27b5f8e6da82a3bfa39ea3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
       },
       {
         "digest": "35deb6bdff51dbbad1e449aa1914256ecd98e9278ce4a179fe9eccc93348feb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
       },
       {
         "digest": "3db57489e89492438da8ebc510b7d94a8aa5b1854f18a795071ddb818177e22f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
       },
       {
         "digest": "5a9d9f58ec23811971fd5b86aab7e12dffd5284333a43a878fc9269127502697",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
       },
       {
         "excerpt": "it(\"API shape matches expected Spec 034 contract\", async () => {",
@@ -551,92 +551,92 @@
       {
         "digest": "f7df26e4acd2741f35a5134a6e86b6d83eda80a7bbcca703693291a7ed0b0f81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "49644200f1fd3fdef08cd683de21011bd5c2663d4da1d083012e1903e0826665",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/iteration-1-summary.md"
       },
       {
         "digest": "c75394754d75f207fa5ea9c81f20d08585faa5c06c3f72c2d0d58d25f3c7836f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-diff.md"
       },
       {
         "digest": "e8b8c08b4259566db038f8440505379e38e449df5c255b474859e7d792ab21ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-01-review.md"
       },
       {
         "digest": "de5efccf26da500110b136b95662322bd5934beba8e95e25cad958132e5c8cf8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-02-review.md"
       },
       {
         "digest": "29076cbc0ff46ef99629ac7918da9e3fb37fca3ac8ecff813691b50b42140f7d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-03-review.md"
       },
       {
         "digest": "fb26914f5b30f2f97bfd856377aa92f524ec1a7ac972ff468627155e5b702bcb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-04-review.md"
       },
       {
         "digest": "18cfe730733b4f04b1fd37670f60911b34c4355c6b26ef26673e85c977964aa1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-05-review.md"
       },
       {
         "digest": "b02562d44f08e7a3f60f35fcb8ace6f96e2ae7d417b4119c50986eade96a4b72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-06-review.md"
       },
       {
         "digest": "b1e2afc734954b658daf2c90e1dac6e096074c6d0fd98244df2005eaa0a3f496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/reviews/section-07-review.md"
       },
       {
         "digest": "ea629f402bbc578916c08cc5ac7fa50c626f853873cd44ae0e5e31225b0979c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/index.md"
       },
       {
         "digest": "f0fc6b074b84a90d55363311f1f7f6a78ceee6e5acca9ed87b05700dc13e9f7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-01-contract-and-persistence.md"
       },
       {
         "digest": "fd1f74b645d7d86ac286afdd3218c6be2a9c838edd38597d2fa29d635cc5e4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-02-preview-routing-and-api-contract.md"
       },
       {
         "digest": "0686404e685da8828ef6477b565f1a11ab47c9b0a68a58ac5a1fc49dca8f1b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-03-library-backed-commit-flows.md"
       },
       {
         "digest": "4388dff68fbcc4236eb07c13f59624201b33c6abee27b5f8e6da82a3bfa39ea3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-04-deck-preview-and-presentation-commit.md"
       },
       {
         "digest": "35deb6bdff51dbbad1e449aa1914256ecd98e9278ce4a179fe9eccc93348feb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-05-template-seeding-and-scope-resolution.md"
       },
       {
         "digest": "3db57489e89492438da8ebc510b7d94a8aa5b1854f18a795071ddb818177e22f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-06-observability-rollout-and-retention.md"
       },
       {
         "digest": "5a9d9f58ec23811971fd5b86aab7e12dffd5284333a43a878fc9269127502697",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

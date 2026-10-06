@@ -17,97 +17,97 @@
       {
         "digest": "5ff9f61e74756776b83eba98e104ac32fb22f35f476566511a8a86a374bf2e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
       },
       {
         "digest": "eed8e2675c93f37b55b297539a01aacf16182698f36d4ddf9c61566165af7e08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
       },
       {
         "digest": "d8477e38707880878c01cdf344a0ba203a7622c2df65a8ddd21e23efa7e7821e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
       },
       {
         "digest": "306b9c2fc24c791567fcfac2551778b5bb3a0a313fa422cf94fbd4142899bb26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
       },
       {
         "digest": "a73745e7d91b5c4b060328c5d8a2710da278f1293dc81c7eff39831af44423ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
       },
       {
         "digest": "bb719151e25c4089dcb18aa7159ef5a1cf90005cabc10a84683b0f8077e13111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
       },
       {
         "digest": "ac1d010571bdc7f4974cb439b2f7eece371dbcb03a867643fc7ab48b763b37ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
       },
       {
         "digest": "ed6e61bf33294cfaadaf1dbcc5f243a805f1b727f4175c76b7af43b5fda08e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
       },
       {
         "digest": "a199959e8c549af85dca5b7ca166b0dfd6c3ff941299d8278679408dfebdd444",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
       },
       {
         "digest": "38c67e846d2a915267fbb0f0f21d888b8b1005f0cfdcbc3590321796bbc57ff8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
       },
       {
         "digest": "d21fa72d1eb94c81cd73e61467100c9142d355c23f102474a3ce00ba96dcf882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/index.md"
       },
       {
         "digest": "c90f9c699bffff49b94c5b234e78eacd8c5ea879048eb9474e5ec67db31f7ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "f6dbb47e8426dbc4405c7b580d43d174e6851567a5e41ade94d30881857335b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
       },
       {
         "digest": "1cff0af0840e9020a7437f04f088706e51eaa8ae75358c0b03fc4a5708cf55e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
       },
       {
         "digest": "88d204ba8d5f46de4c83ca565dd07afe5cb5f2ac089dbedbf82131212ea79c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
       },
       {
         "digest": "eb810459f77d5e3391a22806c6c83ce885efbb073b90b4f333fcd386071fd650",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
       },
       {
         "digest": "8225656baafc4838db633b232ab4d0061f39285286cffd6fe3354672bf5cd829",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
       },
       {
         "digest": "0ef2425f0f52e7fb8bdeb464c484b03e45cb6ef1ff3f1636a1982af450e4b5d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
       },
       {
         "digest": "d9e1286eae733eadb01452e138497a1017c705265fae84efe4ab6dcd012b64f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "5ff9f61e74756776b83eba98e104ac32fb22f35f476566511a8a86a374bf2e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
       },
       {
         "digest": "eed8e2675c93f37b55b297539a01aacf16182698f36d4ddf9c61566165af7e08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
       },
       {
         "digest": "d8477e38707880878c01cdf344a0ba203a7622c2df65a8ddd21e23efa7e7821e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
       },
       {
         "digest": "306b9c2fc24c791567fcfac2551778b5bb3a0a313fa422cf94fbd4142899bb26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
       },
       {
         "digest": "a73745e7d91b5c4b060328c5d8a2710da278f1293dc81c7eff39831af44423ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
       },
       {
         "digest": "bb719151e25c4089dcb18aa7159ef5a1cf90005cabc10a84683b0f8077e13111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
       },
       {
         "digest": "ac1d010571bdc7f4974cb439b2f7eece371dbcb03a867643fc7ab48b763b37ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
       },
       {
         "digest": "ed6e61bf33294cfaadaf1dbcc5f243a805f1b727f4175c76b7af43b5fda08e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
       },
       {
         "digest": "a199959e8c549af85dca5b7ca166b0dfd6c3ff941299d8278679408dfebdd444",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
       },
       {
         "digest": "38c67e846d2a915267fbb0f0f21d888b8b1005f0cfdcbc3590321796bbc57ff8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
       },
       {
         "digest": "d21fa72d1eb94c81cd73e61467100c9142d355c23f102474a3ce00ba96dcf882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/index.md"
       },
       {
         "digest": "c90f9c699bffff49b94c5b234e78eacd8c5ea879048eb9474e5ec67db31f7ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "f6dbb47e8426dbc4405c7b580d43d174e6851567a5e41ade94d30881857335b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
       },
       {
         "digest": "1cff0af0840e9020a7437f04f088706e51eaa8ae75358c0b03fc4a5708cf55e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
       },
       {
         "digest": "88d204ba8d5f46de4c83ca565dd07afe5cb5f2ac089dbedbf82131212ea79c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
       },
       {
         "digest": "eb810459f77d5e3391a22806c6c83ce885efbb073b90b4f333fcd386071fd650",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
       },
       {
         "digest": "8225656baafc4838db633b232ab4d0061f39285286cffd6fe3354672bf5cd829",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
       },
       {
         "digest": "0ef2425f0f52e7fb8bdeb464c484b03e45cb6ef1ff3f1636a1982af450e4b5d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
       },
       {
         "digest": "d9e1286eae733eadb01452e138497a1017c705265fae84efe4ab6dcd012b64f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "5ff9f61e74756776b83eba98e104ac32fb22f35f476566511a8a86a374bf2e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
       },
       {
         "digest": "eed8e2675c93f37b55b297539a01aacf16182698f36d4ddf9c61566165af7e08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
       },
       {
         "digest": "d8477e38707880878c01cdf344a0ba203a7622c2df65a8ddd21e23efa7e7821e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
       },
       {
         "digest": "306b9c2fc24c791567fcfac2551778b5bb3a0a313fa422cf94fbd4142899bb26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
       },
       {
         "digest": "a73745e7d91b5c4b060328c5d8a2710da278f1293dc81c7eff39831af44423ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
       },
       {
         "digest": "bb719151e25c4089dcb18aa7159ef5a1cf90005cabc10a84683b0f8077e13111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
       },
       {
         "digest": "ac1d010571bdc7f4974cb439b2f7eece371dbcb03a867643fc7ab48b763b37ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
       },
       {
         "digest": "ed6e61bf33294cfaadaf1dbcc5f243a805f1b727f4175c76b7af43b5fda08e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
       },
       {
         "digest": "a199959e8c549af85dca5b7ca166b0dfd6c3ff941299d8278679408dfebdd444",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
       },
       {
         "digest": "38c67e846d2a915267fbb0f0f21d888b8b1005f0cfdcbc3590321796bbc57ff8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
       },
       {
         "digest": "d21fa72d1eb94c81cd73e61467100c9142d355c23f102474a3ce00ba96dcf882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/index.md"
       },
       {
         "digest": "c90f9c699bffff49b94c5b234e78eacd8c5ea879048eb9474e5ec67db31f7ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "f6dbb47e8426dbc4405c7b580d43d174e6851567a5e41ade94d30881857335b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
       },
       {
         "digest": "1cff0af0840e9020a7437f04f088706e51eaa8ae75358c0b03fc4a5708cf55e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
       },
       {
         "digest": "88d204ba8d5f46de4c83ca565dd07afe5cb5f2ac089dbedbf82131212ea79c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
       },
       {
         "digest": "eb810459f77d5e3391a22806c6c83ce885efbb073b90b4f333fcd386071fd650",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
       },
       {
         "digest": "8225656baafc4838db633b232ab4d0061f39285286cffd6fe3354672bf5cd829",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
       },
       {
         "digest": "0ef2425f0f52e7fb8bdeb464c484b03e45cb6ef1ff3f1636a1982af450e4b5d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
       },
       {
         "digest": "d9e1286eae733eadb01452e138497a1017c705265fae84efe4ab6dcd012b64f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/201-content-provenance-copyright-protection/spec.md",
     "digest": "e1655cbf0acfd476dfe1f9026ffbc30f0cc3002129ca7a3de8d361e098f93a2a",
@@ -409,107 +409,107 @@
       {
         "digest": "5ff9f61e74756776b83eba98e104ac32fb22f35f476566511a8a86a374bf2e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
       },
       {
         "digest": "eed8e2675c93f37b55b297539a01aacf16182698f36d4ddf9c61566165af7e08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
       },
       {
         "digest": "d8477e38707880878c01cdf344a0ba203a7622c2df65a8ddd21e23efa7e7821e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
       },
       {
         "digest": "306b9c2fc24c791567fcfac2551778b5bb3a0a313fa422cf94fbd4142899bb26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
       },
       {
         "digest": "a73745e7d91b5c4b060328c5d8a2710da278f1293dc81c7eff39831af44423ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
       },
       {
         "digest": "bb719151e25c4089dcb18aa7159ef5a1cf90005cabc10a84683b0f8077e13111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
       },
       {
         "digest": "ac1d010571bdc7f4974cb439b2f7eece371dbcb03a867643fc7ab48b763b37ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
       },
       {
         "digest": "ed6e61bf33294cfaadaf1dbcc5f243a805f1b727f4175c76b7af43b5fda08e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
       },
       {
         "digest": "a199959e8c549af85dca5b7ca166b0dfd6c3ff941299d8278679408dfebdd444",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
       },
       {
         "digest": "38c67e846d2a915267fbb0f0f21d888b8b1005f0cfdcbc3590321796bbc57ff8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
       },
       {
         "digest": "d21fa72d1eb94c81cd73e61467100c9142d355c23f102474a3ce00ba96dcf882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/index.md"
       },
       {
         "digest": "c90f9c699bffff49b94c5b234e78eacd8c5ea879048eb9474e5ec67db31f7ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "f6dbb47e8426dbc4405c7b580d43d174e6851567a5e41ade94d30881857335b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
       },
       {
         "digest": "1cff0af0840e9020a7437f04f088706e51eaa8ae75358c0b03fc4a5708cf55e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
       },
       {
         "digest": "88d204ba8d5f46de4c83ca565dd07afe5cb5f2ac089dbedbf82131212ea79c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
       },
       {
         "digest": "eb810459f77d5e3391a22806c6c83ce885efbb073b90b4f333fcd386071fd650",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
       },
       {
         "digest": "8225656baafc4838db633b232ab4d0061f39285286cffd6fe3354672bf5cd829",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
       },
       {
         "digest": "0ef2425f0f52e7fb8bdeb464c484b03e45cb6ef1ff3f1636a1982af450e4b5d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
       },
       {
         "digest": "d9e1286eae733eadb01452e138497a1017c705265fae84efe4ab6dcd012b64f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
       },
       {
         "digest": "cf4b63c57cb269a734611327b9fc8001e8799b8dcb87a938c3ec570090a50ba2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-09-rights-evidence-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-09-rights-evidence-review.md"
       },
       {
         "digest": "e5269aea5b7058673ab58f4278aeb214f451c47ea1247222e6ff93ddd85951b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-10-verification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-10-verification-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -829,107 +829,107 @@
       {
         "digest": "5ff9f61e74756776b83eba98e104ac32fb22f35f476566511a8a86a374bf2e52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-plan.md"
       },
       {
         "digest": "eed8e2675c93f37b55b297539a01aacf16182698f36d4ddf9c61566165af7e08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/claude-spec.md"
       },
       {
         "digest": "d8477e38707880878c01cdf344a0ba203a7622c2df65a8ddd21e23efa7e7821e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/10-round-audit-2026-09-18.md"
       },
       {
         "digest": "306b9c2fc24c791567fcfac2551778b5bb3a0a313fa422cf94fbd4142899bb26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/15-round-audit.md"
       },
       {
         "digest": "a73745e7d91b5c4b060328c5d8a2710da278f1293dc81c7eff39831af44423ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-audit-2026-09-18.md"
       },
       {
         "digest": "bb719151e25c4089dcb18aa7159ef5a1cf90005cabc10a84683b0f8077e13111",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/20-round-reaudit-2026-09-18-v2.md"
       },
       {
         "digest": "ac1d010571bdc7f4974cb439b2f7eece371dbcb03a867643fc7ab48b763b37ce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md"
       },
       {
         "digest": "ed6e61bf33294cfaadaf1dbcc5f243a805f1b727f4175c76b7af43b5fda08e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/implementation/deep_implement_config.json"
       },
       {
         "digest": "a199959e8c549af85dca5b7ca166b0dfd6c3ff941299d8278679408dfebdd444",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-1.md"
       },
       {
         "digest": "38c67e846d2a915267fbb0f0f21d888b8b1005f0cfdcbc3590321796bbc57ff8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/reviews/self-review-round-2.md"
       },
       {
         "digest": "d21fa72d1eb94c81cd73e61467100c9142d355c23f102474a3ce00ba96dcf882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/index.md"
       },
       {
         "digest": "c90f9c699bffff49b94c5b234e78eacd8c5ea879048eb9474e5ec67db31f7ad9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "f6dbb47e8426dbc4405c7b580d43d174e6851567a5e41ade94d30881857335b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-02-persistence-migration.md"
       },
       {
         "digest": "1cff0af0840e9020a7437f04f088706e51eaa8ae75358c0b03fc4a5708cf55e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-03-protection-service.md"
       },
       {
         "digest": "88d204ba8d5f46de4c83ca565dd07afe5cb5f2ac089dbedbf82131212ea79c10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-04-content-protection-router.md"
       },
       {
         "digest": "eb810459f77d5e3391a22806c6c83ce885efbb073b90b4f333fcd386071fd650",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-05-worker-protection-job.md"
       },
       {
         "digest": "8225656baafc4838db633b232ab4d0061f39285286cffd6fe3354672bf5cd829",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-06-compound-integration.md"
       },
       {
         "digest": "0ef2425f0f52e7fb8bdeb464c484b03e45cb6ef1ff3f1636a1982af450e4b5d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-07-ui-workspace.md"
       },
       {
         "digest": "d9e1286eae733eadb01452e138497a1017c705265fae84efe4ab6dcd012b64f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-08-dashboard-settings-navigation.md"
       },
       {
         "digest": "cf4b63c57cb269a734611327b9fc8001e8799b8dcb87a938c3ec570090a50ba2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-09-rights-evidence-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-09-rights-evidence-review.md"
       },
       {
         "digest": "e5269aea5b7058673ab58f4278aeb214f451c47ea1247222e6ff93ddd85951b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/201-content-provenance-copyright-protection/sections/section-10-verification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/201-content-provenance-copyright-protection/sections/section-10-verification-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

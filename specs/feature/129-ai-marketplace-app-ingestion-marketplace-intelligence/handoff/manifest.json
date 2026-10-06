@@ -17,97 +17,97 @@
       {
         "digest": "524b757af70d1d335f4ca23a0155e99032fb02e225e5421ef54f835a2475325a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
       },
       {
         "digest": "f8ad2b269e230624e82cb7da7f794d6914686c0eef6ae9147f7c96df639314dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
       },
       {
         "digest": "ed200f3c18801ec1d08783e5696b60761ed302273eb89a07836b49fa5d6640c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "65aa417c5ec74f4d7af455d6f0f1e7c77b50f40813cfedff13d5d1304ecd89a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "b330d6e73a382969f1d5d2c83fdf64efe7bc84c8feef332e49f7fcf5754da675",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
       },
       {
         "digest": "c5633cca1e66626a8447737feda5527a74ae15a9b70529d92c25b4da4255bec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
       },
       {
         "digest": "c421a56735c87ad0d43c890dca8c5dcfac82692ae4a208f56c5f892cb7db0be2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
       },
       {
         "digest": "f5c0a854247f44f1490c9b302fd69ae38074fac813a9d70540c8538de5659ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
       },
       {
         "digest": "ad8e66f38c732849b2abffadc0860c6fcc4e875e1d595033ee120375670ac717",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
       },
       {
         "digest": "5c7bb1378be3d44083feadfb8b855c245c370caa73ad90337989e382d2b74bbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
       },
       {
         "digest": "8b55a1bec9d1b276971068625e314f215decf37c8f1d87632f64fac861a0978b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
       },
       {
         "digest": "a528c935b1834db054785e08ca688d56b8ae4ec02952d2abf87dcf403a00b241",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
       },
       {
         "digest": "56ab31b162b6cc204607bf02412994f71c697d8cd4b09f7656f9817d966edf41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
       },
       {
         "digest": "d8794305a626c0a7f1ce94ad88398f5c71b749518396eed72d572f9c719e971e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
       },
       {
         "digest": "4504ac5e2214ef9c9d19fb13183efe10bdaa2f8bbcd69335d4d019f72ca48d58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
       },
       {
         "digest": "eee62b8b48df4437aff02418d0c7a00e7a486dea42e40b384f542eedb9716121",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
       },
       {
         "digest": "66cfefeece053e5efd455f1655e798cdcad9acffa2a81c39b580c0e75d0ff4c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
       },
       {
         "digest": "1447e499101f0e8d9474080c3f9bba43b438d12fcdd771d6dfd20258803e6651",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
       },
       {
         "digest": "38a490a3a8b16cc73b1ea2b6889c0c6f8dc7cdbb30eeb704fbe8f1999e807f78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "524b757af70d1d335f4ca23a0155e99032fb02e225e5421ef54f835a2475325a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
       },
       {
         "digest": "f8ad2b269e230624e82cb7da7f794d6914686c0eef6ae9147f7c96df639314dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
       },
       {
         "digest": "ed200f3c18801ec1d08783e5696b60761ed302273eb89a07836b49fa5d6640c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "65aa417c5ec74f4d7af455d6f0f1e7c77b50f40813cfedff13d5d1304ecd89a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "b330d6e73a382969f1d5d2c83fdf64efe7bc84c8feef332e49f7fcf5754da675",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
       },
       {
         "digest": "c5633cca1e66626a8447737feda5527a74ae15a9b70529d92c25b4da4255bec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
       },
       {
         "digest": "c421a56735c87ad0d43c890dca8c5dcfac82692ae4a208f56c5f892cb7db0be2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
       },
       {
         "digest": "f5c0a854247f44f1490c9b302fd69ae38074fac813a9d70540c8538de5659ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
       },
       {
         "digest": "ad8e66f38c732849b2abffadc0860c6fcc4e875e1d595033ee120375670ac717",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
       },
       {
         "digest": "5c7bb1378be3d44083feadfb8b855c245c370caa73ad90337989e382d2b74bbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
       },
       {
         "digest": "8b55a1bec9d1b276971068625e314f215decf37c8f1d87632f64fac861a0978b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
       },
       {
         "digest": "a528c935b1834db054785e08ca688d56b8ae4ec02952d2abf87dcf403a00b241",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
       },
       {
         "digest": "56ab31b162b6cc204607bf02412994f71c697d8cd4b09f7656f9817d966edf41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
       },
       {
         "digest": "d8794305a626c0a7f1ce94ad88398f5c71b749518396eed72d572f9c719e971e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
       },
       {
         "digest": "4504ac5e2214ef9c9d19fb13183efe10bdaa2f8bbcd69335d4d019f72ca48d58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
       },
       {
         "digest": "eee62b8b48df4437aff02418d0c7a00e7a486dea42e40b384f542eedb9716121",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
       },
       {
         "digest": "66cfefeece053e5efd455f1655e798cdcad9acffa2a81c39b580c0e75d0ff4c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
       },
       {
         "digest": "1447e499101f0e8d9474080c3f9bba43b438d12fcdd771d6dfd20258803e6651",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
       },
       {
         "digest": "38a490a3a8b16cc73b1ea2b6889c0c6f8dc7cdbb30eeb704fbe8f1999e807f78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "524b757af70d1d335f4ca23a0155e99032fb02e225e5421ef54f835a2475325a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
       },
       {
         "digest": "f8ad2b269e230624e82cb7da7f794d6914686c0eef6ae9147f7c96df639314dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
       },
       {
         "digest": "ed200f3c18801ec1d08783e5696b60761ed302273eb89a07836b49fa5d6640c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "65aa417c5ec74f4d7af455d6f0f1e7c77b50f40813cfedff13d5d1304ecd89a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "b330d6e73a382969f1d5d2c83fdf64efe7bc84c8feef332e49f7fcf5754da675",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
       },
       {
         "digest": "c5633cca1e66626a8447737feda5527a74ae15a9b70529d92c25b4da4255bec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
       },
       {
         "digest": "c421a56735c87ad0d43c890dca8c5dcfac82692ae4a208f56c5f892cb7db0be2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
       },
       {
         "digest": "f5c0a854247f44f1490c9b302fd69ae38074fac813a9d70540c8538de5659ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
       },
       {
         "digest": "ad8e66f38c732849b2abffadc0860c6fcc4e875e1d595033ee120375670ac717",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
       },
       {
         "digest": "5c7bb1378be3d44083feadfb8b855c245c370caa73ad90337989e382d2b74bbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
       },
       {
         "digest": "8b55a1bec9d1b276971068625e314f215decf37c8f1d87632f64fac861a0978b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
       },
       {
         "digest": "a528c935b1834db054785e08ca688d56b8ae4ec02952d2abf87dcf403a00b241",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
       },
       {
         "digest": "56ab31b162b6cc204607bf02412994f71c697d8cd4b09f7656f9817d966edf41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
       },
       {
         "digest": "d8794305a626c0a7f1ce94ad88398f5c71b749518396eed72d572f9c719e971e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
       },
       {
         "digest": "4504ac5e2214ef9c9d19fb13183efe10bdaa2f8bbcd69335d4d019f72ca48d58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
       },
       {
         "digest": "eee62b8b48df4437aff02418d0c7a00e7a486dea42e40b384f542eedb9716121",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
       },
       {
         "digest": "66cfefeece053e5efd455f1655e798cdcad9acffa2a81c39b580c0e75d0ff4c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
       },
       {
         "digest": "1447e499101f0e8d9474080c3f9bba43b438d12fcdd771d6dfd20258803e6651",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
       },
       {
         "digest": "38a490a3a8b16cc73b1ea2b6889c0c6f8dc7cdbb30eeb704fbe8f1999e807f78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md",
     "digest": "31ab921ffc67421096f4e833cc2fa67f3dc02896559d6702bdc56a84640217d1",
@@ -409,97 +409,97 @@
       {
         "digest": "524b757af70d1d335f4ca23a0155e99032fb02e225e5421ef54f835a2475325a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
       },
       {
         "digest": "f8ad2b269e230624e82cb7da7f794d6914686c0eef6ae9147f7c96df639314dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
       },
       {
         "digest": "ed200f3c18801ec1d08783e5696b60761ed302273eb89a07836b49fa5d6640c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "65aa417c5ec74f4d7af455d6f0f1e7c77b50f40813cfedff13d5d1304ecd89a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "b330d6e73a382969f1d5d2c83fdf64efe7bc84c8feef332e49f7fcf5754da675",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
       },
       {
         "digest": "c5633cca1e66626a8447737feda5527a74ae15a9b70529d92c25b4da4255bec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
       },
       {
         "digest": "c421a56735c87ad0d43c890dca8c5dcfac82692ae4a208f56c5f892cb7db0be2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
       },
       {
         "digest": "f5c0a854247f44f1490c9b302fd69ae38074fac813a9d70540c8538de5659ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
       },
       {
         "digest": "ad8e66f38c732849b2abffadc0860c6fcc4e875e1d595033ee120375670ac717",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
       },
       {
         "digest": "5c7bb1378be3d44083feadfb8b855c245c370caa73ad90337989e382d2b74bbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
       },
       {
         "digest": "8b55a1bec9d1b276971068625e314f215decf37c8f1d87632f64fac861a0978b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
       },
       {
         "digest": "a528c935b1834db054785e08ca688d56b8ae4ec02952d2abf87dcf403a00b241",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
       },
       {
         "digest": "56ab31b162b6cc204607bf02412994f71c697d8cd4b09f7656f9817d966edf41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
       },
       {
         "digest": "d8794305a626c0a7f1ce94ad88398f5c71b749518396eed72d572f9c719e971e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
       },
       {
         "digest": "4504ac5e2214ef9c9d19fb13183efe10bdaa2f8bbcd69335d4d019f72ca48d58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
       },
       {
         "digest": "eee62b8b48df4437aff02418d0c7a00e7a486dea42e40b384f542eedb9716121",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
       },
       {
         "digest": "66cfefeece053e5efd455f1655e798cdcad9acffa2a81c39b580c0e75d0ff4c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
       },
       {
         "digest": "1447e499101f0e8d9474080c3f9bba43b438d12fcdd771d6dfd20258803e6651",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
       },
       {
         "digest": "38a490a3a8b16cc73b1ea2b6889c0c6f8dc7cdbb30eeb704fbe8f1999e807f78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -765,97 +765,97 @@
       {
         "digest": "524b757af70d1d335f4ca23a0155e99032fb02e225e5421ef54f835a2475325a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-plan.md"
       },
       {
         "digest": "f8ad2b269e230624e82cb7da7f794d6914686c0eef6ae9147f7c96df639314dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/claude-spec.md"
       },
       {
         "digest": "ed200f3c18801ec1d08783e5696b60761ed302273eb89a07836b49fa5d6640c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "65aa417c5ec74f4d7af455d6f0f1e7c77b50f40813cfedff13d5d1304ecd89a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-1.md"
       },
       {
         "digest": "b330d6e73a382969f1d5d2c83fdf64efe7bc84c8feef332e49f7fcf5754da675",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-2.md"
       },
       {
         "digest": "c5633cca1e66626a8447737feda5527a74ae15a9b70529d92c25b4da4255bec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-3.md"
       },
       {
         "digest": "c421a56735c87ad0d43c890dca8c5dcfac82692ae4a208f56c5f892cb7db0be2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-4.md"
       },
       {
         "digest": "f5c0a854247f44f1490c9b302fd69ae38074fac813a9d70540c8538de5659ab0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-5.md"
       },
       {
         "digest": "ad8e66f38c732849b2abffadc0860c6fcc4e875e1d595033ee120375670ac717",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-6.md"
       },
       {
         "digest": "5c7bb1378be3d44083feadfb8b855c245c370caa73ad90337989e382d2b74bbd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/reviews/self-review-round-7.md"
       },
       {
         "digest": "8b55a1bec9d1b276971068625e314f215decf37c8f1d87632f64fac861a0978b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/index.md"
       },
       {
         "digest": "a528c935b1834db054785e08ca688d56b8ae4ec02952d2abf87dcf403a00b241",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-01-connector-lab-ui.md"
       },
       {
         "digest": "56ab31b162b6cc204607bf02412994f71c697d8cd4b09f7656f9817d966edf41",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-02-auth-grants-browser-flow.md"
       },
       {
         "digest": "d8794305a626c0a7f1ce94ad88398f5c71b749518396eed72d572f9c719e971e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-03-fixture-replay-contracts.md"
       },
       {
         "digest": "4504ac5e2214ef9c9d19fb13183efe10bdaa2f8bbcd69335d4d019f72ca48d58",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-04-database-ingestion-model.md"
       },
       {
         "digest": "eee62b8b48df4437aff02418d0c7a00e7a486dea42e40b384f542eedb9716121",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-05-internal-api-services.md"
       },
       {
         "digest": "66cfefeece053e5efd455f1655e798cdcad9acffa2a81c39b580c0e75d0ff4c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-06-mcp-tools.md"
       },
       {
         "digest": "1447e499101f0e8d9474080c3f9bba43b438d12fcdd771d6dfd20258803e6651",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-07-security-observability-retention.md"
       },
       {
         "digest": "38a490a3a8b16cc73b1ea2b6889c0c6f8dc7cdbb30eeb704fbe8f1999e807f78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections/section-08-reports-watchlists-handoff.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

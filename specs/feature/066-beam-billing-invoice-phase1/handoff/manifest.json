@@ -17,67 +17,67 @@
       {
         "digest": "67ab123e64108c42ab576ee0cc500632ed4a7da092a9d880c6a56b545528a43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
       },
       {
         "digest": "892e85b3b07cc273b40270eac6fa6351bbeeacad1507798f3ef0ab85df1e57e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
       },
       {
         "digest": "943755c5f110e49e62c8d8e9e375373cbc26065a38e4b4e553e262cec4feb844",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
       },
       {
         "digest": "bd4a2cedd6f063279166c0e15ae59230ff2129ae549542797414daaaab877f43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
       },
       {
         "digest": "d401638496b0810c73743855dc490254e4e927046191b0e9efb02e2bfd8154d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
       },
       {
         "digest": "d440214d2a40f146aee551d08212e943ab54e6f24721c5ce7f1702af26fd4fb0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
       },
       {
         "digest": "bd7ebb986023a361224fabf1ccd581ba6ecdc907d8b241173b7cf8bcc0852ce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
       },
       {
         "digest": "b615c46d97a47981e71f066d2f6fe3545ad4bac2c761493e91594628c4d356cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
       },
       {
         "digest": "0e46d832ec5c27c7879b16bddc1962a0368c2f66bcc5407ea02e3cc7cf33896a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
       },
       {
         "digest": "7ff66c3a10708763810f00ea10ccd07a5d02958ecbfd1c0b4fcd8402e18df1b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
       },
       {
         "digest": "635bd1d42e5d7d24b7d365c4d313cee876e5542000a5a4b25f619c2287261b9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
       },
       {
         "digest": "9141b97bc0288e1fa64a37e5f35c5bd56898509433459d54bcd08efd787ef90d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
       },
       {
         "digest": "ecc16d51ae1a53ce735f9b4733e2d6baa04dc50976d41e10996887409cc4a974",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "67ab123e64108c42ab576ee0cc500632ed4a7da092a9d880c6a56b545528a43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
       },
       {
         "digest": "892e85b3b07cc273b40270eac6fa6351bbeeacad1507798f3ef0ab85df1e57e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
       },
       {
         "digest": "943755c5f110e49e62c8d8e9e375373cbc26065a38e4b4e553e262cec4feb844",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
       },
       {
         "digest": "bd4a2cedd6f063279166c0e15ae59230ff2129ae549542797414daaaab877f43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
       },
       {
         "digest": "d401638496b0810c73743855dc490254e4e927046191b0e9efb02e2bfd8154d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
       },
       {
         "digest": "d440214d2a40f146aee551d08212e943ab54e6f24721c5ce7f1702af26fd4fb0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
       },
       {
         "digest": "bd7ebb986023a361224fabf1ccd581ba6ecdc907d8b241173b7cf8bcc0852ce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
       },
       {
         "digest": "b615c46d97a47981e71f066d2f6fe3545ad4bac2c761493e91594628c4d356cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
       },
       {
         "digest": "0e46d832ec5c27c7879b16bddc1962a0368c2f66bcc5407ea02e3cc7cf33896a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
       },
       {
         "digest": "7ff66c3a10708763810f00ea10ccd07a5d02958ecbfd1c0b4fcd8402e18df1b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
       },
       {
         "digest": "635bd1d42e5d7d24b7d365c4d313cee876e5542000a5a4b25f619c2287261b9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
       },
       {
         "digest": "9141b97bc0288e1fa64a37e5f35c5bd56898509433459d54bcd08efd787ef90d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
       },
       {
         "digest": "ecc16d51ae1a53ce735f9b4733e2d6baa04dc50976d41e10996887409cc4a974",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,73 +200,73 @@
       {
         "digest": "67ab123e64108c42ab576ee0cc500632ed4a7da092a9d880c6a56b545528a43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
       },
       {
         "digest": "892e85b3b07cc273b40270eac6fa6351bbeeacad1507798f3ef0ab85df1e57e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
       },
       {
         "digest": "943755c5f110e49e62c8d8e9e375373cbc26065a38e4b4e553e262cec4feb844",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
       },
       {
         "digest": "bd4a2cedd6f063279166c0e15ae59230ff2129ae549542797414daaaab877f43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
       },
       {
         "digest": "d401638496b0810c73743855dc490254e4e927046191b0e9efb02e2bfd8154d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
       },
       {
         "digest": "d440214d2a40f146aee551d08212e943ab54e6f24721c5ce7f1702af26fd4fb0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
       },
       {
         "digest": "bd7ebb986023a361224fabf1ccd581ba6ecdc907d8b241173b7cf8bcc0852ce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
       },
       {
         "digest": "b615c46d97a47981e71f066d2f6fe3545ad4bac2c761493e91594628c4d356cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
       },
       {
         "digest": "0e46d832ec5c27c7879b16bddc1962a0368c2f66bcc5407ea02e3cc7cf33896a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
       },
       {
         "digest": "7ff66c3a10708763810f00ea10ccd07a5d02958ecbfd1c0b4fcd8402e18df1b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
       },
       {
         "digest": "635bd1d42e5d7d24b7d365c4d313cee876e5542000a5a4b25f619c2287261b9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
       },
       {
         "digest": "9141b97bc0288e1fa64a37e5f35c5bd56898509433459d54bcd08efd787ef90d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
       },
       {
         "digest": "ecc16d51ae1a53ce735f9b4733e2d6baa04dc50976d41e10996887409cc4a974",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/066-beam-billing-invoice-phase1/spec.md",
     "digest": "538d8e736792d0969a84eccdb92f9c54dadb01b4c9bf9fe5b45ee25887f20a0a",
@@ -319,67 +319,67 @@
       {
         "digest": "67ab123e64108c42ab576ee0cc500632ed4a7da092a9d880c6a56b545528a43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
       },
       {
         "digest": "892e85b3b07cc273b40270eac6fa6351bbeeacad1507798f3ef0ab85df1e57e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
       },
       {
         "digest": "943755c5f110e49e62c8d8e9e375373cbc26065a38e4b4e553e262cec4feb844",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
       },
       {
         "digest": "bd4a2cedd6f063279166c0e15ae59230ff2129ae549542797414daaaab877f43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
       },
       {
         "digest": "d401638496b0810c73743855dc490254e4e927046191b0e9efb02e2bfd8154d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
       },
       {
         "digest": "d440214d2a40f146aee551d08212e943ab54e6f24721c5ce7f1702af26fd4fb0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
       },
       {
         "digest": "bd7ebb986023a361224fabf1ccd581ba6ecdc907d8b241173b7cf8bcc0852ce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
       },
       {
         "digest": "b615c46d97a47981e71f066d2f6fe3545ad4bac2c761493e91594628c4d356cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
       },
       {
         "digest": "0e46d832ec5c27c7879b16bddc1962a0368c2f66bcc5407ea02e3cc7cf33896a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
       },
       {
         "digest": "7ff66c3a10708763810f00ea10ccd07a5d02958ecbfd1c0b4fcd8402e18df1b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
       },
       {
         "digest": "635bd1d42e5d7d24b7d365c4d313cee876e5542000a5a4b25f619c2287261b9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
       },
       {
         "digest": "9141b97bc0288e1fa64a37e5f35c5bd56898509433459d54bcd08efd787ef90d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
       },
       {
         "digest": "ecc16d51ae1a53ce735f9b4733e2d6baa04dc50976d41e10996887409cc4a974",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -429,67 +429,67 @@
       {
         "digest": "67ab123e64108c42ab576ee0cc500632ed4a7da092a9d880c6a56b545528a43f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-plan.md"
       },
       {
         "digest": "892e85b3b07cc273b40270eac6fa6351bbeeacad1507798f3ef0ab85df1e57e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/claude-spec.md"
       },
       {
         "digest": "943755c5f110e49e62c8d8e9e375373cbc26065a38e4b4e553e262cec4feb844",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-1.md"
       },
       {
         "digest": "bd4a2cedd6f063279166c0e15ae59230ff2129ae549542797414daaaab877f43",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/reviews/self-review-round-2.md"
       },
       {
         "digest": "d401638496b0810c73743855dc490254e4e927046191b0e9efb02e2bfd8154d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/index.md"
       },
       {
         "digest": "d440214d2a40f146aee551d08212e943ab54e6f24721c5ce7f1702af26fd4fb0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-01-schema-and-auth-foundation.md"
       },
       {
         "digest": "bd7ebb986023a361224fabf1ccd581ba6ecdc907d8b241173b7cf8bcc0852ce2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-02-billing-profiles-and-admin-settings.md"
       },
       {
         "digest": "b615c46d97a47981e71f066d2f6fe3545ad4bac2c761493e91594628c4d356cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-03-invoice-domain-tax-and-numbering.md"
       },
       {
         "digest": "0e46d832ec5c27c7879b16bddc1962a0368c2f66bcc5407ea02e3cc7cf33896a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-04-beam-adapter-webhook-and-payment-attempts.md"
       },
       {
         "digest": "7ff66c3a10708763810f00ea10ccd07a5d02958ecbfd1c0b4fcd8402e18df1b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-05-document-rendering-versioning-and-access.md"
       },
       {
         "digest": "635bd1d42e5d7d24b7d365c4d313cee876e5542000a5a4b25f619c2287261b9c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-06-topup-renewal-and-business-effects.md"
       },
       {
         "digest": "9141b97bc0288e1fa64a37e5f35c5bd56898509433459d54bcd08efd787ef90d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-07-reconciliation-recovery-and-admin-console.md"
       },
       {
         "digest": "ecc16d51ae1a53ce735f9b4733e2d6baa04dc50976d41e10996887409cc4a974",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -24,42 +24,42 @@
       {
         "digest": "273d4b878751d171b7734d58bdcf4dd9f6bf3248a78376c1188cede9618cebb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-plan.md"
       },
       {
         "digest": "4212939cc80fbc9f42cba445ed218fee63accb2b792be52cfe9b28d107723e64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-spec.md"
       },
       {
         "digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
       },
       {
         "digest": "db1f674a6119d2184b8e5531fb213e63ed41444d5920f0d62e02ef11c839cf91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/index.md"
       },
       {
         "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
       },
       {
         "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
       },
       {
         "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
       },
       {
         "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
       }
     ],
     "predecessors": [],
@@ -90,42 +90,42 @@
       {
         "digest": "273d4b878751d171b7734d58bdcf4dd9f6bf3248a78376c1188cede9618cebb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-plan.md"
       },
       {
         "digest": "4212939cc80fbc9f42cba445ed218fee63accb2b792be52cfe9b28d107723e64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-spec.md"
       },
       {
         "digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
       },
       {
         "digest": "db1f674a6119d2184b8e5531fb213e63ed41444d5920f0d62e02ef11c839cf91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/index.md"
       },
       {
         "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
       },
       {
         "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
       },
       {
         "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
       },
       {
         "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -157,48 +157,48 @@
       {
         "digest": "273d4b878751d171b7734d58bdcf4dd9f6bf3248a78376c1188cede9618cebb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-plan.md"
       },
       {
         "digest": "4212939cc80fbc9f42cba445ed218fee63accb2b792be52cfe9b28d107723e64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-spec.md"
       },
       {
         "digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
       },
       {
         "digest": "db1f674a6119d2184b8e5531fb213e63ed41444d5920f0d62e02ef11c839cf91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/index.md"
       },
       {
         "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
       },
       {
         "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
       },
       {
         "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
       },
       {
         "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/045-CeleryJWTRefactor/spec.md",
     "digest": "b6595e76a8f078a8223d3791e4b2fc160a08e5ddf4521f1cfbebf35684a9283e",
@@ -251,42 +251,42 @@
       {
         "digest": "273d4b878751d171b7734d58bdcf4dd9f6bf3248a78376c1188cede9618cebb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-plan.md"
       },
       {
         "digest": "4212939cc80fbc9f42cba445ed218fee63accb2b792be52cfe9b28d107723e64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-spec.md"
       },
       {
         "digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
       },
       {
         "digest": "db1f674a6119d2184b8e5531fb213e63ed41444d5920f0d62e02ef11c839cf91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/index.md"
       },
       {
         "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
       },
       {
         "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
       },
       {
         "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
       },
       {
         "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -423,42 +423,42 @@
       {
         "digest": "273d4b878751d171b7734d58bdcf4dd9f6bf3248a78376c1188cede9618cebb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-plan.md"
       },
       {
         "digest": "4212939cc80fbc9f42cba445ed218fee63accb2b792be52cfe9b28d107723e64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/claude-spec.md"
       },
       {
         "digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json"
       },
       {
         "digest": "db1f674a6119d2184b8e5531fb213e63ed41444d5920f0d62e02ef11c839cf91",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/index.md"
       },
       {
         "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-01-automation-copilot-cleanup.md"
       },
       {
         "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-02-agency-creator-llm-client.md"
       },
       {
         "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-03-agency-creator-internal-api.md"
       },
       {
         "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

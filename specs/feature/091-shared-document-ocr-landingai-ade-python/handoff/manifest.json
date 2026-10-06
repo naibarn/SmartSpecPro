@@ -17,32 +17,32 @@
       {
         "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
       },
       {
         "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
       },
       {
         "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
       },
       {
         "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
       },
       {
         "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
       },
       {
         "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
       }
     ],
     "predecessors": [],
@@ -73,32 +73,32 @@
       {
         "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
       },
       {
         "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
       },
       {
         "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
       },
       {
         "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
       },
       {
         "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
       },
       {
         "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -130,38 +130,38 @@
       {
         "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
       },
       {
         "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
       },
       {
         "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
       },
       {
         "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
       },
       {
         "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
       },
       {
         "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
     "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
@@ -214,32 +214,32 @@
       {
         "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
       },
       {
         "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
       },
       {
         "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
       },
       {
         "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
       },
       {
         "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
       },
       {
         "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -289,32 +289,32 @@
       {
         "digest": "b4fde39192ed21f00041589a8cd4696de5d768da4c2f549e512f4dc62743a5ad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/implementation/deep_implement_config.json"
       },
       {
         "digest": "339b371c57db0e9ad41a53d984792b9cfb4876d8ff4b5368a02ccae670891947",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/index.md"
       },
       {
         "digest": "0d65c4d9df0171364d0f38b8b744afd7849b32d47e5b434eef454e5909544255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-01-ade-service-adapter.md"
       },
       {
         "digest": "e027950056561d191150e957974a5f9e5ce400003e56e07214d2cd5cfd48a297",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-02-upload-routing-and-provider-selection.md"
       },
       {
         "digest": "2257c4afe85ac6dceb1acd529e55261a6bb821bb3f51be9a93408c0644b0d7fc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-03-storage-security-and-policy.md"
       },
       {
         "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

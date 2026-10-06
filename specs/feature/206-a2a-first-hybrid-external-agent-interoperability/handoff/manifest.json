@@ -14,7 +14,7 @@
         "referencing_spec_id": "206",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4206",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4206",
         "source_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
         "successor_spec_id": "206"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "206",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L125",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L125",
         "source_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
         "successor_spec_id": "206"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "206",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4207",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4207",
         "source_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
         "successor_spec_id": "206"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "200",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L8",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/200-universal-coding-agent-control-plane/spec.md#L8",
         "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
         "successor_spec_id": "200"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "208",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4526",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4526",
         "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
         "successor_spec_id": "208"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "209",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L116",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L116",
         "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
         "successor_spec_id": "209"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "210",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L182",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L182",
         "source_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
         "successor_spec_id": "210"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "211",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L384",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L384",
         "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
         "successor_spec_id": "211"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "221",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L121",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/221-smartaihub-skill-engineering-framework/spec.md#L121",
         "source_digest": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
         "successor_spec_id": "221"
       }
@@ -126,32 +126,32 @@
       {
         "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
       },
       {
         "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
       },
       {
         "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
       },
       {
         "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
       },
       {
         "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
       },
       {
         "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
       }
     ],
     "predecessors": [],
@@ -182,32 +182,32 @@
       {
         "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
       },
       {
         "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
       },
       {
         "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
       },
       {
         "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
       },
       {
         "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
       },
       {
         "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -239,38 +239,38 @@
       {
         "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
       },
       {
         "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
       },
       {
         "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
       },
       {
         "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
       },
       {
         "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
       },
       {
         "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
     "digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
@@ -323,32 +323,32 @@
       {
         "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
       },
       {
         "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
       },
       {
         "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
       },
       {
         "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
       },
       {
         "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
       },
       {
         "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -398,32 +398,32 @@
       {
         "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
       },
       {
         "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
       },
       {
         "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
       },
       {
         "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
       },
       {
         "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
       },
       {
         "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

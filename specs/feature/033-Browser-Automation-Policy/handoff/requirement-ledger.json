@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L82"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L82"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L82",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L83"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L84"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L85"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L85"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L85",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L86"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L87"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L87"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L87",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L88"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L88"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L88",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L89"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L89"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L89",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L671"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L671"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L671",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L681"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L682"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L682"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L682",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L683"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L683"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L683",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L684"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L684"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L684",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L685"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L685"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L685",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L686"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L686"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L686",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L687"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L688"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L689"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L690"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L690"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L690",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L691"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L692"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L693"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L693"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L693",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L696"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L696"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L696",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L697"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L697"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L697",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L698"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L698"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L698",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L699"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L702"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L702"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L702",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L703"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L703"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L703",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L704"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L704"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L704",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1000"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1000"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1000",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1001"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1001"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1001",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1002"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1002"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1002",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1003"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1003"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1003",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1004"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1004"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1004",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1007"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1007"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1007",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1008"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1008"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1008",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1008",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1009"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1009"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1009",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1009",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1010"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1010"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1010",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1010",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1011"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1011"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1011",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1012"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1012"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1012",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1012",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1015"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1015"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1015",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1016"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1016"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1016",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1017"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1017"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1017",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1023"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1023"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1023",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1023",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1024"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1024"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1024",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1025"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1025"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1025",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1025",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1026"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1026"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1026",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1027"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1028"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1028"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1028",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1028",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1029"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1029"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1029",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1030"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1030"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1030",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1031"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1031"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1031",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1031",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/033-Browser-Automation-Policy/spec.md#L1032"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1032"
       ],
-      "authority_source": "specs/feature/033-Browser-Automation-Policy/spec.md#L1032",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/033-Browser-Automation-Policy/spec.md#L1032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

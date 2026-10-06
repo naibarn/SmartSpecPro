@@ -17,52 +17,52 @@
       {
         "digest": "73210ce6389f3a8c0f7a790dbc5ed8900486ea0b4ba19e75b18d2d1f6cc06c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
       },
       {
         "digest": "d15f27fc6650242e4a0dbdee5917373b952be1bfdc574c61fa1b10087abc30a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
       },
       {
         "digest": "a5c9fa88ba449df0a2d8d448f17fd812539d37140090dd506a04698040650ae1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
       },
       {
         "digest": "5ea712908a39bc6bce1cfa83f6d0645ae9d55a8ac375a14c456c363f29c71c3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
       },
       {
         "digest": "b030a9a71df1fd6e5b02bd939a916914a6586989099fe64392162b972ef95ddb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
       },
       {
         "digest": "c73cbea45ae5d2f10668426f4fc83832adb26f8c8a878bd76c86c4d47352de0e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
       },
       {
         "digest": "bb7e1401459b8563ba44644c0529f4af6e41af9a65b913c896bbc5a4767c233d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
       },
       {
         "digest": "f72ceeec11653d262b1466f6de3f3dd5fb6dfd5e1b5f3417fc89ad523b98245c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
       },
       {
         "digest": "9dd6f4b27ddced74d70731490f41f6f21c59f3f7ac4d6c80150f1afe42c8e4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
       },
       {
         "digest": "da048fea03e01caa498c2eb159e3ed985aaad392d149981ad5d33e9e9e2bd3c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -93,52 +93,52 @@
       {
         "digest": "73210ce6389f3a8c0f7a790dbc5ed8900486ea0b4ba19e75b18d2d1f6cc06c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
       },
       {
         "digest": "d15f27fc6650242e4a0dbdee5917373b952be1bfdc574c61fa1b10087abc30a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
       },
       {
         "digest": "a5c9fa88ba449df0a2d8d448f17fd812539d37140090dd506a04698040650ae1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
       },
       {
         "digest": "5ea712908a39bc6bce1cfa83f6d0645ae9d55a8ac375a14c456c363f29c71c3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
       },
       {
         "digest": "b030a9a71df1fd6e5b02bd939a916914a6586989099fe64392162b972ef95ddb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
       },
       {
         "digest": "c73cbea45ae5d2f10668426f4fc83832adb26f8c8a878bd76c86c4d47352de0e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
       },
       {
         "digest": "bb7e1401459b8563ba44644c0529f4af6e41af9a65b913c896bbc5a4767c233d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
       },
       {
         "digest": "f72ceeec11653d262b1466f6de3f3dd5fb6dfd5e1b5f3417fc89ad523b98245c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
       },
       {
         "digest": "9dd6f4b27ddced74d70731490f41f6f21c59f3f7ac4d6c80150f1afe42c8e4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
       },
       {
         "digest": "da048fea03e01caa498c2eb159e3ed985aaad392d149981ad5d33e9e9e2bd3c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -170,58 +170,58 @@
       {
         "digest": "73210ce6389f3a8c0f7a790dbc5ed8900486ea0b4ba19e75b18d2d1f6cc06c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
       },
       {
         "digest": "d15f27fc6650242e4a0dbdee5917373b952be1bfdc574c61fa1b10087abc30a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
       },
       {
         "digest": "a5c9fa88ba449df0a2d8d448f17fd812539d37140090dd506a04698040650ae1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
       },
       {
         "digest": "5ea712908a39bc6bce1cfa83f6d0645ae9d55a8ac375a14c456c363f29c71c3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
       },
       {
         "digest": "b030a9a71df1fd6e5b02bd939a916914a6586989099fe64392162b972ef95ddb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
       },
       {
         "digest": "c73cbea45ae5d2f10668426f4fc83832adb26f8c8a878bd76c86c4d47352de0e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
       },
       {
         "digest": "bb7e1401459b8563ba44644c0529f4af6e41af9a65b913c896bbc5a4767c233d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
       },
       {
         "digest": "f72ceeec11653d262b1466f6de3f3dd5fb6dfd5e1b5f3417fc89ad523b98245c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
       },
       {
         "digest": "9dd6f4b27ddced74d70731490f41f6f21c59f3f7ac4d6c80150f1afe42c8e4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
       },
       {
         "digest": "da048fea03e01caa498c2eb159e3ed985aaad392d149981ad5d33e9e9e2bd3c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md",
     "digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
@@ -274,52 +274,52 @@
       {
         "digest": "73210ce6389f3a8c0f7a790dbc5ed8900486ea0b4ba19e75b18d2d1f6cc06c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
       },
       {
         "digest": "d15f27fc6650242e4a0dbdee5917373b952be1bfdc574c61fa1b10087abc30a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
       },
       {
         "digest": "a5c9fa88ba449df0a2d8d448f17fd812539d37140090dd506a04698040650ae1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
       },
       {
         "digest": "5ea712908a39bc6bce1cfa83f6d0645ae9d55a8ac375a14c456c363f29c71c3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
       },
       {
         "digest": "b030a9a71df1fd6e5b02bd939a916914a6586989099fe64392162b972ef95ddb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
       },
       {
         "digest": "c73cbea45ae5d2f10668426f4fc83832adb26f8c8a878bd76c86c4d47352de0e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
       },
       {
         "digest": "bb7e1401459b8563ba44644c0529f4af6e41af9a65b913c896bbc5a4767c233d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
       },
       {
         "digest": "f72ceeec11653d262b1466f6de3f3dd5fb6dfd5e1b5f3417fc89ad523b98245c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
       },
       {
         "digest": "9dd6f4b27ddced74d70731490f41f6f21c59f3f7ac4d6c80150f1afe42c8e4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
       },
       {
         "digest": "da048fea03e01caa498c2eb159e3ed985aaad392d149981ad5d33e9e9e2bd3c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -369,52 +369,52 @@
       {
         "digest": "73210ce6389f3a8c0f7a790dbc5ed8900486ea0b4ba19e75b18d2d1f6cc06c75",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-plan.md"
       },
       {
         "digest": "d15f27fc6650242e4a0dbdee5917373b952be1bfdc574c61fa1b10087abc30a1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/claude-spec.md"
       },
       {
         "digest": "a5c9fa88ba449df0a2d8d448f17fd812539d37140090dd506a04698040650ae1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/implementation/deep_implement_config.json"
       },
       {
         "digest": "5ea712908a39bc6bce1cfa83f6d0645ae9d55a8ac375a14c456c363f29c71c3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/index.md"
       },
       {
         "digest": "b030a9a71df1fd6e5b02bd939a916914a6586989099fe64392162b972ef95ddb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-01-context-contract-and-state-model.md"
       },
       {
         "digest": "c73cbea45ae5d2f10668426f4fc83832adb26f8c8a878bd76c86c4d47352de0e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-02-retrieval-routing-and-hybrid-ranking.md"
       },
       {
         "digest": "bb7e1401459b8563ba44644c0529f4af6e41af9a65b913c896bbc5a4767c233d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-03-context-assembly-and-compaction.md"
       },
       {
         "digest": "f72ceeec11653d262b1466f6de3f3dd5fb6dfd5e1b5f3417fc89ad523b98245c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-04-tools-mcp-provenance-and-lifecycle.md"
       },
       {
         "digest": "9dd6f4b27ddced74d70731490f41f6f21c59f3f7ac4d6c80150f1afe42c8e4c1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-05-chat-team-integration-and-access-control.md"
       },
       {
         "digest": "da048fea03e01caa498c2eb159e3ed985aaad392d149981ad5d33e9e9e2bd3c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/099-context-engineering-ready-chat-and-team/sections/section-06-evals-monitoring-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

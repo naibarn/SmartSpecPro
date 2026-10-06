@@ -17,92 +17,92 @@
       {
         "digest": "716eb1723469b2af59abcb6e295ccae24fb060047b1169820e80cb639deaf747",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-plan.md"
       },
       {
         "digest": "3c647b35461b5dc1d0040f2d80ffcf0002bcb63ed090a3dd13e6b12efb909b40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-spec.md"
       },
       {
         "digest": "96e3891c89d93765fd73d762edcb89b054da8188459f518d4a95e33ef41b170e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/deep_implement_config.json"
       },
       {
         "digest": "b6b3f8371c28c9745582dedda350909c62cff66f60072d4ad57993093ecf9bad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/usage.md"
       },
       {
         "digest": "c22d49b341537e30f9793152e1c6ba63ef12ef35a0e46cf50e46ddcd73b413ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/reviews/iteration-1-opus.md"
       },
       {
         "digest": "f2dae96003137c54758c0293f380f55aa220f03f8e859a4b5ef36950b3ab4d35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/index.md"
       },
       {
         "digest": "de8873a6276b7553b25d8573eeeb131c88eb0687fb49f5101c06837eb91448c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-01-database-schema.md"
       },
       {
         "digest": "1c45efeb08490996b817817d487b206ab51882bc92cb9ccb476e3f1396719db2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-02-groups-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-02-groups-service.md"
       },
       {
         "digest": "5a2560e1a2d4d52ed93a344cafa4f8a24793ca4300f7b7b50d169eb886792c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-03-library-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-03-library-service.md"
       },
       {
         "digest": "1f065ecc1146dca30c7f0b511bc9410abc8fb48b6a31f36b806bed494a83e4d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-04-groups-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-04-groups-router.md"
       },
       {
         "digest": "7accf570dc14998ecad8dd506b3cb30b66080b8be886ae8ffff4507837bc9e97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-05-library-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-05-library-router.md"
       },
       {
         "digest": "000875b1e43931546c46bab5c661b2c873bf0aff19554f427e04e3aee9dd0612",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-06-trash-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-06-trash-job.md"
       },
       {
         "digest": "e60f939d362adb64bbc758003f04f52ccbc35e0cdaed7c32a90710be02861025",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
       },
       {
         "digest": "dd5c062ece9e3f2ac62ae5609586d0845cac4083f8c6840949f09167f368d70c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
       },
       {
         "digest": "85daf55a7c5793a4dbe8240d24721effb8039d03922e9f51fbe3be901542871d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-09-trash-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-09-trash-ui.md"
       },
       {
         "digest": "19bb847628618ef86818c73bb8204b1ccb08acdb1704ba7fe63c5078d765356d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
       },
       {
         "digest": "cd4a5127b2e5db8954a4f14110b2b67b278b017d58f11a3bd5a2c960915e9171",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-11-security-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-11-security-tests.md"
       },
       {
         "digest": "b4131188d7455ed225340948439bfd38f6bede3826d23978c9c8043be820df09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
       }
     ],
     "predecessors": [],
@@ -133,92 +133,92 @@
       {
         "digest": "716eb1723469b2af59abcb6e295ccae24fb060047b1169820e80cb639deaf747",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-plan.md"
       },
       {
         "digest": "3c647b35461b5dc1d0040f2d80ffcf0002bcb63ed090a3dd13e6b12efb909b40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-spec.md"
       },
       {
         "digest": "96e3891c89d93765fd73d762edcb89b054da8188459f518d4a95e33ef41b170e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/deep_implement_config.json"
       },
       {
         "digest": "b6b3f8371c28c9745582dedda350909c62cff66f60072d4ad57993093ecf9bad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/usage.md"
       },
       {
         "digest": "c22d49b341537e30f9793152e1c6ba63ef12ef35a0e46cf50e46ddcd73b413ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/reviews/iteration-1-opus.md"
       },
       {
         "digest": "f2dae96003137c54758c0293f380f55aa220f03f8e859a4b5ef36950b3ab4d35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/index.md"
       },
       {
         "digest": "de8873a6276b7553b25d8573eeeb131c88eb0687fb49f5101c06837eb91448c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-01-database-schema.md"
       },
       {
         "digest": "1c45efeb08490996b817817d487b206ab51882bc92cb9ccb476e3f1396719db2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-02-groups-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-02-groups-service.md"
       },
       {
         "digest": "5a2560e1a2d4d52ed93a344cafa4f8a24793ca4300f7b7b50d169eb886792c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-03-library-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-03-library-service.md"
       },
       {
         "digest": "1f065ecc1146dca30c7f0b511bc9410abc8fb48b6a31f36b806bed494a83e4d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-04-groups-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-04-groups-router.md"
       },
       {
         "digest": "7accf570dc14998ecad8dd506b3cb30b66080b8be886ae8ffff4507837bc9e97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-05-library-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-05-library-router.md"
       },
       {
         "digest": "000875b1e43931546c46bab5c661b2c873bf0aff19554f427e04e3aee9dd0612",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-06-trash-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-06-trash-job.md"
       },
       {
         "digest": "e60f939d362adb64bbc758003f04f52ccbc35e0cdaed7c32a90710be02861025",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
       },
       {
         "digest": "dd5c062ece9e3f2ac62ae5609586d0845cac4083f8c6840949f09167f368d70c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
       },
       {
         "digest": "85daf55a7c5793a4dbe8240d24721effb8039d03922e9f51fbe3be901542871d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-09-trash-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-09-trash-ui.md"
       },
       {
         "digest": "19bb847628618ef86818c73bb8204b1ccb08acdb1704ba7fe63c5078d765356d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
       },
       {
         "digest": "cd4a5127b2e5db8954a4f14110b2b67b278b017d58f11a3bd5a2c960915e9171",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-11-security-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-11-security-tests.md"
       },
       {
         "digest": "b4131188d7455ed225340948439bfd38f6bede3826d23978c9c8043be820df09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -250,98 +250,98 @@
       {
         "digest": "716eb1723469b2af59abcb6e295ccae24fb060047b1169820e80cb639deaf747",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-plan.md"
       },
       {
         "digest": "3c647b35461b5dc1d0040f2d80ffcf0002bcb63ed090a3dd13e6b12efb909b40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-spec.md"
       },
       {
         "digest": "96e3891c89d93765fd73d762edcb89b054da8188459f518d4a95e33ef41b170e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/deep_implement_config.json"
       },
       {
         "digest": "b6b3f8371c28c9745582dedda350909c62cff66f60072d4ad57993093ecf9bad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/usage.md"
       },
       {
         "digest": "c22d49b341537e30f9793152e1c6ba63ef12ef35a0e46cf50e46ddcd73b413ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/reviews/iteration-1-opus.md"
       },
       {
         "digest": "f2dae96003137c54758c0293f380f55aa220f03f8e859a4b5ef36950b3ab4d35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/index.md"
       },
       {
         "digest": "de8873a6276b7553b25d8573eeeb131c88eb0687fb49f5101c06837eb91448c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-01-database-schema.md"
       },
       {
         "digest": "1c45efeb08490996b817817d487b206ab51882bc92cb9ccb476e3f1396719db2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-02-groups-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-02-groups-service.md"
       },
       {
         "digest": "5a2560e1a2d4d52ed93a344cafa4f8a24793ca4300f7b7b50d169eb886792c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-03-library-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-03-library-service.md"
       },
       {
         "digest": "1f065ecc1146dca30c7f0b511bc9410abc8fb48b6a31f36b806bed494a83e4d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-04-groups-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-04-groups-router.md"
       },
       {
         "digest": "7accf570dc14998ecad8dd506b3cb30b66080b8be886ae8ffff4507837bc9e97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-05-library-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-05-library-router.md"
       },
       {
         "digest": "000875b1e43931546c46bab5c661b2c873bf0aff19554f427e04e3aee9dd0612",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-06-trash-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-06-trash-job.md"
       },
       {
         "digest": "e60f939d362adb64bbc758003f04f52ccbc35e0cdaed7c32a90710be02861025",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
       },
       {
         "digest": "dd5c062ece9e3f2ac62ae5609586d0845cac4083f8c6840949f09167f368d70c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
       },
       {
         "digest": "85daf55a7c5793a4dbe8240d24721effb8039d03922e9f51fbe3be901542871d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-09-trash-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-09-trash-ui.md"
       },
       {
         "digest": "19bb847628618ef86818c73bb8204b1ccb08acdb1704ba7fe63c5078d765356d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
       },
       {
         "digest": "cd4a5127b2e5db8954a4f14110b2b67b278b017d58f11a3bd5a2c960915e9171",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-11-security-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-11-security-tests.md"
       },
       {
         "digest": "b4131188d7455ed225340948439bfd38f6bede3826d23978c9c8043be820df09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/009-sharefile/spec.md",
     "digest": "bd710398446300b84b7e45aefbc02b2d1f3eb2cec543085097510885c9f30639",
@@ -394,92 +394,92 @@
       {
         "digest": "716eb1723469b2af59abcb6e295ccae24fb060047b1169820e80cb639deaf747",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-plan.md"
       },
       {
         "digest": "3c647b35461b5dc1d0040f2d80ffcf0002bcb63ed090a3dd13e6b12efb909b40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-spec.md"
       },
       {
         "digest": "96e3891c89d93765fd73d762edcb89b054da8188459f518d4a95e33ef41b170e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/deep_implement_config.json"
       },
       {
         "digest": "b6b3f8371c28c9745582dedda350909c62cff66f60072d4ad57993093ecf9bad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/usage.md"
       },
       {
         "digest": "c22d49b341537e30f9793152e1c6ba63ef12ef35a0e46cf50e46ddcd73b413ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/reviews/iteration-1-opus.md"
       },
       {
         "digest": "f2dae96003137c54758c0293f380f55aa220f03f8e859a4b5ef36950b3ab4d35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/index.md"
       },
       {
         "digest": "de8873a6276b7553b25d8573eeeb131c88eb0687fb49f5101c06837eb91448c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-01-database-schema.md"
       },
       {
         "digest": "1c45efeb08490996b817817d487b206ab51882bc92cb9ccb476e3f1396719db2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-02-groups-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-02-groups-service.md"
       },
       {
         "digest": "5a2560e1a2d4d52ed93a344cafa4f8a24793ca4300f7b7b50d169eb886792c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-03-library-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-03-library-service.md"
       },
       {
         "digest": "1f065ecc1146dca30c7f0b511bc9410abc8fb48b6a31f36b806bed494a83e4d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-04-groups-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-04-groups-router.md"
       },
       {
         "digest": "7accf570dc14998ecad8dd506b3cb30b66080b8be886ae8ffff4507837bc9e97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-05-library-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-05-library-router.md"
       },
       {
         "digest": "000875b1e43931546c46bab5c661b2c873bf0aff19554f427e04e3aee9dd0612",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-06-trash-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-06-trash-job.md"
       },
       {
         "digest": "e60f939d362adb64bbc758003f04f52ccbc35e0cdaed7c32a90710be02861025",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
       },
       {
         "digest": "dd5c062ece9e3f2ac62ae5609586d0845cac4083f8c6840949f09167f368d70c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
       },
       {
         "digest": "85daf55a7c5793a4dbe8240d24721effb8039d03922e9f51fbe3be901542871d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-09-trash-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-09-trash-ui.md"
       },
       {
         "digest": "19bb847628618ef86818c73bb8204b1ccb08acdb1704ba7fe63c5078d765356d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
       },
       {
         "digest": "cd4a5127b2e5db8954a4f14110b2b67b278b017d58f11a3bd5a2c960915e9171",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-11-security-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-11-security-tests.md"
       },
       {
         "digest": "b4131188d7455ed225340948439bfd38f6bede3826d23978c9c8043be820df09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -832,92 +832,92 @@
       {
         "digest": "716eb1723469b2af59abcb6e295ccae24fb060047b1169820e80cb639deaf747",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-plan.md"
       },
       {
         "digest": "3c647b35461b5dc1d0040f2d80ffcf0002bcb63ed090a3dd13e6b12efb909b40",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/claude-spec.md"
       },
       {
         "digest": "96e3891c89d93765fd73d762edcb89b054da8188459f518d4a95e33ef41b170e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/deep_implement_config.json"
       },
       {
         "digest": "b6b3f8371c28c9745582dedda350909c62cff66f60072d4ad57993093ecf9bad",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/implementation/usage.md"
       },
       {
         "digest": "c22d49b341537e30f9793152e1c6ba63ef12ef35a0e46cf50e46ddcd73b413ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/reviews/iteration-1-opus.md"
       },
       {
         "digest": "f2dae96003137c54758c0293f380f55aa220f03f8e859a4b5ef36950b3ab4d35",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/index.md"
       },
       {
         "digest": "de8873a6276b7553b25d8573eeeb131c88eb0687fb49f5101c06837eb91448c0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-01-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-01-database-schema.md"
       },
       {
         "digest": "1c45efeb08490996b817817d487b206ab51882bc92cb9ccb476e3f1396719db2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-02-groups-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-02-groups-service.md"
       },
       {
         "digest": "5a2560e1a2d4d52ed93a344cafa4f8a24793ca4300f7b7b50d169eb886792c9f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-03-library-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-03-library-service.md"
       },
       {
         "digest": "1f065ecc1146dca30c7f0b511bc9410abc8fb48b6a31f36b806bed494a83e4d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-04-groups-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-04-groups-router.md"
       },
       {
         "digest": "7accf570dc14998ecad8dd506b3cb30b66080b8be886ae8ffff4507837bc9e97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-05-library-router.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-05-library-router.md"
       },
       {
         "digest": "000875b1e43931546c46bab5c661b2c873bf0aff19554f427e04e3aee9dd0612",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-06-trash-job.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-06-trash-job.md"
       },
       {
         "digest": "e60f939d362adb64bbc758003f04f52ccbc35e0cdaed7c32a90710be02861025",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-07-group-management-ui.md"
       },
       {
         "digest": "dd5c062ece9e3f2ac62ae5609586d0845cac4083f8c6840949f09167f368d70c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-08-file-sharing-ui.md"
       },
       {
         "digest": "85daf55a7c5793a4dbe8240d24721effb8039d03922e9f51fbe3be901542871d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-09-trash-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-09-trash-ui.md"
       },
       {
         "digest": "19bb847628618ef86818c73bb8204b1ccb08acdb1704ba7fe63c5078d765356d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-10-caching-optimization.md"
       },
       {
         "digest": "cd4a5127b2e5db8954a4f14110b2b67b278b017d58f11a3bd5a2c960915e9171",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-11-security-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-11-security-tests.md"
       },
       {
         "digest": "b4131188d7455ed225340948439bfd38f6bede3826d23978c9c8043be820df09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/009-sharefile/sections/section-12-deployment-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

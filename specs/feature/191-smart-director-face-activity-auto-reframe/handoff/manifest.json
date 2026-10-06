@@ -17,72 +17,72 @@
       {
         "digest": "da1803af448c2f0cbeb97b2f6878b4d1ee2804bdd4479a624bc6a695d50c3e21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
       },
       {
         "digest": "fd51836f8fd2ff4d85987e7aa75525ad9a8cea95fefcacbf71f9efc19dc427b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
       },
       {
         "digest": "5bbfaf54cb81d8e95a9061b480daa18c6746aba9b43b9605c7e5f047ebd2d60f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce59945f63e21e0e033c491c358af76d67c1c7a74048c43dcd1f5436ef8646ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
       },
       {
         "digest": "c42404f26db8fd8bbf381c1114362e6dfb7b4217e0d9f3909144d993be674d03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
       },
       {
         "digest": "f1f69c2b3be84ba7c8c053873b126f367ba2d88aff57af33f2b31f6ce3cac445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
       },
       {
         "digest": "96e66ab8879f9914d3807afa5934efd726998e7235ebcdd0268b9b58d8fdec9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
       },
       {
         "digest": "534d374212911ee574df0bc9db7f5245ea9845d2aacead85365e057147f8bf3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
       },
       {
         "digest": "4fa85f74e3958726f458959d9df9d86f928cf24b0d86bbb9b702b59c4ae77609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
       },
       {
         "digest": "2af44ab3d89334f2e6d35f1e7bdee8e70c670cd332619e1f88ab93031298cbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
       },
       {
         "digest": "c88a95621181a6c96c57850ce6f1090b7167409d7ac261a122bee339c22f139c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
       },
       {
         "digest": "0d4a11c8859353a86e7aa1f311e6909890c6f3ace738b46a5bcec09536454dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
       },
       {
         "digest": "e95b29ca8be920f4882271dbbedefb580bd619ea3b8144f2caeee521fecb334e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
       },
       {
         "digest": "63337a157f12fa975ef41c40b07e8f4da24b8284132f0c03342a4502c8180960",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "da1803af448c2f0cbeb97b2f6878b4d1ee2804bdd4479a624bc6a695d50c3e21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
       },
       {
         "digest": "fd51836f8fd2ff4d85987e7aa75525ad9a8cea95fefcacbf71f9efc19dc427b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
       },
       {
         "digest": "5bbfaf54cb81d8e95a9061b480daa18c6746aba9b43b9605c7e5f047ebd2d60f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce59945f63e21e0e033c491c358af76d67c1c7a74048c43dcd1f5436ef8646ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
       },
       {
         "digest": "c42404f26db8fd8bbf381c1114362e6dfb7b4217e0d9f3909144d993be674d03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
       },
       {
         "digest": "f1f69c2b3be84ba7c8c053873b126f367ba2d88aff57af33f2b31f6ce3cac445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
       },
       {
         "digest": "96e66ab8879f9914d3807afa5934efd726998e7235ebcdd0268b9b58d8fdec9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
       },
       {
         "digest": "534d374212911ee574df0bc9db7f5245ea9845d2aacead85365e057147f8bf3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
       },
       {
         "digest": "4fa85f74e3958726f458959d9df9d86f928cf24b0d86bbb9b702b59c4ae77609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
       },
       {
         "digest": "2af44ab3d89334f2e6d35f1e7bdee8e70c670cd332619e1f88ab93031298cbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
       },
       {
         "digest": "c88a95621181a6c96c57850ce6f1090b7167409d7ac261a122bee339c22f139c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
       },
       {
         "digest": "0d4a11c8859353a86e7aa1f311e6909890c6f3ace738b46a5bcec09536454dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
       },
       {
         "digest": "e95b29ca8be920f4882271dbbedefb580bd619ea3b8144f2caeee521fecb334e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
       },
       {
         "digest": "63337a157f12fa975ef41c40b07e8f4da24b8284132f0c03342a4502c8180960",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,78 +210,78 @@
       {
         "digest": "da1803af448c2f0cbeb97b2f6878b4d1ee2804bdd4479a624bc6a695d50c3e21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
       },
       {
         "digest": "fd51836f8fd2ff4d85987e7aa75525ad9a8cea95fefcacbf71f9efc19dc427b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
       },
       {
         "digest": "5bbfaf54cb81d8e95a9061b480daa18c6746aba9b43b9605c7e5f047ebd2d60f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce59945f63e21e0e033c491c358af76d67c1c7a74048c43dcd1f5436ef8646ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
       },
       {
         "digest": "c42404f26db8fd8bbf381c1114362e6dfb7b4217e0d9f3909144d993be674d03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
       },
       {
         "digest": "f1f69c2b3be84ba7c8c053873b126f367ba2d88aff57af33f2b31f6ce3cac445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
       },
       {
         "digest": "96e66ab8879f9914d3807afa5934efd726998e7235ebcdd0268b9b58d8fdec9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
       },
       {
         "digest": "534d374212911ee574df0bc9db7f5245ea9845d2aacead85365e057147f8bf3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
       },
       {
         "digest": "4fa85f74e3958726f458959d9df9d86f928cf24b0d86bbb9b702b59c4ae77609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
       },
       {
         "digest": "2af44ab3d89334f2e6d35f1e7bdee8e70c670cd332619e1f88ab93031298cbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
       },
       {
         "digest": "c88a95621181a6c96c57850ce6f1090b7167409d7ac261a122bee339c22f139c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
       },
       {
         "digest": "0d4a11c8859353a86e7aa1f311e6909890c6f3ace738b46a5bcec09536454dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
       },
       {
         "digest": "e95b29ca8be920f4882271dbbedefb580bd619ea3b8144f2caeee521fecb334e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
       },
       {
         "digest": "63337a157f12fa975ef41c40b07e8f4da24b8284132f0c03342a4502c8180960",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
     "digest": "93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
@@ -334,72 +334,72 @@
       {
         "digest": "da1803af448c2f0cbeb97b2f6878b4d1ee2804bdd4479a624bc6a695d50c3e21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
       },
       {
         "digest": "fd51836f8fd2ff4d85987e7aa75525ad9a8cea95fefcacbf71f9efc19dc427b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
       },
       {
         "digest": "5bbfaf54cb81d8e95a9061b480daa18c6746aba9b43b9605c7e5f047ebd2d60f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce59945f63e21e0e033c491c358af76d67c1c7a74048c43dcd1f5436ef8646ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
       },
       {
         "digest": "c42404f26db8fd8bbf381c1114362e6dfb7b4217e0d9f3909144d993be674d03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
       },
       {
         "digest": "f1f69c2b3be84ba7c8c053873b126f367ba2d88aff57af33f2b31f6ce3cac445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
       },
       {
         "digest": "96e66ab8879f9914d3807afa5934efd726998e7235ebcdd0268b9b58d8fdec9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
       },
       {
         "digest": "534d374212911ee574df0bc9db7f5245ea9845d2aacead85365e057147f8bf3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
       },
       {
         "digest": "4fa85f74e3958726f458959d9df9d86f928cf24b0d86bbb9b702b59c4ae77609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
       },
       {
         "digest": "2af44ab3d89334f2e6d35f1e7bdee8e70c670cd332619e1f88ab93031298cbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
       },
       {
         "digest": "c88a95621181a6c96c57850ce6f1090b7167409d7ac261a122bee339c22f139c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
       },
       {
         "digest": "0d4a11c8859353a86e7aa1f311e6909890c6f3ace738b46a5bcec09536454dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
       },
       {
         "digest": "e95b29ca8be920f4882271dbbedefb580bd619ea3b8144f2caeee521fecb334e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
       },
       {
         "digest": "63337a157f12fa975ef41c40b07e8f4da24b8284132f0c03342a4502c8180960",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -449,72 +449,72 @@
       {
         "digest": "da1803af448c2f0cbeb97b2f6878b4d1ee2804bdd4479a624bc6a695d50c3e21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-plan.md"
       },
       {
         "digest": "fd51836f8fd2ff4d85987e7aa75525ad9a8cea95fefcacbf71f9efc19dc427b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/claude-spec.md"
       },
       {
         "digest": "5bbfaf54cb81d8e95a9061b480daa18c6746aba9b43b9605c7e5f047ebd2d60f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce59945f63e21e0e033c491c358af76d67c1c7a74048c43dcd1f5436ef8646ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/completeness-audit-rounds-01-15.md"
       },
       {
         "digest": "c42404f26db8fd8bbf381c1114362e6dfb7b4217e0d9f3909144d993be674d03",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/implementation-review-rounds-1-10.md"
       },
       {
         "digest": "f1f69c2b3be84ba7c8c053873b126f367ba2d88aff57af33f2b31f6ce3cac445",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/reviews/self-review-round-1.md"
       },
       {
         "digest": "96e66ab8879f9914d3807afa5934efd726998e7235ebcdd0268b9b58d8fdec9d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/index.md"
       },
       {
         "digest": "534d374212911ee574df0bc9db7f5245ea9845d2aacead85365e057147f8bf3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-01-shared-contract.md"
       },
       {
         "digest": "4fa85f74e3958726f458959d9df9d86f928cf24b0d86bbb9b702b59c4ae77609",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-02-planner-geometry.md"
       },
       {
         "digest": "2af44ab3d89334f2e6d35f1e7bdee8e70c670cd332619e1f88ab93031298cbab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-03-player-modes-marks.md"
       },
       {
         "digest": "c88a95621181a6c96c57850ce6f1090b7167409d7ac261a122bee339c22f139c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-04-vision-quick-full-scan.md"
       },
       {
         "digest": "0d4a11c8859353a86e7aa1f311e6909890c6f3ace738b46a5bcec09536454dc0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-05-rust-render-parity.md"
       },
       {
         "digest": "e95b29ca8be920f4882271dbbedefb580bd619ea3b8144f2caeee521fecb334e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-06-feature186-job-boundary.md"
       },
       {
         "digest": "63337a157f12fa975ef41c40b07e8f4da24b8284132f0c03342a4502c8180960",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

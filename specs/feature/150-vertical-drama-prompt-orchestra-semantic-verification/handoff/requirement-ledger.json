@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L13"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L13"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L13",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L18"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L18"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L18",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L18",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L19"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L19"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L19",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L19",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L47"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L47"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L47",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L64"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L64"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L64",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L78"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L78"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L78",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L80"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L82"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L82"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L82",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L84"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L86"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L87"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L87"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L87",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L88"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L88"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L88",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L90"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L90"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L90",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L91"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L91"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L91",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L93"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L93"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L93",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L93",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L94"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L94"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L94",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L96"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L120"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L120"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L120",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L120",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L127"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L127"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L127",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L127",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L134"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L142"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L152"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L156"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L164"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L165"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L220"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L220"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L220",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L225"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L232"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L263"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L263"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L263",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L295"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L320"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L320"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L320",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L322"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L324"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L324"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L324",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L330"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L336"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L338"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L338"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L338",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L344"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L345"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L345"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L345",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L349"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L349"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L349",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L367"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L367"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L367",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L367",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L372"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L394"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L408"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L423"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L423"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L423",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L428"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L428"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L428",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L451"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L453"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L453"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L453",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L453",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L469"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L469"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L469",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L470"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L470"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L470",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L471"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L471"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L471",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L477"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L477"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L477",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L487"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L487"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L487",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L490"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L490"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L490",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L495"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L495"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L495",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L498"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L498"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L498",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L511"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L519"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L519"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L519",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L529"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L548"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L548"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L548",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L562"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L562"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L562",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L571"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L571"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L571",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L617"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L618"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L642"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L656"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L670"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L692"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L704"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L704"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L704",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L711"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L711"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L711",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L711",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L724"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L727"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L727"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L727",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L773"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L775"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L775"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L775",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L777"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L778"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L778"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L778",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L780"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L780"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L780",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L781"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L783"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L783"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L783",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L783",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L785"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L785"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L785",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L787"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L787"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L787",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L788"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L788",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L789"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L790"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L790"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L790",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L792"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L792"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L792",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L794"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L794"
       ],
-      "authority_source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L794",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md#L794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

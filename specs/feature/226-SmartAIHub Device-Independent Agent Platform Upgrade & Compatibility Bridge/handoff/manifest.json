@@ -14,7 +14,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L105",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L105",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L105",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L105",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L104",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L104",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "249",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md#L707",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md#L707",
         "source_digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
         "successor_spec_id": "249"
       },
@@ -122,7 +122,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2502",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2502",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       }
@@ -276,7 +276,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
     "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",

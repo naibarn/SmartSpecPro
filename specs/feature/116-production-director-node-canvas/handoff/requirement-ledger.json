@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L9"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L9"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L9",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L9",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L41"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L41"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L41",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L42"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L42"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L42",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L42",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L43"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L44"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L44"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L44",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L45"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L45"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L45",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L45",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L46"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L46"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L46",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L47"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L47"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L47",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L47",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L48"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L49"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L49"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L49",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L50"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L50"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L50",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L51"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L51"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L51",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L52"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L53"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L53"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L53",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L54"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L54"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L54",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L55"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L55"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L55",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L55",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L56"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L56"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L56",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L57"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L57"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L57",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L57",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L70"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L74"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L74"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L74",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L79"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L79"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L79",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L99"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L99"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L99",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L100"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L157"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L157"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L157",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L201"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L201"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L201",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L209"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L209"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L209",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L226"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L226"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L226",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L226",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L234"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L269"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L316"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L316"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L316",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L322"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L364"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L364"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L364",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L408"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L409"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L447"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L447"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L447",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L521"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L598"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L598"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L598",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L604"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L604"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L604",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L619"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L619"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L619",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L621"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L699"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L781"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L812"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L812"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L812",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L813"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L813"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L813",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L869"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L869"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L869",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L869",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L983"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L983"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L983",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L983",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L995"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L995"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L995",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1014"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1014"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1014",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1014",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1070"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1070"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1070",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1074"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1074"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1074",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1075"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1075"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1075",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1075",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1076"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1076"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1076",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1077"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1077"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1077",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1078"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1078"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1078",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1079"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1079"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1079",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1079",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1080"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1080"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1080",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1081"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1081"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1081",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1082"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1082"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1082",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1082",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1083"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1083"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1083",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1084"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1084"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1084",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1084",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1085"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1085"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1085",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1086"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1086"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1086",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1087"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1087"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1087",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1087",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1093"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1093"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1093",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1094"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1094"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1094",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1094",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1095"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1095"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1095",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1095",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1096"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1097"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1097"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1097",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1097",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1098"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1098"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1098",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1098",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1099"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1099"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1099",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1099",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1100"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1101"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1102"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1104"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1106"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1108"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1110"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1111"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1112"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1113"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1114"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1115"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1116"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1117"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1119"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1119"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1119",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1125"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1129"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1129"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1129",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1130"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1131"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1132"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1133"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1133"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1133",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1134"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1135"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1136"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1136"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1136",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1137"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1137"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1137",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1138"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1139"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1139"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1139",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1140"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1141"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1142"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1143"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1143"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1143",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1144"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1145"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1145"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1145",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1146"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1147"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1148"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1149"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1149"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1149",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1150"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1150"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1150",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1151"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1151"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1151",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1152"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1153"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1153"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1153",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1154"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1154"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1154",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1155"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1156"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1157"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1157"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1157",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1158"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1159"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1159"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1159",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1160"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1161"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1162"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1163"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1164"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1165"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1166"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1167"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1167"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1167",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1168"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1169"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1170"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1170"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1170",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1170",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1171"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1171"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1171",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1172"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1172"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1172",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1172",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1173"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1173"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1173",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1174"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1174"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1174",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1178"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1179"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1180"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1181"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1182"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1182"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1182",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1183"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1184"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1185"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1185"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1185",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1186"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1186"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1186",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1187"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1188"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/116-production-director-node-canvas/spec.md#L1189"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1189"
       ],
-      "authority_source": "specs/feature/116-production-director-node-canvas/spec.md#L1189",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/116-production-director-node-canvas/spec.md#L1189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -17,7 +17,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
@@ -87,13 +87,13 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/006-docker-dev-environment/spec.md",
     "digest": "d6cae7c41a963e3c05a599d8e52030d1d57f0391bae199648ba171a92658f8b3",
@@ -146,7 +146,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
@@ -189,7 +189,7 @@
       {
         "digest": "fba7a876a1b1cf6ae15ea85ba58ae4b0c0f3f305035cd6a23aba4724f235259d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/006-docker-dev-environment/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/006-docker-dev-environment/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

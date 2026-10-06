@@ -17,97 +17,97 @@
       {
         "digest": "e1c8865fb9f100d5b9d2041a5dd8cd9f69ff456987fc8393cb5be96c20b32fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
       },
       {
         "digest": "e2b18f7e3577cc6d50093fb7c61fba1e9a7d22c04b8cec88a4c26e3e4e9b5d81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
       },
       {
         "digest": "959eac79bf5e424471dac10036df89187f9a6cceaa8bf9188013ba34e71ad2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
       },
       {
         "digest": "c6963ad109f45f8c8dbd9e8c9538fc4080c6cb07407bbbd47b8f50a7d5781cce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
       },
       {
         "digest": "b49cdfdc9e97563090f6961d5136e9b4a34dac5b1f1d5c61c92b90682d5c73cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
       },
       {
         "digest": "3494d88e22a6c9c231b6dede11a6296c670f9cac88f12d19dff60da3a5c695e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
       },
       {
         "digest": "e15c5de4f968bc41df7ca4c65a4b2f66bf44a5714440a3cd6d79b8d4ae7d1824",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
       },
       {
         "digest": "08730b4f002a99fb8f58bd75eca0e1b3cd122e33e56d975e708eef3c7f9dbb10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
       },
       {
         "digest": "08bacc370f6a5cc3755feb14722a15b37910304abaad1ba602c26c4bb22d2c83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
       },
       {
         "digest": "6d71ad195bab91a276dabd1a1ce20197e60ffaae0072e919d9f106a15f9512d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
       },
       {
         "digest": "37918ba81110f2e386bd94e4076979148b83e0d4b0ae818343f4d646f646f693",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
       },
       {
         "digest": "3cc44923b7a7fd34b8412bde8afc843c0f752d5f0bee38a280779db11df6a199",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
       },
       {
         "digest": "81b7038ec8b4ad2222c7958bd7b56196b5821525290f64e10a3d3e30118cca13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
       },
       {
         "digest": "61a05fcf0da196b831fc68c2d8842089a2d5c2eca6e9e539abcb9aae3e4939ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
       },
       {
         "digest": "1eeb0068d8a88814b989cc73c94717962d0241e1584d0532828ad0da4aab87f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
       },
       {
         "digest": "1e3cc93fca85b2efe8bcfe3169646963379dc01527ac7c4d9b0368c9e0310bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
       },
       {
         "digest": "8c8f1abecc161a254abcacd21326ae1f0d80468505e4e2f8a1373363c2e8467c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
       },
       {
         "digest": "e8f8d859b10b553c132403f51939083156eef962f3aca330339c979d97b18f6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
       },
       {
         "digest": "82484eac1a016e275549cbf086bfd844acf43352e6a7e414fe39758bec9ee315",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "e1c8865fb9f100d5b9d2041a5dd8cd9f69ff456987fc8393cb5be96c20b32fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
       },
       {
         "digest": "e2b18f7e3577cc6d50093fb7c61fba1e9a7d22c04b8cec88a4c26e3e4e9b5d81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
       },
       {
         "digest": "959eac79bf5e424471dac10036df89187f9a6cceaa8bf9188013ba34e71ad2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
       },
       {
         "digest": "c6963ad109f45f8c8dbd9e8c9538fc4080c6cb07407bbbd47b8f50a7d5781cce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
       },
       {
         "digest": "b49cdfdc9e97563090f6961d5136e9b4a34dac5b1f1d5c61c92b90682d5c73cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
       },
       {
         "digest": "3494d88e22a6c9c231b6dede11a6296c670f9cac88f12d19dff60da3a5c695e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
       },
       {
         "digest": "e15c5de4f968bc41df7ca4c65a4b2f66bf44a5714440a3cd6d79b8d4ae7d1824",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
       },
       {
         "digest": "08730b4f002a99fb8f58bd75eca0e1b3cd122e33e56d975e708eef3c7f9dbb10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
       },
       {
         "digest": "08bacc370f6a5cc3755feb14722a15b37910304abaad1ba602c26c4bb22d2c83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
       },
       {
         "digest": "6d71ad195bab91a276dabd1a1ce20197e60ffaae0072e919d9f106a15f9512d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
       },
       {
         "digest": "37918ba81110f2e386bd94e4076979148b83e0d4b0ae818343f4d646f646f693",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
       },
       {
         "digest": "3cc44923b7a7fd34b8412bde8afc843c0f752d5f0bee38a280779db11df6a199",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
       },
       {
         "digest": "81b7038ec8b4ad2222c7958bd7b56196b5821525290f64e10a3d3e30118cca13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
       },
       {
         "digest": "61a05fcf0da196b831fc68c2d8842089a2d5c2eca6e9e539abcb9aae3e4939ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
       },
       {
         "digest": "1eeb0068d8a88814b989cc73c94717962d0241e1584d0532828ad0da4aab87f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
       },
       {
         "digest": "1e3cc93fca85b2efe8bcfe3169646963379dc01527ac7c4d9b0368c9e0310bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
       },
       {
         "digest": "8c8f1abecc161a254abcacd21326ae1f0d80468505e4e2f8a1373363c2e8467c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
       },
       {
         "digest": "e8f8d859b10b553c132403f51939083156eef962f3aca330339c979d97b18f6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
       },
       {
         "digest": "82484eac1a016e275549cbf086bfd844acf43352e6a7e414fe39758bec9ee315",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "e1c8865fb9f100d5b9d2041a5dd8cd9f69ff456987fc8393cb5be96c20b32fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
       },
       {
         "digest": "e2b18f7e3577cc6d50093fb7c61fba1e9a7d22c04b8cec88a4c26e3e4e9b5d81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
       },
       {
         "digest": "959eac79bf5e424471dac10036df89187f9a6cceaa8bf9188013ba34e71ad2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
       },
       {
         "digest": "c6963ad109f45f8c8dbd9e8c9538fc4080c6cb07407bbbd47b8f50a7d5781cce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
       },
       {
         "digest": "b49cdfdc9e97563090f6961d5136e9b4a34dac5b1f1d5c61c92b90682d5c73cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
       },
       {
         "digest": "3494d88e22a6c9c231b6dede11a6296c670f9cac88f12d19dff60da3a5c695e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
       },
       {
         "digest": "e15c5de4f968bc41df7ca4c65a4b2f66bf44a5714440a3cd6d79b8d4ae7d1824",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
       },
       {
         "digest": "08730b4f002a99fb8f58bd75eca0e1b3cd122e33e56d975e708eef3c7f9dbb10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
       },
       {
         "digest": "08bacc370f6a5cc3755feb14722a15b37910304abaad1ba602c26c4bb22d2c83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
       },
       {
         "digest": "6d71ad195bab91a276dabd1a1ce20197e60ffaae0072e919d9f106a15f9512d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
       },
       {
         "digest": "37918ba81110f2e386bd94e4076979148b83e0d4b0ae818343f4d646f646f693",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
       },
       {
         "digest": "3cc44923b7a7fd34b8412bde8afc843c0f752d5f0bee38a280779db11df6a199",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
       },
       {
         "digest": "81b7038ec8b4ad2222c7958bd7b56196b5821525290f64e10a3d3e30118cca13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
       },
       {
         "digest": "61a05fcf0da196b831fc68c2d8842089a2d5c2eca6e9e539abcb9aae3e4939ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
       },
       {
         "digest": "1eeb0068d8a88814b989cc73c94717962d0241e1584d0532828ad0da4aab87f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
       },
       {
         "digest": "1e3cc93fca85b2efe8bcfe3169646963379dc01527ac7c4d9b0368c9e0310bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
       },
       {
         "digest": "8c8f1abecc161a254abcacd21326ae1f0d80468505e4e2f8a1373363c2e8467c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
       },
       {
         "digest": "e8f8d859b10b553c132403f51939083156eef962f3aca330339c979d97b18f6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
       },
       {
         "digest": "82484eac1a016e275549cbf086bfd844acf43352e6a7e414fe39758bec9ee315",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
     "digest": "23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
@@ -409,112 +409,112 @@
       {
         "digest": "e1c8865fb9f100d5b9d2041a5dd8cd9f69ff456987fc8393cb5be96c20b32fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
       },
       {
         "digest": "e2b18f7e3577cc6d50093fb7c61fba1e9a7d22c04b8cec88a4c26e3e4e9b5d81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
       },
       {
         "digest": "959eac79bf5e424471dac10036df89187f9a6cceaa8bf9188013ba34e71ad2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
       },
       {
         "digest": "c6963ad109f45f8c8dbd9e8c9538fc4080c6cb07407bbbd47b8f50a7d5781cce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
       },
       {
         "digest": "b49cdfdc9e97563090f6961d5136e9b4a34dac5b1f1d5c61c92b90682d5c73cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
       },
       {
         "digest": "3494d88e22a6c9c231b6dede11a6296c670f9cac88f12d19dff60da3a5c695e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
       },
       {
         "digest": "e15c5de4f968bc41df7ca4c65a4b2f66bf44a5714440a3cd6d79b8d4ae7d1824",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
       },
       {
         "digest": "08730b4f002a99fb8f58bd75eca0e1b3cd122e33e56d975e708eef3c7f9dbb10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
       },
       {
         "digest": "08bacc370f6a5cc3755feb14722a15b37910304abaad1ba602c26c4bb22d2c83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
       },
       {
         "digest": "6d71ad195bab91a276dabd1a1ce20197e60ffaae0072e919d9f106a15f9512d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
       },
       {
         "digest": "37918ba81110f2e386bd94e4076979148b83e0d4b0ae818343f4d646f646f693",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
       },
       {
         "digest": "3cc44923b7a7fd34b8412bde8afc843c0f752d5f0bee38a280779db11df6a199",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
       },
       {
         "digest": "81b7038ec8b4ad2222c7958bd7b56196b5821525290f64e10a3d3e30118cca13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
       },
       {
         "digest": "61a05fcf0da196b831fc68c2d8842089a2d5c2eca6e9e539abcb9aae3e4939ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
       },
       {
         "digest": "1eeb0068d8a88814b989cc73c94717962d0241e1584d0532828ad0da4aab87f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
       },
       {
         "digest": "1e3cc93fca85b2efe8bcfe3169646963379dc01527ac7c4d9b0368c9e0310bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
       },
       {
         "digest": "8c8f1abecc161a254abcacd21326ae1f0d80468505e4e2f8a1373363c2e8467c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
       },
       {
         "digest": "e8f8d859b10b553c132403f51939083156eef962f3aca330339c979d97b18f6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
       },
       {
         "digest": "82484eac1a016e275549cbf086bfd844acf43352e6a7e414fe39758bec9ee315",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
       },
       {
         "digest": "f785f328fbfcb4e4a3ff842fa37507f6acfdb1c5f70e6f97b1adb75e09bdb02c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-10-observability-retention-operator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-10-observability-retention-operator.md"
       },
       {
         "digest": "d19694d012cc9a565533625b6f9cddc8d2ff6fe39041e6af60ded027dcafe897",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-11-fixtures-e2e-release-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-11-fixtures-e2e-release-gates.md"
       },
       {
         "digest": "83d26145bb8ddb5b21fadd89569627c332d26d6a2ef8020f60de4fbf2198c253",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-12-dependency-rollout-docs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-12-dependency-rollout-docs.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -564,112 +564,112 @@
       {
         "digest": "e1c8865fb9f100d5b9d2041a5dd8cd9f69ff456987fc8393cb5be96c20b32fe0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-plan.md"
       },
       {
         "digest": "e2b18f7e3577cc6d50093fb7c61fba1e9a7d22c04b8cec88a4c26e3e4e9b5d81",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/claude-spec.md"
       },
       {
         "digest": "959eac79bf5e424471dac10036df89187f9a6cceaa8bf9188013ba34e71ad2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/deep_implement_config.json"
       },
       {
         "digest": "c6963ad109f45f8c8dbd9e8c9538fc4080c6cb07407bbbd47b8f50a7d5781cce",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md"
       },
       {
         "digest": "b49cdfdc9e97563090f6961d5136e9b4a34dac5b1f1d5c61c92b90682d5c73cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-2.md"
       },
       {
         "digest": "3494d88e22a6c9c231b6dede11a6296c670f9cac88f12d19dff60da3a5c695e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-3.md"
       },
       {
         "digest": "e15c5de4f968bc41df7ca4c65a4b2f66bf44a5714440a3cd6d79b8d4ae7d1824",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-4.md"
       },
       {
         "digest": "08730b4f002a99fb8f58bd75eca0e1b3cd122e33e56d975e708eef3c7f9dbb10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/plan-spec-alignment-review-round-5.md"
       },
       {
         "digest": "08bacc370f6a5cc3755feb14722a15b37910304abaad1ba602c26c4bb22d2c83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/reviews/self-review-round-1.md"
       },
       {
         "digest": "6d71ad195bab91a276dabd1a1ce20197e60ffaae0072e919d9f106a15f9512d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/index.md"
       },
       {
         "digest": "37918ba81110f2e386bd94e4076979148b83e0d4b0ae818343f4d646f646f693",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-01-contracts-and-runtime-schemas.md"
       },
       {
         "digest": "3cc44923b7a7fd34b8412bde8afc843c0f752d5f0bee38a280779db11df6a199",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-02-auto-plan-and-feature-access.md"
       },
       {
         "digest": "81b7038ec8b4ad2222c7958bd7b56196b5821525290f64e10a3d3e30118cca13",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-03-template-and-composition-builder.md"
       },
       {
         "digest": "61a05fcf0da196b831fc68c2d8842089a2d5c2eca6e9e539abcb9aae3e4939ec",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-04-asset-staging-security-qa.md"
       },
       {
         "digest": "1eeb0068d8a88814b989cc73c94717962d0241e1584d0532828ad0da4aab87f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-05-render-worker-and-runtime-state.md"
       },
       {
         "digest": "1e3cc93fca85b2efe8bcfe3169646963379dc01527ac7c4d9b0368c9e0310bba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-06-runtime-api-router-integration.md"
       },
       {
         "digest": "8c8f1abecc161a254abcacd21326ae1f0d80468505e4e2f8a1373363c2e8467c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-07-product-detail-dual-mode-ui.md"
       },
       {
         "digest": "e8f8d859b10b553c132403f51939083156eef962f3aca330339c979d97b18f6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-08-storyboard-review-mediastudio-handoff-ui.md"
       },
       {
         "digest": "82484eac1a016e275549cbf086bfd844acf43352e6a7e414fe39758bec9ee315",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-09-library-history-video-editor-finalize.md"
       },
       {
         "digest": "f785f328fbfcb4e4a3ff842fa37507f6acfdb1c5f70e6f97b1adb75e09bdb02c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-10-observability-retention-operator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-10-observability-retention-operator.md"
       },
       {
         "digest": "d19694d012cc9a565533625b6f9cddc8d2ff6fe39041e6af60ded027dcafe897",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-11-fixtures-e2e-release-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-11-fixtures-e2e-release-gates.md"
       },
       {
         "digest": "83d26145bb8ddb5b21fadd89569627c332d26d6a2ef8020f60de4fbf2198c253",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-12-dependency-rollout-docs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-12-dependency-rollout-docs.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

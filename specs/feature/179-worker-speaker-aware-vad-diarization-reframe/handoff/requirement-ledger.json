@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L29"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L29"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L29",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L61"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L61"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L61",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L68"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L68"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L68",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L79"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L79"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L79",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L87"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L87"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L87",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L104"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L109"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L112"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L115"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L134"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L161"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L165"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L171"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L171"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L171",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L179"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L207"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L259"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L262"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L274"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L274"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L274",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L288"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L288"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L295"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L318"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L318"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L318",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L326"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L326"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L326",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L328"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L328"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L328",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L345"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L345"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L345",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L375"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L392"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L412"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L412"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L412",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L459"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L515"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L515"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L515",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L520"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L520"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L520",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L538"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L538"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L538",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L548"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L548"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L548",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L548",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L567"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L567"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L567",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L567",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L568"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L568"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L568",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L637"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L726"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L726"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L726",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L729"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L729"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L729",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L731"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L731"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L731",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L733"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L733"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L733",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L735"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L735"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L735",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L737"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L737"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L737",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L739"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L741"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L741"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L741",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L744"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L744"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L744",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L746"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L748"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L750"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L750"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L750",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L752"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L752"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L752",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L755"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L758"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L760"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L760"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L760",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L762"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L762"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L762",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L765"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L765"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L765",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L767"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L767"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L767",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L770"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L775"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L775"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L775",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L790"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L790"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L790",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L791"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L792"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L792"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L792",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L793"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L793"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L793",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L796"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L796"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L796",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L809"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L809"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L809",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L809",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L823"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L823"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L823",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L823",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L829"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L829"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L829",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L839"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L839"
       ],
-      "authority_source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L839",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md#L839",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

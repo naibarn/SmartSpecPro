@@ -17,7 +17,7 @@
           "R1.1",
           "R1.2"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -32,7 +32,7 @@
           "R1.1",
           "R1.2"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -46,7 +46,7 @@
         "requirement_ids": [
           "R1.2"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L213",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L213",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -60,7 +60,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L24",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L24",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -72,7 +72,7 @@
         "referencing_spec_id": "246",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L301",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L301",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -84,7 +84,7 @@
         "referencing_spec_id": "246",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L339",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L339",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       }
@@ -154,7 +154,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/246-AI Scientific Discovery Studio/spec.md",
     "digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",

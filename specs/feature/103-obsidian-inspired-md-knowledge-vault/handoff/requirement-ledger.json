@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L54"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L54"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L54",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L64"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L64"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L64",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L65"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L65"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L65",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L66"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L66"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L66",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L66",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L67"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L67"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L67",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L67",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L68"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L68"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L68",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L69"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L69"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L69",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L70"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L71"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L71"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L71",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L72"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L72"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L72",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L72",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L76"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L76"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L76",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L77"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L77"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L77",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L78"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L78"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L78",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L78",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L79"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L79"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L79",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L80"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L81"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L81"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L81",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L144"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L165"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L328"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L328"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L328",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L334"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L334"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L334",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L345"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L345"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L345",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L355"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L355"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L355",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L356"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L426"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L521"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L522"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L522"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L522",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L523"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L523"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L523",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L618"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L636"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L682"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L682"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L682",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L686"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L686"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L686",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L687"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L688"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L689"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L690"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L690"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L690",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L691"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L692"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L756"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L756"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L756",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L757"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L757"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L757",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L758"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L759"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L759"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L759",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L767"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L767"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L767",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L768"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L768"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L768",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L769"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L769"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L769",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L769",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L770"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L771"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L771"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L771",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L771",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L772"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L772"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L772",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L772",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L773"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L774"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L775"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L775"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L775",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L776"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L776"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L776",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L777"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L778"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L778"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L778",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L779"
       ],
-      "authority_source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

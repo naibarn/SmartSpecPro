@@ -14,7 +14,7 @@
         "referencing_spec_id": "228",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L160",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L160",
         "source_digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
         "successor_spec_id": "228"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "228",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L161",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L161",
         "source_digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
         "successor_spec_id": "228"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "228",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L5200",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L5200",
         "source_digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
         "successor_spec_id": "228"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "224",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "224",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "224",
         "relation_text": "absorbing",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2502",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2502",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       }
@@ -168,7 +168,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md",
     "digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",

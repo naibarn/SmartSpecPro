@@ -17,97 +17,97 @@
       {
         "digest": "76ec0893c25f143afa6bf1193acd1de08f372fd6df7547e3b310f4491a8e7ac5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
       },
       {
         "digest": "bac058e992223d7c794a073181420117058c53c033f4736e585216e7695acee8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
       },
       {
         "digest": "89775958ae9ed9d55933e3750d0605f34b0b8488c65c604a89c770d39f46e882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
       },
       {
         "digest": "bb919aca357a409a90a77dc1fcb1f62278c00af32f720143b15ac20f751f7ca7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
       },
       {
         "digest": "d2725191489dd9174e28ecac1d3b3a7074bed07715a6d4dd9971c954281c8ac8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
       },
       {
         "digest": "cb1a38bc480fc1f964fce77f1484cdb8159489bd1c88b6b2b0c6e6a776155094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
       },
       {
         "digest": "fcd38b7d2b88465f7eeda8ad4b9652e050f22a993852c597f879f0f8ca382e30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
       },
       {
         "digest": "cb8c3ebae0499d10915f637d72d2f636bf6dd9aab655977d18ed183472578531",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "3587dc3bca456e7b368fd78ef6f3c08ace14c5ab9dfd5fde4c7913b855815e2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
       },
       {
         "digest": "53ce34fe55d0305891a2f424fd63a69a44de2301e9abcade59fd72658944773d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
       },
       {
         "digest": "0a95f35bb6bf8bd4dd802910a31f45001bac532ce99c03a3fbdb18914e38edb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
       },
       {
         "digest": "dfbd7bdd1171e76138ac4db35e69e595142d8d87a91af66a8db45b8211815969",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
       },
       {
         "digest": "356631081b1ae450b00551ff0f2ca36ff71dc7ed79a61c6923ea41f4127e7255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
       },
       {
         "digest": "0afaa66bcb847f71e0871f85bbb7c3726c0aeedbab87c22849b8a3053106cefd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
       },
       {
         "digest": "c1dad1cdfc13d6e40f228a2eb0b1043cb92bc35c0914a6547d4e9b00a176dd6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
       },
       {
         "digest": "9c3aa5a28547ca34f2601d48452f9bede740e2c90ed577a664e7d0ed99642dd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
       },
       {
         "digest": "84e8b3e88e6c3640a12c2fbbe7c168a86d96766d713e3c6e1d2b05771e164e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
       },
       {
         "digest": "8872df6873104f7c72767a453a321b8a07c20bc70bfc45b26e014bc6b4027641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
       },
       {
         "digest": "872ccd7fb159cfce40cfe06808b044c618d09b826edd643f6d7638a5a79e2132",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "76ec0893c25f143afa6bf1193acd1de08f372fd6df7547e3b310f4491a8e7ac5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
       },
       {
         "digest": "bac058e992223d7c794a073181420117058c53c033f4736e585216e7695acee8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
       },
       {
         "digest": "89775958ae9ed9d55933e3750d0605f34b0b8488c65c604a89c770d39f46e882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
       },
       {
         "digest": "bb919aca357a409a90a77dc1fcb1f62278c00af32f720143b15ac20f751f7ca7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
       },
       {
         "digest": "d2725191489dd9174e28ecac1d3b3a7074bed07715a6d4dd9971c954281c8ac8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
       },
       {
         "digest": "cb1a38bc480fc1f964fce77f1484cdb8159489bd1c88b6b2b0c6e6a776155094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
       },
       {
         "digest": "fcd38b7d2b88465f7eeda8ad4b9652e050f22a993852c597f879f0f8ca382e30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
       },
       {
         "digest": "cb8c3ebae0499d10915f637d72d2f636bf6dd9aab655977d18ed183472578531",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "3587dc3bca456e7b368fd78ef6f3c08ace14c5ab9dfd5fde4c7913b855815e2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
       },
       {
         "digest": "53ce34fe55d0305891a2f424fd63a69a44de2301e9abcade59fd72658944773d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
       },
       {
         "digest": "0a95f35bb6bf8bd4dd802910a31f45001bac532ce99c03a3fbdb18914e38edb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
       },
       {
         "digest": "dfbd7bdd1171e76138ac4db35e69e595142d8d87a91af66a8db45b8211815969",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
       },
       {
         "digest": "356631081b1ae450b00551ff0f2ca36ff71dc7ed79a61c6923ea41f4127e7255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
       },
       {
         "digest": "0afaa66bcb847f71e0871f85bbb7c3726c0aeedbab87c22849b8a3053106cefd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
       },
       {
         "digest": "c1dad1cdfc13d6e40f228a2eb0b1043cb92bc35c0914a6547d4e9b00a176dd6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
       },
       {
         "digest": "9c3aa5a28547ca34f2601d48452f9bede740e2c90ed577a664e7d0ed99642dd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
       },
       {
         "digest": "84e8b3e88e6c3640a12c2fbbe7c168a86d96766d713e3c6e1d2b05771e164e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
       },
       {
         "digest": "8872df6873104f7c72767a453a321b8a07c20bc70bfc45b26e014bc6b4027641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
       },
       {
         "digest": "872ccd7fb159cfce40cfe06808b044c618d09b826edd643f6d7638a5a79e2132",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "76ec0893c25f143afa6bf1193acd1de08f372fd6df7547e3b310f4491a8e7ac5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
       },
       {
         "digest": "bac058e992223d7c794a073181420117058c53c033f4736e585216e7695acee8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
       },
       {
         "digest": "89775958ae9ed9d55933e3750d0605f34b0b8488c65c604a89c770d39f46e882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
       },
       {
         "digest": "bb919aca357a409a90a77dc1fcb1f62278c00af32f720143b15ac20f751f7ca7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
       },
       {
         "digest": "d2725191489dd9174e28ecac1d3b3a7074bed07715a6d4dd9971c954281c8ac8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
       },
       {
         "digest": "cb1a38bc480fc1f964fce77f1484cdb8159489bd1c88b6b2b0c6e6a776155094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
       },
       {
         "digest": "fcd38b7d2b88465f7eeda8ad4b9652e050f22a993852c597f879f0f8ca382e30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
       },
       {
         "digest": "cb8c3ebae0499d10915f637d72d2f636bf6dd9aab655977d18ed183472578531",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "3587dc3bca456e7b368fd78ef6f3c08ace14c5ab9dfd5fde4c7913b855815e2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
       },
       {
         "digest": "53ce34fe55d0305891a2f424fd63a69a44de2301e9abcade59fd72658944773d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
       },
       {
         "digest": "0a95f35bb6bf8bd4dd802910a31f45001bac532ce99c03a3fbdb18914e38edb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
       },
       {
         "digest": "dfbd7bdd1171e76138ac4db35e69e595142d8d87a91af66a8db45b8211815969",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
       },
       {
         "digest": "356631081b1ae450b00551ff0f2ca36ff71dc7ed79a61c6923ea41f4127e7255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
       },
       {
         "digest": "0afaa66bcb847f71e0871f85bbb7c3726c0aeedbab87c22849b8a3053106cefd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
       },
       {
         "digest": "c1dad1cdfc13d6e40f228a2eb0b1043cb92bc35c0914a6547d4e9b00a176dd6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
       },
       {
         "digest": "9c3aa5a28547ca34f2601d48452f9bede740e2c90ed577a664e7d0ed99642dd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
       },
       {
         "digest": "84e8b3e88e6c3640a12c2fbbe7c168a86d96766d713e3c6e1d2b05771e164e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
       },
       {
         "digest": "8872df6873104f7c72767a453a321b8a07c20bc70bfc45b26e014bc6b4027641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
       },
       {
         "digest": "872ccd7fb159cfce40cfe06808b044c618d09b826edd643f6d7638a5a79e2132",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/spec.md",
     "digest": "e63178be0e310988ba1497ecfbc647840f8536e548e98fdc156d8748cba07eaa",
@@ -409,227 +409,227 @@
       {
         "digest": "76ec0893c25f143afa6bf1193acd1de08f372fd6df7547e3b310f4491a8e7ac5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
       },
       {
         "digest": "bac058e992223d7c794a073181420117058c53c033f4736e585216e7695acee8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
       },
       {
         "digest": "89775958ae9ed9d55933e3750d0605f34b0b8488c65c604a89c770d39f46e882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
       },
       {
         "digest": "bb919aca357a409a90a77dc1fcb1f62278c00af32f720143b15ac20f751f7ca7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
       },
       {
         "digest": "d2725191489dd9174e28ecac1d3b3a7074bed07715a6d4dd9971c954281c8ac8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
       },
       {
         "digest": "cb1a38bc480fc1f964fce77f1484cdb8159489bd1c88b6b2b0c6e6a776155094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
       },
       {
         "digest": "fcd38b7d2b88465f7eeda8ad4b9652e050f22a993852c597f879f0f8ca382e30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
       },
       {
         "digest": "cb8c3ebae0499d10915f637d72d2f636bf6dd9aab655977d18ed183472578531",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "3587dc3bca456e7b368fd78ef6f3c08ace14c5ab9dfd5fde4c7913b855815e2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
       },
       {
         "digest": "53ce34fe55d0305891a2f424fd63a69a44de2301e9abcade59fd72658944773d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
       },
       {
         "digest": "0a95f35bb6bf8bd4dd802910a31f45001bac532ce99c03a3fbdb18914e38edb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
       },
       {
         "digest": "dfbd7bdd1171e76138ac4db35e69e595142d8d87a91af66a8db45b8211815969",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
       },
       {
         "digest": "356631081b1ae450b00551ff0f2ca36ff71dc7ed79a61c6923ea41f4127e7255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
       },
       {
         "digest": "0afaa66bcb847f71e0871f85bbb7c3726c0aeedbab87c22849b8a3053106cefd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
       },
       {
         "digest": "c1dad1cdfc13d6e40f228a2eb0b1043cb92bc35c0914a6547d4e9b00a176dd6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
       },
       {
         "digest": "9c3aa5a28547ca34f2601d48452f9bede740e2c90ed577a664e7d0ed99642dd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
       },
       {
         "digest": "84e8b3e88e6c3640a12c2fbbe7c168a86d96766d713e3c6e1d2b05771e164e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
       },
       {
         "digest": "8872df6873104f7c72767a453a321b8a07c20bc70bfc45b26e014bc6b4027641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
       },
       {
         "digest": "872ccd7fb159cfce40cfe06808b044c618d09b826edd643f6d7638a5a79e2132",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
       },
       {
         "digest": "98b4b6bb24c811dae5e815ab2e1180e92bfb6c99679882cb95dc72c6cf8e38c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-5-convergence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-5-convergence.md"
       },
       {
         "digest": "b1f2860b1a35f9e891848a1fa628f90b543255d7d256249aa6a159f07c36b5bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "b604e13307202762265b47fa1fa0ee1e63d731b94ccdbf06e9534bbc97beaf57",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-1.md"
       },
       {
         "digest": "fbb290e188100437c831b4207df723fec9ab515237e6f4c876f02207dde024e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-2.md"
       },
       {
         "digest": "3acbbb5686388822b9c59dde76f652691b9db8c756afccb68c6693b1bffaf250",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-3.md"
       },
       {
         "digest": "dee2de7722a0e4839412794b3d7634bb2f484f750443a8d911ef9a66a2ab2fba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-4.md"
       },
       {
         "digest": "b3af964a7ac2f9e9f039063c924a6837435c3aa6d619c2cced9d5f4e073ba6e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-5.md"
       },
       {
         "digest": "88cffaff539ed5f9b16cf70d07b8249d9103fdc6a5d02a7e4978417d637c444e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/01-unified-series-profile.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/01-unified-series-profile.md"
       },
       {
         "digest": "03bc75d26f616573d712487388dff44714d91f3a62c006ad83ee96e763300e3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/02-story-source-pack-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/02-story-source-pack-contracts.md"
       },
       {
         "digest": "b72603cbac67a41853536ecc093bef06cd320963b29ec4a5a4165401867ee4ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/03-source-ingestion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/03-source-ingestion.md"
       },
       {
         "digest": "b92e5a316ff3316ee25931c4ad8213a6ef52660c6798a15fe3fcc42d3bc28fb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/04-slots-and-broll.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/04-slots-and-broll.md"
       },
       {
         "digest": "3c79f471d2009ff19241c7c3ec382c4377f5f14925b081ea392111368c1e728d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/05-vision-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/05-vision-evidence.md"
       },
       {
         "digest": "2b8f0665fad1f1b29efe802a36d0d4ef4c1c6204398597b5a6b8f9ff122d855f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/06-pre-draft-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/06-pre-draft-gate.md"
       },
       {
         "digest": "73ed8d879b78b2e7d0c8ce5cfe181d8445a6a18e79f9fdb4f09a885278f382a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/07-ui-ux-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/07-ui-ux-flow.md"
       },
       {
         "digest": "f679d46658f42cf09ed271b0488e58494fac9bb1ea55c6d5bc832d6aed5c8766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/08-persistence-security-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/08-persistence-security-migration.md"
       },
       {
         "digest": "0b6cb4c537198ede1565a3386c5f9ec682aba8790c61869e2e7423a7956a539b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/09-testing-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/09-testing-rollout.md"
       },
       {
         "digest": "7476adeb46d7b019ed9197638b52d61f654f436495b357d5db184c21f05391c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/index.md"
       },
       {
         "digest": "378f17f2df28baad20c4a55efee96812c82c6c8526d2fa03ce7a6bba4e7874fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-01-profile-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-01-profile-contracts.md"
       },
       {
         "digest": "2cb96f1aeea676cfb7e4718cae13aba028ca7f30a90c357826d8164cfd821b85",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-02-persistence-migrations.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-02-persistence-migrations.md"
       },
       {
         "digest": "0cb4617ee176c1be392429d33c3cf70fe4b33058f3dc63431c51611a75fc14fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-03-source-pack-api-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-03-source-pack-api-gate.md"
       },
       {
         "digest": "765d13f8b2c93b9321bbf4b003746585531df8acd723aed7efca1398ba6069d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-04-ingestion-vision.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-04-ingestion-vision.md"
       },
       {
         "digest": "94d22b1125d40d17ed82ef9352161dfef4f77343d3e665d39433c56469000fd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-05-wizard-source-hub.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-05-wizard-source-hub.md"
       },
       {
         "digest": "b884011802c33882df835f3e9106ed8ca7b8da31dc025bc85bf0ca1465071c92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-06-draft-digest-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-06-draft-digest-integration.md"
       },
       {
         "digest": "71bf4e96e9f783100af2a9c1426b8e2b336ab2c843f161578605b57ef6f6746d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-07-broll-production.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-07-broll-production.md"
       },
       {
         "digest": "5e4f5f08436abedb228bf9d4b128e304bf3fdcaef1ce0311a1705d7311bb363c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-08-legacy-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-08-legacy-rollout.md"
       },
       {
         "digest": "93e9ab47b67f5ac0c2f97a56b1e2ac3f15fdc8e7c26b995f820d80202e55c012",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-09-convergence-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-09-convergence-proof.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -679,227 +679,227 @@
       {
         "digest": "76ec0893c25f143afa6bf1193acd1de08f372fd6df7547e3b310f4491a8e7ac5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-plan.md"
       },
       {
         "digest": "bac058e992223d7c794a073181420117058c53c033f4736e585216e7695acee8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/claude-spec.md"
       },
       {
         "digest": "89775958ae9ed9d55933e3750d0605f34b0b8488c65c604a89c770d39f46e882",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-1-contract-data.md"
       },
       {
         "digest": "bb919aca357a409a90a77dc1fcb1f62278c00af32f720143b15ac20f751f7ca7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-2-api-gates.md"
       },
       {
         "digest": "d2725191489dd9174e28ecac1d3b3a7074bed07715a6d4dd9971c954281c8ac8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-3-ingestion-production.md"
       },
       {
         "digest": "cb1a38bc480fc1f964fce77f1484cdb8159489bd1c88b6b2b0c6e6a776155094",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-4-ui-ux.md"
       },
       {
         "digest": "fcd38b7d2b88465f7eeda8ad4b9652e050f22a993852c597f879f0f8ca382e30",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/audit-loop-round-5-convergence.md"
       },
       {
         "digest": "cb8c3ebae0499d10915f637d72d2f636bf6dd9aab655977d18ed183472578531",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/deep_implement_config.json"
       },
       {
         "digest": "3587dc3bca456e7b368fd78ef6f3c08ace14c5ab9dfd5fde4c7913b855815e2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/implementation-status.md"
       },
       {
         "digest": "53ce34fe55d0305891a2f424fd63a69a44de2301e9abcade59fd72658944773d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/plan.md"
       },
       {
         "digest": "0a95f35bb6bf8bd4dd802910a31f45001bac532ce99c03a3fbdb18914e38edb3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-1.md"
       },
       {
         "digest": "dfbd7bdd1171e76138ac4db35e69e595142d8d87a91af66a8db45b8211815969",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-2.md"
       },
       {
         "digest": "356631081b1ae450b00551ff0f2ca36ff71dc7ed79a61c6923ea41f4127e7255",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-3.md"
       },
       {
         "digest": "0afaa66bcb847f71e0871f85bbb7c3726c0aeedbab87c22849b8a3053106cefd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-4.md"
       },
       {
         "digest": "c1dad1cdfc13d6e40f228a2eb0b1043cb92bc35c0914a6547d4e9b00a176dd6c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/post-implementation-review-round-5.md"
       },
       {
         "digest": "9c3aa5a28547ca34f2601d48452f9bede740e2c90ed577a664e7d0ed99642dd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-1-contract-data.md"
       },
       {
         "digest": "84e8b3e88e6c3640a12c2fbbe7c168a86d96766d713e3c6e1d2b05771e164e95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-2-api-security.md"
       },
       {
         "digest": "8872df6873104f7c72767a453a321b8a07c20bc70bfc45b26e014bc6b4027641",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-3-downstream-media.md"
       },
       {
         "digest": "872ccd7fb159cfce40cfe06808b044c618d09b826edd643f6d7638a5a79e2132",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-4-ui-ux.md"
       },
       {
         "digest": "98b4b6bb24c811dae5e815ab2e1180e92bfb6c99679882cb95dc72c6cf8e38c7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-5-convergence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/re-audit-round-5-convergence.md"
       },
       {
         "digest": "b1f2860b1a35f9e891848a1fa628f90b543255d7d256249aa6a159f07c36b5bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/ui-browser-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation/ui-browser-evidence.md"
       },
       {
         "digest": "b604e13307202762265b47fa1fa0ee1e63d731b94ccdbf06e9534bbc97beaf57",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-1.md"
       },
       {
         "digest": "fbb290e188100437c831b4207df723fec9ab515237e6f4c876f02207dde024e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-2.md"
       },
       {
         "digest": "3acbbb5686388822b9c59dde76f652691b9db8c756afccb68c6693b1bffaf250",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-3.md"
       },
       {
         "digest": "dee2de7722a0e4839412794b3d7634bb2f484f750443a8d911ef9a66a2ab2fba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-4.md"
       },
       {
         "digest": "b3af964a7ac2f9e9f039063c924a6837435c3aa6d619c2cced9d5f4e073ba6e2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/reviews/plan-review-round-5.md"
       },
       {
         "digest": "88cffaff539ed5f9b16cf70d07b8249d9103fdc6a5d02a7e4978417d637c444e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/01-unified-series-profile.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/01-unified-series-profile.md"
       },
       {
         "digest": "03bc75d26f616573d712487388dff44714d91f3a62c006ad83ee96e763300e3f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/02-story-source-pack-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/02-story-source-pack-contracts.md"
       },
       {
         "digest": "b72603cbac67a41853536ecc093bef06cd320963b29ec4a5a4165401867ee4ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/03-source-ingestion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/03-source-ingestion.md"
       },
       {
         "digest": "b92e5a316ff3316ee25931c4ad8213a6ef52660c6798a15fe3fcc42d3bc28fb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/04-slots-and-broll.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/04-slots-and-broll.md"
       },
       {
         "digest": "3c79f471d2009ff19241c7c3ec382c4377f5f14925b081ea392111368c1e728d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/05-vision-evidence.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/05-vision-evidence.md"
       },
       {
         "digest": "2b8f0665fad1f1b29efe802a36d0d4ef4c1c6204398597b5a6b8f9ff122d855f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/06-pre-draft-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/06-pre-draft-gate.md"
       },
       {
         "digest": "73ed8d879b78b2e7d0c8ce5cfe181d8445a6a18e79f9fdb4f09a885278f382a8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/07-ui-ux-flow.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/07-ui-ux-flow.md"
       },
       {
         "digest": "f679d46658f42cf09ed271b0488e58494fac9bb1ea55c6d5bc832d6aed5c8766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/08-persistence-security-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/08-persistence-security-migration.md"
       },
       {
         "digest": "0b6cb4c537198ede1565a3386c5f9ec682aba8790c61869e2e7423a7956a539b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/09-testing-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/09-testing-rollout.md"
       },
       {
         "digest": "7476adeb46d7b019ed9197638b52d61f654f436495b357d5db184c21f05391c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/index.md"
       },
       {
         "digest": "378f17f2df28baad20c4a55efee96812c82c6c8526d2fa03ce7a6bba4e7874fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-01-profile-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-01-profile-contracts.md"
       },
       {
         "digest": "2cb96f1aeea676cfb7e4718cae13aba028ca7f30a90c357826d8164cfd821b85",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-02-persistence-migrations.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-02-persistence-migrations.md"
       },
       {
         "digest": "0cb4617ee176c1be392429d33c3cf70fe4b33058f3dc63431c51611a75fc14fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-03-source-pack-api-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-03-source-pack-api-gate.md"
       },
       {
         "digest": "765d13f8b2c93b9321bbf4b003746585531df8acd723aed7efca1398ba6069d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-04-ingestion-vision.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-04-ingestion-vision.md"
       },
       {
         "digest": "94d22b1125d40d17ed82ef9352161dfef4f77343d3e665d39433c56469000fd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-05-wizard-source-hub.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-05-wizard-source-hub.md"
       },
       {
         "digest": "b884011802c33882df835f3e9106ed8ca7b8da31dc025bc85bf0ca1465071c92",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-06-draft-digest-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-06-draft-digest-integration.md"
       },
       {
         "digest": "71bf4e96e9f783100af2a9c1426b8e2b336ab2c843f161578605b57ef6f6746d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-07-broll-production.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-07-broll-production.md"
       },
       {
         "digest": "5e4f5f08436abedb228bf9d4b128e304bf3fdcaef1ce0311a1705d7311bb363c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-08-legacy-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-08-legacy-rollout.md"
       },
       {
         "digest": "93e9ab47b67f5ac0c2f97a56b1e2ac3f15fdc8e7c26b995f820d80202e55c012",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-09-convergence-proof.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections/section-09-convergence-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

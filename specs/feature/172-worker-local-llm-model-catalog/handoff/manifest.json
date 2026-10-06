@@ -17,97 +17,97 @@
       {
         "digest": "3ba7646821a37e0660a52d4e2fe8b97388fdf041deff90f8231eaba36fa4d3d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
       },
       {
         "digest": "7ca5227901d78e88f7b97dc5caf1294f52afc5fe723e6df9e70c511830132d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
       },
       {
         "digest": "7857aca5c1e2b91aaa2889e20e7832da81608ff05e63a3c6db548ca12e037707",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "95f6f7792f9e744635ac50923bd68bae686d91b345668ff8d43568405c237039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
       },
       {
         "digest": "868cb0e234b13d502887bb8ba63964fbce9cf12db678eefce7a7d4bdb8ce4a98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
       },
       {
         "digest": "86d78bb2b82d4229703908c58dd1c707f1f2d4cf623a47c4797c97c4c01d924f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
       },
       {
         "digest": "8ac49a15adfac6cd31698765b33315ef1580b9d64d675640fb5eee6d20a45ce7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
       },
       {
         "digest": "0554c275726c25dee0466790df9e772ecf29e8fadaa6d1ed30bd9b135a669e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "012d4bd7ef1c82667e77dd164ea0b2e81a6210ea8fad46f4196f007a0d62f275",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
       },
       {
         "digest": "a78b799ea76cd1f9bd6fe70b2da9e2f940ee9f95eea319e237a8a3751184ed18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
       },
       {
         "digest": "d964bbe4d7a62e4193d8dfba08d771d6256cf04d01e0a9d44a7a326120ed6a42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "57736a563171b72c1faaa84e982c53532e78df98232e8e5fd4e55af3a1216a16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "326ac7ede9b597918cf5244bdb5dc2ed7a6b62fabdc15704607adb9c50a3cea6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
       },
       {
         "digest": "a56e9590f237cd0eea74aed3baf699d890d938de833ed9c096add61102130768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "827e0c72e13644bb4a127754365c2bfcd1178c5ddfa5c528beea1942cfc1c6f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
       },
       {
         "digest": "af8d994de095a7c33375ca86e9317872906e180c8ebc6dd29b93165ac6d13a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
       },
       {
         "digest": "06bf66fd18fadd1bf48ebc2472a5697931a4ed2eb877e870bad38b76b068db37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
       },
       {
         "digest": "2746b3d6bea59c5bee8835857dedce2c187cb8cdd3cb2983709164e51b031a86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
       },
       {
         "digest": "c07938f8dfd065dc9cc4b6d28936ee0140933c28b898b609386e8fd99cc1b394",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "3ba7646821a37e0660a52d4e2fe8b97388fdf041deff90f8231eaba36fa4d3d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
       },
       {
         "digest": "7ca5227901d78e88f7b97dc5caf1294f52afc5fe723e6df9e70c511830132d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
       },
       {
         "digest": "7857aca5c1e2b91aaa2889e20e7832da81608ff05e63a3c6db548ca12e037707",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "95f6f7792f9e744635ac50923bd68bae686d91b345668ff8d43568405c237039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
       },
       {
         "digest": "868cb0e234b13d502887bb8ba63964fbce9cf12db678eefce7a7d4bdb8ce4a98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
       },
       {
         "digest": "86d78bb2b82d4229703908c58dd1c707f1f2d4cf623a47c4797c97c4c01d924f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
       },
       {
         "digest": "8ac49a15adfac6cd31698765b33315ef1580b9d64d675640fb5eee6d20a45ce7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
       },
       {
         "digest": "0554c275726c25dee0466790df9e772ecf29e8fadaa6d1ed30bd9b135a669e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "012d4bd7ef1c82667e77dd164ea0b2e81a6210ea8fad46f4196f007a0d62f275",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
       },
       {
         "digest": "a78b799ea76cd1f9bd6fe70b2da9e2f940ee9f95eea319e237a8a3751184ed18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
       },
       {
         "digest": "d964bbe4d7a62e4193d8dfba08d771d6256cf04d01e0a9d44a7a326120ed6a42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "57736a563171b72c1faaa84e982c53532e78df98232e8e5fd4e55af3a1216a16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "326ac7ede9b597918cf5244bdb5dc2ed7a6b62fabdc15704607adb9c50a3cea6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
       },
       {
         "digest": "a56e9590f237cd0eea74aed3baf699d890d938de833ed9c096add61102130768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "827e0c72e13644bb4a127754365c2bfcd1178c5ddfa5c528beea1942cfc1c6f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
       },
       {
         "digest": "af8d994de095a7c33375ca86e9317872906e180c8ebc6dd29b93165ac6d13a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
       },
       {
         "digest": "06bf66fd18fadd1bf48ebc2472a5697931a4ed2eb877e870bad38b76b068db37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
       },
       {
         "digest": "2746b3d6bea59c5bee8835857dedce2c187cb8cdd3cb2983709164e51b031a86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
       },
       {
         "digest": "c07938f8dfd065dc9cc4b6d28936ee0140933c28b898b609386e8fd99cc1b394",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "3ba7646821a37e0660a52d4e2fe8b97388fdf041deff90f8231eaba36fa4d3d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
       },
       {
         "digest": "7ca5227901d78e88f7b97dc5caf1294f52afc5fe723e6df9e70c511830132d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
       },
       {
         "digest": "7857aca5c1e2b91aaa2889e20e7832da81608ff05e63a3c6db548ca12e037707",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "95f6f7792f9e744635ac50923bd68bae686d91b345668ff8d43568405c237039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
       },
       {
         "digest": "868cb0e234b13d502887bb8ba63964fbce9cf12db678eefce7a7d4bdb8ce4a98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
       },
       {
         "digest": "86d78bb2b82d4229703908c58dd1c707f1f2d4cf623a47c4797c97c4c01d924f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
       },
       {
         "digest": "8ac49a15adfac6cd31698765b33315ef1580b9d64d675640fb5eee6d20a45ce7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
       },
       {
         "digest": "0554c275726c25dee0466790df9e772ecf29e8fadaa6d1ed30bd9b135a669e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "012d4bd7ef1c82667e77dd164ea0b2e81a6210ea8fad46f4196f007a0d62f275",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
       },
       {
         "digest": "a78b799ea76cd1f9bd6fe70b2da9e2f940ee9f95eea319e237a8a3751184ed18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
       },
       {
         "digest": "d964bbe4d7a62e4193d8dfba08d771d6256cf04d01e0a9d44a7a326120ed6a42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "57736a563171b72c1faaa84e982c53532e78df98232e8e5fd4e55af3a1216a16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "326ac7ede9b597918cf5244bdb5dc2ed7a6b62fabdc15704607adb9c50a3cea6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
       },
       {
         "digest": "a56e9590f237cd0eea74aed3baf699d890d938de833ed9c096add61102130768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "827e0c72e13644bb4a127754365c2bfcd1178c5ddfa5c528beea1942cfc1c6f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
       },
       {
         "digest": "af8d994de095a7c33375ca86e9317872906e180c8ebc6dd29b93165ac6d13a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
       },
       {
         "digest": "06bf66fd18fadd1bf48ebc2472a5697931a4ed2eb877e870bad38b76b068db37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
       },
       {
         "digest": "2746b3d6bea59c5bee8835857dedce2c187cb8cdd3cb2983709164e51b031a86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
       },
       {
         "digest": "c07938f8dfd065dc9cc4b6d28936ee0140933c28b898b609386e8fd99cc1b394",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/172-worker-local-llm-model-catalog/spec.md",
     "digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
@@ -409,97 +409,97 @@
       {
         "digest": "3ba7646821a37e0660a52d4e2fe8b97388fdf041deff90f8231eaba36fa4d3d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
       },
       {
         "digest": "7ca5227901d78e88f7b97dc5caf1294f52afc5fe723e6df9e70c511830132d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
       },
       {
         "digest": "7857aca5c1e2b91aaa2889e20e7832da81608ff05e63a3c6db548ca12e037707",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "95f6f7792f9e744635ac50923bd68bae686d91b345668ff8d43568405c237039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
       },
       {
         "digest": "868cb0e234b13d502887bb8ba63964fbce9cf12db678eefce7a7d4bdb8ce4a98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
       },
       {
         "digest": "86d78bb2b82d4229703908c58dd1c707f1f2d4cf623a47c4797c97c4c01d924f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
       },
       {
         "digest": "8ac49a15adfac6cd31698765b33315ef1580b9d64d675640fb5eee6d20a45ce7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
       },
       {
         "digest": "0554c275726c25dee0466790df9e772ecf29e8fadaa6d1ed30bd9b135a669e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "012d4bd7ef1c82667e77dd164ea0b2e81a6210ea8fad46f4196f007a0d62f275",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
       },
       {
         "digest": "a78b799ea76cd1f9bd6fe70b2da9e2f940ee9f95eea319e237a8a3751184ed18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
       },
       {
         "digest": "d964bbe4d7a62e4193d8dfba08d771d6256cf04d01e0a9d44a7a326120ed6a42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "57736a563171b72c1faaa84e982c53532e78df98232e8e5fd4e55af3a1216a16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "326ac7ede9b597918cf5244bdb5dc2ed7a6b62fabdc15704607adb9c50a3cea6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
       },
       {
         "digest": "a56e9590f237cd0eea74aed3baf699d890d938de833ed9c096add61102130768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "827e0c72e13644bb4a127754365c2bfcd1178c5ddfa5c528beea1942cfc1c6f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
       },
       {
         "digest": "af8d994de095a7c33375ca86e9317872906e180c8ebc6dd29b93165ac6d13a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
       },
       {
         "digest": "06bf66fd18fadd1bf48ebc2472a5697931a4ed2eb877e870bad38b76b068db37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
       },
       {
         "digest": "2746b3d6bea59c5bee8835857dedce2c187cb8cdd3cb2983709164e51b031a86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
       },
       {
         "digest": "c07938f8dfd065dc9cc4b6d28936ee0140933c28b898b609386e8fd99cc1b394",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
       }
     ],
     "stale_fields": [],
@@ -527,97 +527,97 @@
       {
         "digest": "3ba7646821a37e0660a52d4e2fe8b97388fdf041deff90f8231eaba36fa4d3d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-plan.md"
       },
       {
         "digest": "7ca5227901d78e88f7b97dc5caf1294f52afc5fe723e6df9e70c511830132d21",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/claude-spec.md"
       },
       {
         "digest": "7857aca5c1e2b91aaa2889e20e7832da81608ff05e63a3c6db548ca12e037707",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/deep_implement_config.json"
       },
       {
         "digest": "95f6f7792f9e744635ac50923bd68bae686d91b345668ff8d43568405c237039",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-1.md"
       },
       {
         "digest": "868cb0e234b13d502887bb8ba63964fbce9cf12db678eefce7a7d4bdb8ce4a98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-2.md"
       },
       {
         "digest": "86d78bb2b82d4229703908c58dd1c707f1f2d4cf623a47c4797c97c4c01d924f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-3.md"
       },
       {
         "digest": "8ac49a15adfac6cd31698765b33315ef1580b9d64d675640fb5eee6d20a45ce7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-4.md"
       },
       {
         "digest": "0554c275726c25dee0466790df9e772ecf29e8fadaa6d1ed30bd9b135a669e09",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/gap-audit-round-5.md"
       },
       {
         "digest": "012d4bd7ef1c82667e77dd164ea0b2e81a6210ea8fad46f4196f007a0d62f275",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/implementation/usage.md"
       },
       {
         "digest": "a78b799ea76cd1f9bd6fe70b2da9e2f940ee9f95eea319e237a8a3751184ed18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/adversarial-round-1.md"
       },
       {
         "digest": "d964bbe4d7a62e4193d8dfba08d771d6256cf04d01e0a9d44a7a326120ed6a42",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "57736a563171b72c1faaa84e982c53532e78df98232e8e5fd4e55af3a1216a16",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/reviews/self-review-round-1.md"
       },
       {
         "digest": "326ac7ede9b597918cf5244bdb5dc2ed7a6b62fabdc15704607adb9c50a3cea6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/index.md"
       },
       {
         "digest": "a56e9590f237cd0eea74aed3baf699d890d938de833ed9c096add61102130768",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-01-shared-contracts.md"
       },
       {
         "digest": "827e0c72e13644bb4a127754365c2bfcd1178c5ddfa5c528beea1942cfc1c6f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-02-projection-inventory-acl.md"
       },
       {
         "digest": "af8d994de095a7c33375ca86e9317872906e180c8ebc6dd29b93165ac6d13a79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-03-catalog-routing.md"
       },
       {
         "digest": "06bf66fd18fadd1bf48ebc2472a5697931a4ed2eb877e870bad38b76b068db37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-04-worker-runtime.md"
       },
       {
         "digest": "2746b3d6bea59c5bee8835857dedce2c187cb8cdd3cb2983709164e51b031a86",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-05-ui-selectors.md"
       },
       {
         "digest": "c07938f8dfd065dc9cc4b6d28936ee0140933c28b898b609386e8fd99cc1b394",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/172-worker-local-llm-model-catalog/sections/section-06-lifecycle-billing-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

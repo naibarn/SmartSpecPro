@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L20"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L20"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L20",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L20",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L24"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L24"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L24",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L28"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L28"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L28",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L111"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L126"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L126"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L126",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L126",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L130"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L146"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L158"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L187"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L206"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L212"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L237"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L255"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L261"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L261"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L261",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L286"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L299"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L305"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L305"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L305",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L317"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L323"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L351"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L389"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L395"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L395"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L395",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L397"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L397"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L397",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L445"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L445"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L445",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L451"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L480"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L486"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L486"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L486",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L486",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L501"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L501"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L501",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L503"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L503"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L503",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L503",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L533"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L533"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L533",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L533",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L549"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L549"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L549",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L570"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L588"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L588"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L588",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L588",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L609"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L609"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L609",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L625"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L643"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L656"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L721"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L735"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L735"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L735",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L754"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L754"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L754",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L765"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L765"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L765",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L765",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L773"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L837"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L843"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L843"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L843",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L868"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L868"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L868",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L874"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L874"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L874",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L882"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L882"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L882",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L882",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L902"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L902"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L902",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L902",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L928"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L992"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L992"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L992",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L992",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1000"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1000"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1000",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1019"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1019"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1019",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1029"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1029"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1029",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1031"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1031"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1031",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1031",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1045"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1045"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1045",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1045",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1049"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1049"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1049",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1049",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1052"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1052"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1052",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1052",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1058"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1058"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1058",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1064"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1064"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1064",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1080"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1080"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1080",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1100"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1134"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1188"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1190"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1216"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1225"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1231"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1247"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1247"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1247",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1255"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1286"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1303"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1303"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1303",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1309"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1331"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1331"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1331",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1337"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1343"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1351"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1378"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1384"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1384"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1384",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1425"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1425"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1425",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1433"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1439"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1439"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1439",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1477"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1477"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1477",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1497"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1497"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1497",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1511"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1534"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1534"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1534",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1544"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1544"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1544",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1586"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1592"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1654"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1654"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1654",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1655"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1655"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1655",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1655",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1656"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1657"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1657"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1657",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1658"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1659"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1660"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1660"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1660",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1661"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1667"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1667"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1667",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1667",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1668"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1668"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1668",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1669"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1669"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1669",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1670"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1671"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1671"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1671",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1672"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1673"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1674"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1674"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1674",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1675"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1675"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1675",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1676"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1676"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1676",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1676",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1677"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1677"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1677",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1677",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1678"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1678"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1678",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1684"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1684"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1684",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1686"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1686"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1686",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1686",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1687"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1688"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1689"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1690"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1690"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1690",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1690",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1691"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1692"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1722"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1722"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1722",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1724"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1751"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1751"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1751",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1755"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1829"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1829"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1829",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1829",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1851"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1851"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1851",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1855"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1855"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1855",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1855",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1857"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1857"
       ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1857",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1857",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

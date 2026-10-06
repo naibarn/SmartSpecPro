@@ -17,52 +17,52 @@
       {
         "digest": "42946e736ae28999fe4f58e97c04119b9e8fff4db42287391f6a60057ba80e17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-plan.md"
       },
       {
         "digest": "a88d46cc2284487b2637b205635599528f079d190df4bc13e1bf0cfed1b1db78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-spec.md"
       },
       {
         "digest": "da383edc5742e4ed7ecb8de318e6ecc513ca2729221bfad447b03867c509e87c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "1206a2492dd81228091288c05666294ef09a2cf1609dcef561e06539749f53b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/index.md"
       },
       {
         "digest": "e2b15a112f404e735ec7bf48c0626e3d1d5af08055a4266d0aa8909c491bb3cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
       },
       {
         "digest": "5d857663da2539abf7e6f292b926a73dc0b770cedfa9fc558c1a4a768c562eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
       },
       {
         "digest": "51703df79a89ebc45c7ac9125bdb76ec7b818e127c2eb9ac8a853ba718c28f95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
       },
       {
         "digest": "cc63ecb01667e16171ffbdb2ef1f19621e947b8efbbabe48cca62a14da2e0f27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
       },
       {
         "digest": "f286e2145b9c4308be58bdf574317699b2429b658574f0923ae653e4bfcd9baf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
       },
       {
         "digest": "c89e7e549d5ff1a27cbf9b426315fe04dcc5a9c40d60d98f397ca3a5a11f5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
       }
     ],
     "predecessors": [],
@@ -93,52 +93,52 @@
       {
         "digest": "42946e736ae28999fe4f58e97c04119b9e8fff4db42287391f6a60057ba80e17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-plan.md"
       },
       {
         "digest": "a88d46cc2284487b2637b205635599528f079d190df4bc13e1bf0cfed1b1db78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-spec.md"
       },
       {
         "digest": "da383edc5742e4ed7ecb8de318e6ecc513ca2729221bfad447b03867c509e87c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "1206a2492dd81228091288c05666294ef09a2cf1609dcef561e06539749f53b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/index.md"
       },
       {
         "digest": "e2b15a112f404e735ec7bf48c0626e3d1d5af08055a4266d0aa8909c491bb3cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
       },
       {
         "digest": "5d857663da2539abf7e6f292b926a73dc0b770cedfa9fc558c1a4a768c562eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
       },
       {
         "digest": "51703df79a89ebc45c7ac9125bdb76ec7b818e127c2eb9ac8a853ba718c28f95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
       },
       {
         "digest": "cc63ecb01667e16171ffbdb2ef1f19621e947b8efbbabe48cca62a14da2e0f27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
       },
       {
         "digest": "f286e2145b9c4308be58bdf574317699b2429b658574f0923ae653e4bfcd9baf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
       },
       {
         "digest": "c89e7e549d5ff1a27cbf9b426315fe04dcc5a9c40d60d98f397ca3a5a11f5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -170,58 +170,58 @@
       {
         "digest": "42946e736ae28999fe4f58e97c04119b9e8fff4db42287391f6a60057ba80e17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-plan.md"
       },
       {
         "digest": "a88d46cc2284487b2637b205635599528f079d190df4bc13e1bf0cfed1b1db78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-spec.md"
       },
       {
         "digest": "da383edc5742e4ed7ecb8de318e6ecc513ca2729221bfad447b03867c509e87c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "1206a2492dd81228091288c05666294ef09a2cf1609dcef561e06539749f53b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/index.md"
       },
       {
         "digest": "e2b15a112f404e735ec7bf48c0626e3d1d5af08055a4266d0aa8909c491bb3cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
       },
       {
         "digest": "5d857663da2539abf7e6f292b926a73dc0b770cedfa9fc558c1a4a768c562eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
       },
       {
         "digest": "51703df79a89ebc45c7ac9125bdb76ec7b818e127c2eb9ac8a853ba718c28f95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
       },
       {
         "digest": "cc63ecb01667e16171ffbdb2ef1f19621e947b8efbbabe48cca62a14da2e0f27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
       },
       {
         "digest": "f286e2145b9c4308be58bdf574317699b2429b658574f0923ae653e4bfcd9baf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
       },
       {
         "digest": "c89e7e549d5ff1a27cbf9b426315fe04dcc5a9c40d60d98f397ca3a5a11f5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/061-upload-post-universal-gateway/spec.md",
     "digest": "4be86beaa1edee8b63f89b9107b9f3893fd424467149bd589462829339d7af87",
@@ -274,52 +274,52 @@
       {
         "digest": "42946e736ae28999fe4f58e97c04119b9e8fff4db42287391f6a60057ba80e17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-plan.md"
       },
       {
         "digest": "a88d46cc2284487b2637b205635599528f079d190df4bc13e1bf0cfed1b1db78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-spec.md"
       },
       {
         "digest": "da383edc5742e4ed7ecb8de318e6ecc513ca2729221bfad447b03867c509e87c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "1206a2492dd81228091288c05666294ef09a2cf1609dcef561e06539749f53b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/index.md"
       },
       {
         "digest": "e2b15a112f404e735ec7bf48c0626e3d1d5af08055a4266d0aa8909c491bb3cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
       },
       {
         "digest": "5d857663da2539abf7e6f292b926a73dc0b770cedfa9fc558c1a4a768c562eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
       },
       {
         "digest": "51703df79a89ebc45c7ac9125bdb76ec7b818e127c2eb9ac8a853ba718c28f95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
       },
       {
         "digest": "cc63ecb01667e16171ffbdb2ef1f19621e947b8efbbabe48cca62a14da2e0f27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
       },
       {
         "digest": "f286e2145b9c4308be58bdf574317699b2429b658574f0923ae653e4bfcd9baf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
       },
       {
         "digest": "c89e7e549d5ff1a27cbf9b426315fe04dcc5a9c40d60d98f397ca3a5a11f5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
       }
     ],
     "stale_fields": [],
@@ -347,52 +347,52 @@
       {
         "digest": "42946e736ae28999fe4f58e97c04119b9e8fff4db42287391f6a60057ba80e17",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-plan.md"
       },
       {
         "digest": "a88d46cc2284487b2637b205635599528f079d190df4bc13e1bf0cfed1b1db78",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/claude-spec.md"
       },
       {
         "digest": "da383edc5742e4ed7ecb8de318e6ecc513ca2729221bfad447b03867c509e87c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/implementation/deep_implement_config.json"
       },
       {
         "digest": "1206a2492dd81228091288c05666294ef09a2cf1609dcef561e06539749f53b4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/index.md"
       },
       {
         "digest": "e2b15a112f404e735ec7bf48c0626e3d1d5af08055a4266d0aa8909c491bb3cd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-01-foundation.md"
       },
       {
         "digest": "5d857663da2539abf7e6f292b926a73dc0b770cedfa9fc558c1a4a768c562eb8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-02-router-client.md"
       },
       {
         "digest": "51703df79a89ebc45c7ac9125bdb76ec7b818e127c2eb9ac8a853ba718c28f95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-03-dispatch-sync.md"
       },
       {
         "digest": "cc63ecb01667e16171ffbdb2ef1f19621e947b8efbbabe48cca62a14da2e0f27",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-04-workflow-agency.md"
       },
       {
         "digest": "f286e2145b9c4308be58bdf574317699b2429b658574f0923ae653e4bfcd9baf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-05-frontend-ui.md"
       },
       {
         "digest": "c89e7e549d5ff1a27cbf9b426315fe04dcc5a9c40d60d98f397ca3a5a11f5b80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/061-upload-post-universal-gateway/sections/section-06-security-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

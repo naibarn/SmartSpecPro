@@ -14,7 +14,7 @@
         "referencing_spec_id": "242",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L659",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L659",
         "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "successor_spec_id": "242"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "242",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L88",
         "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "successor_spec_id": "242"
       },
@@ -40,7 +40,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L885",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L885",
         "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "successor_spec_id": "242"
       },
@@ -52,7 +52,7 @@
         "referencing_spec_id": "243",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1894",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1894",
         "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
         "successor_spec_id": "243"
       },
@@ -68,7 +68,7 @@
           "R3",
           "R4"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2721",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2721",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -86,7 +86,7 @@
           "R5-01",
           "R5-15"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       }
@@ -156,7 +156,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md",
     "digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",

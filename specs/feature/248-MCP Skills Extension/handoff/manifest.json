@@ -16,7 +16,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L502",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       },
@@ -28,7 +28,7 @@
         "referencing_spec_id": "248",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/248-MCP Skills Extension/spec.md#L278",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L278",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       },
@@ -42,7 +42,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L502",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       },
@@ -56,7 +56,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L502",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       },
@@ -68,7 +68,7 @@
         "referencing_spec_id": "248",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/248-MCP Skills Extension/spec.md#L15",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L15",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       },
@@ -80,7 +80,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -92,7 +92,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1537",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1537",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -108,7 +108,7 @@
           "R0.7",
           "R1.3"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L19",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L19",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -124,7 +124,7 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L23",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L23",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -138,7 +138,7 @@
         "requirement_ids": [
           "R0.8"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L40",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -150,7 +150,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       },
@@ -162,7 +162,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       }
@@ -232,7 +232,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/248-MCP Skills Extension/spec.md",
     "digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",

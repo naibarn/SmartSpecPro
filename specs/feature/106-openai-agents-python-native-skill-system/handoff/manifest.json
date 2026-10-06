@@ -17,47 +17,47 @@
       {
         "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
       },
       {
         "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
       },
       {
         "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
       },
       {
         "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
       },
       {
         "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
       },
       {
         "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
       },
       {
         "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
       },
       {
         "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
       }
     ],
     "predecessors": [],
@@ -88,47 +88,47 @@
       {
         "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
       },
       {
         "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
       },
       {
         "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
       },
       {
         "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
       },
       {
         "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
       },
       {
         "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
       },
       {
         "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
       },
       {
         "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -160,53 +160,53 @@
       {
         "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
       },
       {
         "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
       },
       {
         "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
       },
       {
         "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
       },
       {
         "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
       },
       {
         "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
       },
       {
         "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
       },
       {
         "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
     "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
@@ -259,47 +259,47 @@
       {
         "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
       },
       {
         "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
       },
       {
         "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
       },
       {
         "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
       },
       {
         "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
       },
       {
         "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
       },
       {
         "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
       },
       {
         "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -349,47 +349,47 @@
       {
         "digest": "d7023a0da69c28926c05b9edb79af68ec78a6141c8dea18b00dd935bdf57569b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-plan.md"
       },
       {
         "digest": "298854163e0445094be6dcd833acd3d9b0658b932c63821771277a004c9cb605",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/claude-spec.md"
       },
       {
         "digest": "ff7c05234585befc25ab24f1a4c527af0bb1c73812fd7884b7cd7779e688c62e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/implementation/deep_implement_config.json"
       },
       {
         "digest": "8995112e07c899e3688efa38e59e4ca6787354837be24108ea58b4dfeea18be7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/index.md"
       },
       {
         "digest": "53ca6456379046706291a1e873a40c40a321498d8ae462ac9ae863b4a54a67d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-01-isc-native-bundle.md"
       },
       {
         "digest": "36084b7c380955d24472532510d56b3ef90c3c6c0f61355be439be1b3cabc9fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-02-native-runtime-supervisor.md"
       },
       {
         "digest": "c64dbd3db7fe672a7f65b8a2baafcc8d9cf228ac16e9e5ebdfdc041192f22994",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-03-node-registry-compatibility.md"
       },
       {
         "digest": "55feaea4fdf04d99f293377b08fb3c18489006906758b6e8cdd1cd404a9f6dc3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-04-maintenance-migration.md"
       },
       {
         "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

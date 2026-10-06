@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L29"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L29"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L29",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L95"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L95"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L95",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L101"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L103"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L109"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L112"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L114"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L117"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L119"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L119"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L119",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L119",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L129"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L129"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L129",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L141"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L145"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L145"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L145",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L148"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L155"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L156"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L160"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L165"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L166"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L181"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L183"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L216"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L225"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L255"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L276"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L276"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L276",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L354"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L354"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L354",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L357"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L357"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L357",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L374"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L374"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L374",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L376"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L381"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L391"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L391"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L391",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L417"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L417"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L417",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L434"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L434"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L434",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L434",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L450"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L450"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L450",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L450",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L467"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L469"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L469"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L469",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L485"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L485"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L485",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L496"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L496"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L496",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L543"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L543"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L543",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L549"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L549"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L549",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L549",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L551"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L551"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L551",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L567"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L567"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L567",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L567",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L571"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L571"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L571",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L574"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L574"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L574",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L576"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L576"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L576",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L576",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L601"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L601"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L601",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L602"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L607"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L607"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L607",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L607",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L617"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L631"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L643"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L646"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L646"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L646",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L652"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L656"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L666"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L667"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L667"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L667",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L667",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L670"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L672"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L679"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L679"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L679",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L680"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L680"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L680",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L680",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L681"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L685"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L685"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L685",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L696"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L696"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L696",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L696",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L701"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L701"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L701",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L702"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L702"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L702",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L706"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L706",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L724"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L745"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L745"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L745",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L745",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L747"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L758"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L760"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L760"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L760",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L786"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L786"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L786",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L789"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L794"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L794"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L794",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L802"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L802"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L802",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L802",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L803"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L803"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L803",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L813"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L813"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L813",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L820"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L820"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L820",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L820",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L842"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L842"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L842",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L867"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L867"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L867",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L867",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L870"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L870"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L870",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L870",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L871"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L871"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L871",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L874"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L874"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L874",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L876"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L876"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L876",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L884"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L884"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L884",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L884",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L887"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L887"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L887",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L887",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L892"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L892"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L892",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L895"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L895"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L895",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L909"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L909",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L933"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L933"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L933",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L935"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L935"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L935",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L940"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L940"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L940",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L950"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L950"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L950",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L950",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L951"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L951"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L951",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L951",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L954"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L954"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L954",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L969"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L969"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L969",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L979"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L979"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L979",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L979",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L983"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L983"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L983",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L983",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L985"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L985"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L985",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L985",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1013"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1013"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1013",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1013",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1015"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1015"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1015",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1016"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1016"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1016",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1017"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1017"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1017",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1018"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1019"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1019"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1019",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1020"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1020"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1020",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1020",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1021"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1021"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1021",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1022"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1023"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1023"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1023",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1023",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1025"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1025"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1025",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1025",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1031"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1031"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1031",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1031",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1032"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1032"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1032",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1034"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1034"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1034",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1034",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1036"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1036"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1036",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1036",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1037"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1037"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1037",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1038"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1038"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1038",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1038",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1039"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1039"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1039",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1039",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1040"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1040"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1040",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1040",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1041"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1041"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1041",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1042"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1042"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1042",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1042",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1043"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1043"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1043",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1044"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1044"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1044",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1044",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1050"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1050"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1050",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1050",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1051"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1051"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1051",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1051",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1055"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1055"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1055",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1056"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1056"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1056",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1060"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1060"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1060",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1062"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1062"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1062",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1062",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1064"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1064"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1064",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1067"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1067"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1067",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1072"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1072"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1072",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1077"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1077"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1077",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1085"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1085"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1085",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1085",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1096"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1103"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1107"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1109"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1112"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1113"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1115"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1162"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1178"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1181"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1190"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1194"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1197"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1197"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1197",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1198"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1200"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1205"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1205"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1205",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1207"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1215"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1221"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1227"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1230"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1231"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1232"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1233"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1233"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1233",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1248"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1248"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1248",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1255"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1269"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1272"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1273"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1273"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1273",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1290"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1290"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1290",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1297"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1297"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1297",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1303"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1303"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1303",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1330"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1337"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1340"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1351"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1356"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1363"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1375"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1378"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1379"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1385"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1385"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1385",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1386"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1386"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1386",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1400"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1400"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1400",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1404"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1404"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1404",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1407"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1407"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1407",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1407",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1420"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1420"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1420",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1428"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1428"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1428",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1433"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1437"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1438"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1438"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1438",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1442"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1442"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1442",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1442",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1443"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1443"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1443",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1445"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1445"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1445",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1452"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1452"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1452",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1459"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1464"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1464"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1464",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1466"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1466"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1466",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1466",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4185,9 +4185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1476"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1476"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1476",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4207,9 +4207,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1480"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4229,9 +4229,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1489"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1489"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1489",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4251,9 +4251,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1498"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1498"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1498",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4273,9 +4273,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1517"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1517"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1517",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4295,9 +4295,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1518"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1518"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1518",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4317,9 +4317,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1525"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4339,9 +4339,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1528"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1528"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1528",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4361,9 +4361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1529"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4383,9 +4383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1534"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1534"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1534",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4405,9 +4405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1550"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1550"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1550",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1550",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4427,9 +4427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1562"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1562"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1562",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1562",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4449,9 +4449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1572"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1572"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1572",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4471,9 +4471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1580"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1580"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1580",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1580",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4493,9 +4493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1595"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1595"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1595",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1595",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4515,9 +4515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1604"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1604"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1604",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4537,9 +4537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1605"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1605"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1605",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1605",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4559,9 +4559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1612"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1612"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1612",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4581,9 +4581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1627"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4603,9 +4603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1628"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4625,9 +4625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1632"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1632"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1632",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4647,9 +4647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1643"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4669,9 +4669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1649"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4691,9 +4691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1672"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4713,9 +4713,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1678"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1678"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1678",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4735,9 +4735,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1679"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1679"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1679",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4757,9 +4757,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1685"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1685"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1685",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4779,9 +4779,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1699"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4801,9 +4801,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1706"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1706",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4823,9 +4823,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1707"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4845,9 +4845,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1710"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1710"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1710",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4867,9 +4867,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1712"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1712"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1712",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4889,9 +4889,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1713"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1713"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1713",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1713",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4911,9 +4911,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1714"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1714",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4933,9 +4933,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1715"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1715"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1715",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1715",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4955,9 +4955,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1717"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1717"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1717",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1717",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4977,9 +4977,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1719"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1719"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1719",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4999,9 +4999,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1721"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5021,9 +5021,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1728"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1728"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1728",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5043,9 +5043,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1738"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5065,9 +5065,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1739"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5087,9 +5087,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1743"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1743"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1743",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5109,9 +5109,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1768"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1768"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1768",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5131,9 +5131,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1770"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5153,9 +5153,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1774"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5175,9 +5175,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1806"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1806"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1806",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5197,9 +5197,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1825"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1825"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1825",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1825",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5219,9 +5219,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1828"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1828"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1828",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1828",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5241,9 +5241,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1831"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1831"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1831",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1831",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5263,9 +5263,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1835"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1835"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1835",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1835",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5285,9 +5285,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1851"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1851"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1851",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5307,9 +5307,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1852"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1852"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1852",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1852",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5329,9 +5329,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1859"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1859"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1859",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5351,9 +5351,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1860"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1860"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1860",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5373,9 +5373,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1895"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1895"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1895",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5395,9 +5395,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1909"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1909",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5417,9 +5417,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1928"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5439,9 +5439,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1936"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1936"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1936",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1936",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5461,9 +5461,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1943"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1943"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1943",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L1943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5483,9 +5483,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2073"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2073"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2073",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2073",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5505,9 +5505,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2116"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5527,9 +5527,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2117"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5549,9 +5549,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2123"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5571,9 +5571,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2128"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5593,9 +5593,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2137"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2137"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2137",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5615,9 +5615,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2160"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5637,9 +5637,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2190"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2190"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2190",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2190",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5659,9 +5659,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2235"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2235"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2235",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5681,9 +5681,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2250"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2250"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2250",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5703,9 +5703,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2259"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5725,9 +5725,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2341"
       ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L2341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

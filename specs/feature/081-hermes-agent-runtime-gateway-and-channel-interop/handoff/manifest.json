@@ -17,32 +17,32 @@
       {
         "digest": "f1d01bde8532d7728ea5dc14d4ef6e09af9343c90266617dddc9e7393bb0815e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
       },
       {
         "digest": "1626b1d18ce044c131205a43ae9c788f2e76105636658d6f0cd835cacf03ef79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
       },
       {
         "digest": "a9700500c397e15e5a22eddffbd97a5cd09edad73390c8b73d4ed61c20de0133",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
       },
       {
         "digest": "e0d29f2cb97ea3ebaef2a3197a66c61a753a9b9b80beb2c313ac787fb3bbc6f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
       },
       {
         "digest": "a679c0b642eb8ae3503eb5bafad9679465ff3492f15c68d88bcf4b63214ebe37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
       },
       {
         "digest": "65f74d9cc88ffce33d58bee2b3305bb5c43618ae3d70b3b2871f74330ade8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
       }
     ],
     "predecessors": [],
@@ -73,32 +73,32 @@
       {
         "digest": "f1d01bde8532d7728ea5dc14d4ef6e09af9343c90266617dddc9e7393bb0815e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
       },
       {
         "digest": "1626b1d18ce044c131205a43ae9c788f2e76105636658d6f0cd835cacf03ef79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
       },
       {
         "digest": "a9700500c397e15e5a22eddffbd97a5cd09edad73390c8b73d4ed61c20de0133",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
       },
       {
         "digest": "e0d29f2cb97ea3ebaef2a3197a66c61a753a9b9b80beb2c313ac787fb3bbc6f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
       },
       {
         "digest": "a679c0b642eb8ae3503eb5bafad9679465ff3492f15c68d88bcf4b63214ebe37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
       },
       {
         "digest": "65f74d9cc88ffce33d58bee2b3305bb5c43618ae3d70b3b2871f74330ade8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -130,38 +130,38 @@
       {
         "digest": "f1d01bde8532d7728ea5dc14d4ef6e09af9343c90266617dddc9e7393bb0815e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
       },
       {
         "digest": "1626b1d18ce044c131205a43ae9c788f2e76105636658d6f0cd835cacf03ef79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
       },
       {
         "digest": "a9700500c397e15e5a22eddffbd97a5cd09edad73390c8b73d4ed61c20de0133",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
       },
       {
         "digest": "e0d29f2cb97ea3ebaef2a3197a66c61a753a9b9b80beb2c313ac787fb3bbc6f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
       },
       {
         "digest": "a679c0b642eb8ae3503eb5bafad9679465ff3492f15c68d88bcf4b63214ebe37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
       },
       {
         "digest": "65f74d9cc88ffce33d58bee2b3305bb5c43618ae3d70b3b2871f74330ade8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md",
     "digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
@@ -214,32 +214,32 @@
       {
         "digest": "f1d01bde8532d7728ea5dc14d4ef6e09af9343c90266617dddc9e7393bb0815e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
       },
       {
         "digest": "1626b1d18ce044c131205a43ae9c788f2e76105636658d6f0cd835cacf03ef79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
       },
       {
         "digest": "a9700500c397e15e5a22eddffbd97a5cd09edad73390c8b73d4ed61c20de0133",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
       },
       {
         "digest": "e0d29f2cb97ea3ebaef2a3197a66c61a753a9b9b80beb2c313ac787fb3bbc6f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
       },
       {
         "digest": "a679c0b642eb8ae3503eb5bafad9679465ff3492f15c68d88bcf4b63214ebe37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
       },
       {
         "digest": "65f74d9cc88ffce33d58bee2b3305bb5c43618ae3d70b3b2871f74330ade8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -289,32 +289,32 @@
       {
         "digest": "f1d01bde8532d7728ea5dc14d4ef6e09af9343c90266617dddc9e7393bb0815e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/implementation/deep_implement_config.json"
       },
       {
         "digest": "1626b1d18ce044c131205a43ae9c788f2e76105636658d6f0cd835cacf03ef79",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/index.md"
       },
       {
         "digest": "a9700500c397e15e5a22eddffbd97a5cd09edad73390c8b73d4ed61c20de0133",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-01-runtime-identity-bridge-and-schema-foundation.md"
       },
       {
         "digest": "e0d29f2cb97ea3ebaef2a3197a66c61a753a9b9b80beb2c313ac787fb3bbc6f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-02-delegated-platform-access-and-hermes-capability-profile.md"
       },
       {
         "digest": "a679c0b642eb8ae3503eb5bafad9679465ff3492f15c68d88bcf4b63214ebe37",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-03-bound-worker-channel-handoff-and-callback-flows.md"
       },
       {
         "digest": "65f74d9cc88ffce33d58bee2b3305bb5c43618ae3d70b3b2871f74330ade8292",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

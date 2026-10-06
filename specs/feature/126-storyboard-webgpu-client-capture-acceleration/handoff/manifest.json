@@ -17,32 +17,32 @@
       {
         "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
       },
       {
         "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
       },
       {
         "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
       },
       {
         "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
       },
       {
         "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
       },
       {
         "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -73,32 +73,32 @@
       {
         "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
       },
       {
         "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
       },
       {
         "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
       },
       {
         "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
       },
       {
         "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
       },
       {
         "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -130,38 +130,38 @@
       {
         "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
       },
       {
         "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
       },
       {
         "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
       },
       {
         "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
       },
       {
         "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
       },
       {
         "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
     "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
@@ -214,32 +214,32 @@
       {
         "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
       },
       {
         "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
       },
       {
         "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
       },
       {
         "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
       },
       {
         "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
       },
       {
         "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -289,32 +289,32 @@
       {
         "digest": "3db8c29439c16e8e32bc1e536bcc38b34d069eb4c6d8804c155e088c5904f766",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/reviews/self-review-round-1.md"
       },
       {
         "digest": "49e4ccb4eaf2e8cb1ec69791679ba008422a3908f1978ba6f6883febc9399980",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/index.md"
       },
       {
         "digest": "05267d092c830e53fee7252d702f57685ebd25851a7f6d7b607316872741bb36",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-01-capability-contracts-and-flags.md"
       },
       {
         "digest": "f38614b58a5b164e87b6e19adcacaa1c921e56aa0d8f0854cfd748ab10eb1ec7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-02-storyboard-review-ui-and-job-metadata.md"
       },
       {
         "digest": "af53581e2f4824b4a704c3107de439345dd62743f09bd95099a89a347ddc0001",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-03-client-draft-upload-and-server-verification.md"
       },
       {
         "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

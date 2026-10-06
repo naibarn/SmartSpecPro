@@ -17,57 +17,57 @@
       {
         "digest": "fa82238ac980436415a62fccfc8d5b29a689451ed6d8c0556fd3d9fde02860e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
       },
       {
         "digest": "d7f062c1b5b395ac31cc4543f1357e2a766b4c43c7beba929ae487dc23d3afd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
       },
       {
         "digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "6bf7d00773ba32e9b8e0bc5881b2fdcd3af3a4008879ccb0175ce6f549604940",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
       },
       {
         "digest": "5636345395ac2de2fe949fd2740503f2efa0269656c5f19c62f9093a7490c085",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
       },
       {
         "digest": "a8697cd8e3b42c89495ea55e8e4447cef2d339f2857cfcf0ccb3e46d21d3654a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
       },
       {
         "digest": "a0e557dde1f56205d4ef76f15aae5c502e312d24f4b099569313e85eef5f85d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
       },
       {
         "digest": "450f3d1dd2e4113bd649497c5df1273a1267db506f574a22b455c9ced79205e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
       },
       {
         "digest": "35ae497d97960fe34094cd0a1fff8d90feb93d0c3a6f59007811dbbcb8e03921",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
       },
       {
         "digest": "2f83f58d1709cb02129980603f327392fd86c5ae87ea4adc3c652d05976560e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
       },
       {
         "digest": "7f31887593c6ad72608acd53b7e81a7e7d801d4813b96f710d6d5004cc3d4f6b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
       }
     ],
     "predecessors": [],
@@ -98,57 +98,57 @@
       {
         "digest": "fa82238ac980436415a62fccfc8d5b29a689451ed6d8c0556fd3d9fde02860e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
       },
       {
         "digest": "d7f062c1b5b395ac31cc4543f1357e2a766b4c43c7beba929ae487dc23d3afd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
       },
       {
         "digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "6bf7d00773ba32e9b8e0bc5881b2fdcd3af3a4008879ccb0175ce6f549604940",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
       },
       {
         "digest": "5636345395ac2de2fe949fd2740503f2efa0269656c5f19c62f9093a7490c085",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
       },
       {
         "digest": "a8697cd8e3b42c89495ea55e8e4447cef2d339f2857cfcf0ccb3e46d21d3654a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
       },
       {
         "digest": "a0e557dde1f56205d4ef76f15aae5c502e312d24f4b099569313e85eef5f85d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
       },
       {
         "digest": "450f3d1dd2e4113bd649497c5df1273a1267db506f574a22b455c9ced79205e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
       },
       {
         "digest": "35ae497d97960fe34094cd0a1fff8d90feb93d0c3a6f59007811dbbcb8e03921",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
       },
       {
         "digest": "2f83f58d1709cb02129980603f327392fd86c5ae87ea4adc3c652d05976560e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
       },
       {
         "digest": "7f31887593c6ad72608acd53b7e81a7e7d801d4813b96f710d6d5004cc3d4f6b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -180,63 +180,63 @@
       {
         "digest": "fa82238ac980436415a62fccfc8d5b29a689451ed6d8c0556fd3d9fde02860e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
       },
       {
         "digest": "d7f062c1b5b395ac31cc4543f1357e2a766b4c43c7beba929ae487dc23d3afd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
       },
       {
         "digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "6bf7d00773ba32e9b8e0bc5881b2fdcd3af3a4008879ccb0175ce6f549604940",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
       },
       {
         "digest": "5636345395ac2de2fe949fd2740503f2efa0269656c5f19c62f9093a7490c085",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
       },
       {
         "digest": "a8697cd8e3b42c89495ea55e8e4447cef2d339f2857cfcf0ccb3e46d21d3654a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
       },
       {
         "digest": "a0e557dde1f56205d4ef76f15aae5c502e312d24f4b099569313e85eef5f85d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
       },
       {
         "digest": "450f3d1dd2e4113bd649497c5df1273a1267db506f574a22b455c9ced79205e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
       },
       {
         "digest": "35ae497d97960fe34094cd0a1fff8d90feb93d0c3a6f59007811dbbcb8e03921",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
       },
       {
         "digest": "2f83f58d1709cb02129980603f327392fd86c5ae87ea4adc3c652d05976560e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
       },
       {
         "digest": "7f31887593c6ad72608acd53b7e81a7e7d801d4813b96f710d6d5004cc3d4f6b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md",
     "digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
@@ -289,57 +289,57 @@
       {
         "digest": "fa82238ac980436415a62fccfc8d5b29a689451ed6d8c0556fd3d9fde02860e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
       },
       {
         "digest": "d7f062c1b5b395ac31cc4543f1357e2a766b4c43c7beba929ae487dc23d3afd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
       },
       {
         "digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "6bf7d00773ba32e9b8e0bc5881b2fdcd3af3a4008879ccb0175ce6f549604940",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
       },
       {
         "digest": "5636345395ac2de2fe949fd2740503f2efa0269656c5f19c62f9093a7490c085",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
       },
       {
         "digest": "a8697cd8e3b42c89495ea55e8e4447cef2d339f2857cfcf0ccb3e46d21d3654a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
       },
       {
         "digest": "a0e557dde1f56205d4ef76f15aae5c502e312d24f4b099569313e85eef5f85d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
       },
       {
         "digest": "450f3d1dd2e4113bd649497c5df1273a1267db506f574a22b455c9ced79205e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
       },
       {
         "digest": "35ae497d97960fe34094cd0a1fff8d90feb93d0c3a6f59007811dbbcb8e03921",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
       },
       {
         "digest": "2f83f58d1709cb02129980603f327392fd86c5ae87ea4adc3c652d05976560e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
       },
       {
         "digest": "7f31887593c6ad72608acd53b7e81a7e7d801d4813b96f710d6d5004cc3d4f6b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -503,57 +503,57 @@
       {
         "digest": "fa82238ac980436415a62fccfc8d5b29a689451ed6d8c0556fd3d9fde02860e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-plan.md"
       },
       {
         "digest": "d7f062c1b5b395ac31cc4543f1357e2a766b4c43c7beba929ae487dc23d3afd6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/claude-spec.md"
       },
       {
         "digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json"
       },
       {
         "digest": "6bf7d00773ba32e9b8e0bc5881b2fdcd3af3a4008879ccb0175ce6f549604940",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/implementation/usage.md"
       },
       {
         "digest": "5636345395ac2de2fe949fd2740503f2efa0269656c5f19c62f9093a7490c085",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/reviews/opus-review.md"
       },
       {
         "digest": "a8697cd8e3b42c89495ea55e8e4447cef2d339f2857cfcf0ccb3e46d21d3654a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/index.md"
       },
       {
         "digest": "a0e557dde1f56205d4ef76f15aae5c502e312d24f4b099569313e85eef5f85d8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-01-suggest-model-function.md"
       },
       {
         "digest": "450f3d1dd2e4113bd649497c5df1273a1267db506f574a22b455c9ced79205e4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-02-verify-token-security.md"
       },
       {
         "digest": "35ae497d97960fe34094cd0a1fff8d90feb93d0c3a6f59007811dbbcb8e03921",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-03-handler-audit-and-errors.md"
       },
       {
         "digest": "2f83f58d1709cb02129980603f327392fd86c5ae87ea4adc3c652d05976560e5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-04-route-registration.md"
       },
       {
         "digest": "7f31887593c6ad72608acd53b7e81a7e7d801d4813b96f710d6d5004cc3d4f6b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

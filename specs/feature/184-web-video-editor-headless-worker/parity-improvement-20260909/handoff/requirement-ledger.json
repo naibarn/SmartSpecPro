@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L18"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L18"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L18",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L18",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L24"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L24"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L24",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L31"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L35"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L35"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L35",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L35",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L37"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L37"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L37",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L41"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L41"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L41",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L44"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L44"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L44",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L49"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L49"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L49",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L49",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L51"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L51"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L51",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L51",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L52"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L53"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L53"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L53",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L53",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L58"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L58"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L58",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L61"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L61"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L61",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L65"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L65"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L65",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L68"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L68"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L68",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L70"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L71"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L71"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L71",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L73"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L73"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L73",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L73",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L74"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L74"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L74",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L77"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L77"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L77",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L80"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L83"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L86"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L90"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L90"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L90",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L103"
       ],
-      "authority_source": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -17,67 +17,67 @@
       {
         "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
       },
       {
         "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
       },
       {
         "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
       },
       {
         "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
       },
       {
         "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
       },
       {
         "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
       },
       {
         "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
       },
       {
         "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
       },
       {
         "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
       },
       {
         "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
       },
       {
         "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
       },
       {
         "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
       },
       {
         "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
       },
       {
         "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
       },
       {
         "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
       },
       {
         "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
       },
       {
         "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
       },
       {
         "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
       },
       {
         "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
       },
       {
         "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
       },
       {
         "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,73 +200,73 @@
       {
         "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
       },
       {
         "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
       },
       {
         "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
       },
       {
         "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
       },
       {
         "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
       },
       {
         "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
       },
       {
         "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
       },
       {
         "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
       },
       {
         "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
       },
       {
         "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
       },
       {
         "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/197-runner-adaptive-execution-fabric/spec.md",
     "digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
@@ -319,67 +319,67 @@
       {
         "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
       },
       {
         "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
       },
       {
         "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
       },
       {
         "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
       },
       {
         "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
       },
       {
         "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
       },
       {
         "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
       },
       {
         "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
       },
       {
         "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
       },
       {
         "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
       },
       {
         "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -591,67 +591,67 @@
       {
         "digest": "1aa992c4e5e2781a4e08db991d5c86c86c2ce0148854b3af226b209d644257c9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-plan.md"
       },
       {
         "digest": "6c23a82ad95e81cc09a81c232be58b65d55bc9939fb7740ef27fcd609fb2ac57",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/claude-spec.md"
       },
       {
         "digest": "947ac2090b5b83a9cf0f5679064275a788e77e8befffbea63572358be15d91f0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/completion.md"
       },
       {
         "digest": "b2f5398731de123c05edb6b474edbc48f2d89dfd392cef2058fccaa8c4dfd3bb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/deep_implement_config.json"
       },
       {
         "digest": "62abb6ab04b168fc558d25d23c70ae95275323d2c3f08c50abfaf678ace7c1e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/implementation/review.md"
       },
       {
         "digest": "3ca763d7fe9543840fa1da0bac40e0962cd3e2af9965ad84844c93e0c2a748aa",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/reviews/self-review-round-1.md"
       },
       {
         "digest": "6e1a6c6939c88af609ca3c6a1a6ed635de50c8b3d3bef4f6f9218ab8adee4d06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/index.md"
       },
       {
         "digest": "e7a7a4e57c142db59edc9795d95424c3371d15165804d59a27431339af5286e6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-01-runner-contracts.md"
       },
       {
         "digest": "ecaa345025078e5b48ebd62018f2cb0e3f3491a469e96292d05c112ec6ca12bd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-02-identity-and-discovery.md"
       },
       {
         "digest": "352ba30dfd173c1409fc9234f868b3d0431cc980f78ca6549e3d85de9f7ad9f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-03-claims-and-leasing.md"
       },
       {
         "digest": "44eb18f9b7b937544f4d56b3a019b2ad93c2a1679d5c1ce6c6ce1ab00cce6d87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-04-control-and-recovery.md"
       },
       {
         "digest": "7ce057b3c98143e74fa882c7fda2db7cbd659f3452740981e03a99301ede012e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-05-ui-and-mcp-boundary.md"
       },
       {
         "digest": "efd1eb3ad704a3661a550dbc7957904f67ab0993b5ed1935bbe188f864e2d1bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/197-runner-adaptive-execution-fabric/sections/section-06-migration-and-acceptance.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

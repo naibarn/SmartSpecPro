@@ -17,97 +17,97 @@
       {
         "digest": "48f24a5f70a626cec2525199e9bab14db9a6430c31d7927dc72a4e4748374a63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-plan.md"
       },
       {
         "digest": "38ebb24b754643fca424199c334aab44bb1cee43a85300202e9ffe3117b35864",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-spec.md"
       },
       {
         "digest": "12c799549d39801c53c9c467d6e7c5d759a468e0d051e651454f1326a1163534",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c1378bb26a6aae248e002fd23f75f36e509a86cc40645a247468c67e7e4dd10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
       },
       {
         "digest": "0b7a69f9f257c907ddb9744ddb76e53e293bbc1b51bfa4d142c57e98f6ae0104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
       },
       {
         "digest": "63040cfae8b5285d27d105303721b3ce3ea5c4fdaeada4ce94904909419b57f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/index.md"
       },
       {
         "digest": "c9ee2bd7288f9d2ce7cff26f0afe7c72b26cd3b120c6621b351e54da7ba72a80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
       },
       {
         "digest": "903b26b8199b0f87ef17eb1bf68ddd26037f13f9a7911714b64ae2904167f801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
       },
       {
         "digest": "905151cc08c62e82c83a95753b8ec73c165ef8c1f7e69955dffc5ba015eb1837",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
       },
       {
         "digest": "f6b4cb2d66e75987ae23acb07255b45d89528fcfa2c5ff5c3a496467a94b3c5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
       },
       {
         "digest": "5efb389b122863d7df693054b78500a2e1de8e366e91eeecef6ccd88c69c2405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
       },
       {
         "digest": "d0332b1be6656865fd93659592f3ec6080c8deff7ef075f75632db2e2319e4d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
       },
       {
         "digest": "0e92011dd97702a059283bfc2cd851ad612dcc06ade825de9eee7d3483a8cf3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
       },
       {
         "digest": "93ed2ae415bbd3ea8b0ef324c15818624eb2f41156911724d281b0beaf897266",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
       },
       {
         "digest": "d124688f53fdf65e56ae9c4a11df4b081a92f4be194bf24d9f2223501d9b59d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
       },
       {
         "digest": "2daa0d10979a81cfc42bcc0a9127d05ce1bf4816f7ddc5275ae06b156065c485",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
       },
       {
         "digest": "607d3ce76ecfbe6eb08a0c4546972175b8841e9785c994eaa0309a0468adca97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
       },
       {
         "digest": "523eed8ae1c62c4b53547a487fa9c805570ce8d3211f8d94ccdb49528b7f85f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
       },
       {
         "digest": "5034faad5718856516da188de286ebaab54eb006db1eec9383c0ce35a0c34edb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "48f24a5f70a626cec2525199e9bab14db9a6430c31d7927dc72a4e4748374a63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-plan.md"
       },
       {
         "digest": "38ebb24b754643fca424199c334aab44bb1cee43a85300202e9ffe3117b35864",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-spec.md"
       },
       {
         "digest": "12c799549d39801c53c9c467d6e7c5d759a468e0d051e651454f1326a1163534",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c1378bb26a6aae248e002fd23f75f36e509a86cc40645a247468c67e7e4dd10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
       },
       {
         "digest": "0b7a69f9f257c907ddb9744ddb76e53e293bbc1b51bfa4d142c57e98f6ae0104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
       },
       {
         "digest": "63040cfae8b5285d27d105303721b3ce3ea5c4fdaeada4ce94904909419b57f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/index.md"
       },
       {
         "digest": "c9ee2bd7288f9d2ce7cff26f0afe7c72b26cd3b120c6621b351e54da7ba72a80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
       },
       {
         "digest": "903b26b8199b0f87ef17eb1bf68ddd26037f13f9a7911714b64ae2904167f801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
       },
       {
         "digest": "905151cc08c62e82c83a95753b8ec73c165ef8c1f7e69955dffc5ba015eb1837",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
       },
       {
         "digest": "f6b4cb2d66e75987ae23acb07255b45d89528fcfa2c5ff5c3a496467a94b3c5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
       },
       {
         "digest": "5efb389b122863d7df693054b78500a2e1de8e366e91eeecef6ccd88c69c2405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
       },
       {
         "digest": "d0332b1be6656865fd93659592f3ec6080c8deff7ef075f75632db2e2319e4d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
       },
       {
         "digest": "0e92011dd97702a059283bfc2cd851ad612dcc06ade825de9eee7d3483a8cf3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
       },
       {
         "digest": "93ed2ae415bbd3ea8b0ef324c15818624eb2f41156911724d281b0beaf897266",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
       },
       {
         "digest": "d124688f53fdf65e56ae9c4a11df4b081a92f4be194bf24d9f2223501d9b59d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
       },
       {
         "digest": "2daa0d10979a81cfc42bcc0a9127d05ce1bf4816f7ddc5275ae06b156065c485",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
       },
       {
         "digest": "607d3ce76ecfbe6eb08a0c4546972175b8841e9785c994eaa0309a0468adca97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
       },
       {
         "digest": "523eed8ae1c62c4b53547a487fa9c805570ce8d3211f8d94ccdb49528b7f85f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
       },
       {
         "digest": "5034faad5718856516da188de286ebaab54eb006db1eec9383c0ce35a0c34edb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "48f24a5f70a626cec2525199e9bab14db9a6430c31d7927dc72a4e4748374a63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-plan.md"
       },
       {
         "digest": "38ebb24b754643fca424199c334aab44bb1cee43a85300202e9ffe3117b35864",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-spec.md"
       },
       {
         "digest": "12c799549d39801c53c9c467d6e7c5d759a468e0d051e651454f1326a1163534",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c1378bb26a6aae248e002fd23f75f36e509a86cc40645a247468c67e7e4dd10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
       },
       {
         "digest": "0b7a69f9f257c907ddb9744ddb76e53e293bbc1b51bfa4d142c57e98f6ae0104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
       },
       {
         "digest": "63040cfae8b5285d27d105303721b3ce3ea5c4fdaeada4ce94904909419b57f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/index.md"
       },
       {
         "digest": "c9ee2bd7288f9d2ce7cff26f0afe7c72b26cd3b120c6621b351e54da7ba72a80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
       },
       {
         "digest": "903b26b8199b0f87ef17eb1bf68ddd26037f13f9a7911714b64ae2904167f801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
       },
       {
         "digest": "905151cc08c62e82c83a95753b8ec73c165ef8c1f7e69955dffc5ba015eb1837",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
       },
       {
         "digest": "f6b4cb2d66e75987ae23acb07255b45d89528fcfa2c5ff5c3a496467a94b3c5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
       },
       {
         "digest": "5efb389b122863d7df693054b78500a2e1de8e366e91eeecef6ccd88c69c2405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
       },
       {
         "digest": "d0332b1be6656865fd93659592f3ec6080c8deff7ef075f75632db2e2319e4d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
       },
       {
         "digest": "0e92011dd97702a059283bfc2cd851ad612dcc06ade825de9eee7d3483a8cf3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
       },
       {
         "digest": "93ed2ae415bbd3ea8b0ef324c15818624eb2f41156911724d281b0beaf897266",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
       },
       {
         "digest": "d124688f53fdf65e56ae9c4a11df4b081a92f4be194bf24d9f2223501d9b59d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
       },
       {
         "digest": "2daa0d10979a81cfc42bcc0a9127d05ce1bf4816f7ddc5275ae06b156065c485",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
       },
       {
         "digest": "607d3ce76ecfbe6eb08a0c4546972175b8841e9785c994eaa0309a0468adca97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
       },
       {
         "digest": "523eed8ae1c62c4b53547a487fa9c805570ce8d3211f8d94ccdb49528b7f85f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
       },
       {
         "digest": "5034faad5718856516da188de286ebaab54eb006db1eec9383c0ce35a0c34edb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/057-mcp-security-context-optimization/spec.md",
     "digest": "ad46f9c93437bd968a65e920f102505025f939d1a87867bbfc8bb95289b9c67e",
@@ -409,137 +409,137 @@
       {
         "digest": "48f24a5f70a626cec2525199e9bab14db9a6430c31d7927dc72a4e4748374a63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-plan.md"
       },
       {
         "digest": "38ebb24b754643fca424199c334aab44bb1cee43a85300202e9ffe3117b35864",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-spec.md"
       },
       {
         "digest": "12c799549d39801c53c9c467d6e7c5d759a468e0d051e651454f1326a1163534",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c1378bb26a6aae248e002fd23f75f36e509a86cc40645a247468c67e7e4dd10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
       },
       {
         "digest": "0b7a69f9f257c907ddb9744ddb76e53e293bbc1b51bfa4d142c57e98f6ae0104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
       },
       {
         "digest": "63040cfae8b5285d27d105303721b3ce3ea5c4fdaeada4ce94904909419b57f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/index.md"
       },
       {
         "digest": "c9ee2bd7288f9d2ce7cff26f0afe7c72b26cd3b120c6621b351e54da7ba72a80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
       },
       {
         "digest": "903b26b8199b0f87ef17eb1bf68ddd26037f13f9a7911714b64ae2904167f801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
       },
       {
         "digest": "905151cc08c62e82c83a95753b8ec73c165ef8c1f7e69955dffc5ba015eb1837",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
       },
       {
         "digest": "f6b4cb2d66e75987ae23acb07255b45d89528fcfa2c5ff5c3a496467a94b3c5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
       },
       {
         "digest": "5efb389b122863d7df693054b78500a2e1de8e366e91eeecef6ccd88c69c2405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
       },
       {
         "digest": "d0332b1be6656865fd93659592f3ec6080c8deff7ef075f75632db2e2319e4d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
       },
       {
         "digest": "0e92011dd97702a059283bfc2cd851ad612dcc06ade825de9eee7d3483a8cf3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
       },
       {
         "digest": "93ed2ae415bbd3ea8b0ef324c15818624eb2f41156911724d281b0beaf897266",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
       },
       {
         "digest": "d124688f53fdf65e56ae9c4a11df4b081a92f4be194bf24d9f2223501d9b59d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
       },
       {
         "digest": "2daa0d10979a81cfc42bcc0a9127d05ce1bf4816f7ddc5275ae06b156065c485",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
       },
       {
         "digest": "607d3ce76ecfbe6eb08a0c4546972175b8841e9785c994eaa0309a0468adca97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
       },
       {
         "digest": "523eed8ae1c62c4b53547a487fa9c805570ce8d3211f8d94ccdb49528b7f85f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
       },
       {
         "digest": "5034faad5718856516da188de286ebaab54eb006db1eec9383c0ce35a0c34edb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
       },
       {
         "digest": "5883c9be2325674788ee56dedc4b98749a2ac69eaa46d36905120228991f0403",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-14-admin-ui-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-14-admin-ui-mcp.md"
       },
       {
         "digest": "b67ca32154f399aad9c7e13b4ca03168c87e6d733e1b364289cb782d0a3b2f1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-15-cross-system-protections.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-15-cross-system-protections.md"
       },
       {
         "digest": "ab6a15bd7d41705341a53054b566b6d589186702b2ff023684dced3433c42645",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-16-feature-flags-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-16-feature-flags-audit.md"
       },
       {
         "digest": "0807f12dbde7ddbbf557e87ab5904860fea8821c9007dfe46d04cf249a77cdc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-17-multi-transport-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-17-multi-transport-client.md"
       },
       {
         "digest": "6dd05a9e5d4ed4b709e4cd46363a43ac7c10846ee7ddf99a558eeb594f3c799a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-18-oauth-support.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-18-oauth-support.md"
       },
       {
         "digest": "7a4082006d55fca5c6659dc131869f5f67af781664a99b8fcbc52763a689678b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-19-hotreload-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-19-hotreload-adapters.md"
       },
       {
         "digest": "644174f4903d85394698cf36e2bdf41bbb29a04976a79f028da9f2ee862e8f53",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-20-nginx-monitoring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-20-nginx-monitoring.md"
       },
       {
         "digest": "987b359292bc66b6e59bf4d7a8917e950f32c32ac18886b9b34ff1759c0442ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-21-advanced-spec-features.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-21-advanced-spec-features.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -1135,137 +1135,137 @@
       {
         "digest": "48f24a5f70a626cec2525199e9bab14db9a6430c31d7927dc72a4e4748374a63",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-plan.md"
       },
       {
         "digest": "38ebb24b754643fca424199c334aab44bb1cee43a85300202e9ffe3117b35864",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/claude-spec.md"
       },
       {
         "digest": "12c799549d39801c53c9c467d6e7c5d759a468e0d051e651454f1326a1163534",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/deep_implement_config.json"
       },
       {
         "digest": "1c1378bb26a6aae248e002fd23f75f36e509a86cc40645a247468c67e7e4dd10",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/implementation/usage.md"
       },
       {
         "digest": "0b7a69f9f257c907ddb9744ddb76e53e293bbc1b51bfa4d142c57e98f6ae0104",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/reviews/self-review-round-1.md"
       },
       {
         "digest": "63040cfae8b5285d27d105303721b3ce3ea5c4fdaeada4ce94904909419b57f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/index.md"
       },
       {
         "digest": "c9ee2bd7288f9d2ce7cff26f0afe7c72b26cd3b120c6621b351e54da7ba72a80",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-01-python-ssrf-auth.md"
       },
       {
         "digest": "903b26b8199b0f87ef17eb1bf68ddd26037f13f9a7911714b64ae2904167f801",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-02-python-injection-fixes.md"
       },
       {
         "digest": "905151cc08c62e82c83a95753b8ec73c165ef8c1f7e69955dffc5ba015eb1837",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-03-nodejs-auth-tenant.md"
       },
       {
         "digest": "f6b4cb2d66e75987ae23acb07255b45d89528fcfa2c5ff5c3a496467a94b3c5f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-04-nodejs-scope-idor.md"
       },
       {
         "digest": "5efb389b122863d7df693054b78500a2e1de8e366e91eeecef6ccd88c69c2405",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-05-spec-compliance.md"
       },
       {
         "digest": "d0332b1be6656865fd93659592f3ec6080c8deff7ef075f75632db2e2319e4d9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-06-infrastructure.md"
       },
       {
         "digest": "0e92011dd97702a059283bfc2cd851ad612dcc06ade825de9eee7d3483a8cf3a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-07-context-summarizer.md"
       },
       {
         "digest": "93ed2ae415bbd3ea8b0ef324c15818624eb2f41156911724d281b0beaf897266",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-08-deferred-tools.md"
       },
       {
         "digest": "d124688f53fdf65e56ae9c4a11df4b081a92f4be194bf24d9f2223501d9b59d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-09-vector-memory.md"
       },
       {
         "digest": "2daa0d10979a81cfc42bcc0a9127d05ce1bf4816f7ddc5275ae06b156065c485",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-10-chat-token-counting.md"
       },
       {
         "digest": "607d3ce76ecfbe6eb08a0c4546972175b8841e9785c994eaa0309a0468adca97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-11-fewshot-rag-optimization.md"
       },
       {
         "digest": "523eed8ae1c62c4b53547a487fa9c805570ce8d3211f8d94ccdb49528b7f85f5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-12-db-schema-mcp-registry.md"
       },
       {
         "digest": "5034faad5718856516da188de286ebaab54eb006db1eec9383c0ce35a0c34edb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-13-trpc-router-mcp.md"
       },
       {
         "digest": "5883c9be2325674788ee56dedc4b98749a2ac69eaa46d36905120228991f0403",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-14-admin-ui-mcp.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-14-admin-ui-mcp.md"
       },
       {
         "digest": "b67ca32154f399aad9c7e13b4ca03168c87e6d733e1b364289cb782d0a3b2f1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-15-cross-system-protections.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-15-cross-system-protections.md"
       },
       {
         "digest": "ab6a15bd7d41705341a53054b566b6d589186702b2ff023684dced3433c42645",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-16-feature-flags-audit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-16-feature-flags-audit.md"
       },
       {
         "digest": "0807f12dbde7ddbbf557e87ab5904860fea8821c9007dfe46d04cf249a77cdc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-17-multi-transport-client.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-17-multi-transport-client.md"
       },
       {
         "digest": "6dd05a9e5d4ed4b709e4cd46363a43ac7c10846ee7ddf99a558eeb594f3c799a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-18-oauth-support.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-18-oauth-support.md"
       },
       {
         "digest": "7a4082006d55fca5c6659dc131869f5f67af781664a99b8fcbc52763a689678b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-19-hotreload-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-19-hotreload-adapters.md"
       },
       {
         "digest": "644174f4903d85394698cf36e2bdf41bbb29a04976a79f028da9f2ee862e8f53",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-20-nginx-monitoring.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-20-nginx-monitoring.md"
       },
       {
         "digest": "987b359292bc66b6e59bf4d7a8917e950f32c32ac18886b9b34ff1759c0442ee",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/057-mcp-security-context-optimization/sections/section-21-advanced-spec-features.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/057-mcp-security-context-optimization/sections/section-21-advanced-spec-features.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

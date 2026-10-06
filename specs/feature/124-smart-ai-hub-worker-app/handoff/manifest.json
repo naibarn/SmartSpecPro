@@ -17,97 +17,97 @@
       {
         "digest": "9a02598050346306aaa7076279cd152c2e47417d154a90f1c1f735d770563eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
       },
       {
         "digest": "989a6a51ad88b068f8e9c2d3d7928dcad6f55e999b2749b87b5403b755d11f46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
       },
       {
         "digest": "059f49f77f01377211ccee0c73c2009da9c1cabf715ed2cde6ef810c16910256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
       },
       {
         "digest": "077830a294b7b075216a43898fb40303ef0cfee20c1fe58dc0a8fb66a937371b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
       },
       {
         "digest": "99953cfbdba42ecd130a4a1b898e1242d78aba662dd0fb9a6028836c41467dc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
       },
       {
         "digest": "0a212d90df53aa14b17e5c7d135d134e66dafd597ad3edae1bb588ff8373e44a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
       },
       {
         "digest": "307cd41ada8365c4e4dd7daa98b90dfb455fb3872298ff18d7c0f9e4f2a490d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
       },
       {
         "digest": "3dbab4007d4d216121a9921fcb2f186729d42032b56b982fa4a9b527ee7e8e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
       },
       {
         "digest": "c94fb531fc6f93b1ab7d2263f8b98e821e06fa7c720ab60dd6ba48a019f9504a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5bde40583bbf848c5bdd937f0d4e840ee663dda3c1b0d383ca221a189db25052",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d0a24b397e8673f2399902222ec5000707c0be16b1b9274b15e7bd16cd859ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
       },
       {
         "digest": "fb5baaa95108dc4d1804c8b3e2048ae3d3df154b062358d2be02770b53d3031e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
       },
       {
         "digest": "2f5278af1456d3e332a876cfd139d14ab87abfe1b2ab280e8b3ed157dc16029e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
       },
       {
         "digest": "12b40ab241bd2f204f6b52e9edad48f2b286b9cfd75c700a8fda0bd0fb9eae06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
       },
       {
         "digest": "429c4d7a8281b27934e2e80ab05a59124d1548c5715bc8bbeffaed410ebf1f54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
       },
       {
         "digest": "6bccd747b4382ba5bb44485bc185342e259e0e6912ee5195e19ad1377a109adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
       },
       {
         "digest": "cda3f6fa774d22376572de6eec4b071b6ca235166ecf072a619b13802f92f314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
       },
       {
         "digest": "b0900a2d869cd1daf1f4779387c1233b0b719f3d9ec735a03f62dc5cd89124f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
       },
       {
         "digest": "0e4b4d11c8ef60df5a3b1aec5424ef8220e39fc1cd68c10fa282b292fedbf732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "9a02598050346306aaa7076279cd152c2e47417d154a90f1c1f735d770563eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
       },
       {
         "digest": "989a6a51ad88b068f8e9c2d3d7928dcad6f55e999b2749b87b5403b755d11f46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
       },
       {
         "digest": "059f49f77f01377211ccee0c73c2009da9c1cabf715ed2cde6ef810c16910256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
       },
       {
         "digest": "077830a294b7b075216a43898fb40303ef0cfee20c1fe58dc0a8fb66a937371b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
       },
       {
         "digest": "99953cfbdba42ecd130a4a1b898e1242d78aba662dd0fb9a6028836c41467dc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
       },
       {
         "digest": "0a212d90df53aa14b17e5c7d135d134e66dafd597ad3edae1bb588ff8373e44a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
       },
       {
         "digest": "307cd41ada8365c4e4dd7daa98b90dfb455fb3872298ff18d7c0f9e4f2a490d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
       },
       {
         "digest": "3dbab4007d4d216121a9921fcb2f186729d42032b56b982fa4a9b527ee7e8e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
       },
       {
         "digest": "c94fb531fc6f93b1ab7d2263f8b98e821e06fa7c720ab60dd6ba48a019f9504a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5bde40583bbf848c5bdd937f0d4e840ee663dda3c1b0d383ca221a189db25052",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d0a24b397e8673f2399902222ec5000707c0be16b1b9274b15e7bd16cd859ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
       },
       {
         "digest": "fb5baaa95108dc4d1804c8b3e2048ae3d3df154b062358d2be02770b53d3031e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
       },
       {
         "digest": "2f5278af1456d3e332a876cfd139d14ab87abfe1b2ab280e8b3ed157dc16029e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
       },
       {
         "digest": "12b40ab241bd2f204f6b52e9edad48f2b286b9cfd75c700a8fda0bd0fb9eae06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
       },
       {
         "digest": "429c4d7a8281b27934e2e80ab05a59124d1548c5715bc8bbeffaed410ebf1f54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
       },
       {
         "digest": "6bccd747b4382ba5bb44485bc185342e259e0e6912ee5195e19ad1377a109adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
       },
       {
         "digest": "cda3f6fa774d22376572de6eec4b071b6ca235166ecf072a619b13802f92f314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
       },
       {
         "digest": "b0900a2d869cd1daf1f4779387c1233b0b719f3d9ec735a03f62dc5cd89124f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
       },
       {
         "digest": "0e4b4d11c8ef60df5a3b1aec5424ef8220e39fc1cd68c10fa282b292fedbf732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "9a02598050346306aaa7076279cd152c2e47417d154a90f1c1f735d770563eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
       },
       {
         "digest": "989a6a51ad88b068f8e9c2d3d7928dcad6f55e999b2749b87b5403b755d11f46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
       },
       {
         "digest": "059f49f77f01377211ccee0c73c2009da9c1cabf715ed2cde6ef810c16910256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
       },
       {
         "digest": "077830a294b7b075216a43898fb40303ef0cfee20c1fe58dc0a8fb66a937371b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
       },
       {
         "digest": "99953cfbdba42ecd130a4a1b898e1242d78aba662dd0fb9a6028836c41467dc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
       },
       {
         "digest": "0a212d90df53aa14b17e5c7d135d134e66dafd597ad3edae1bb588ff8373e44a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
       },
       {
         "digest": "307cd41ada8365c4e4dd7daa98b90dfb455fb3872298ff18d7c0f9e4f2a490d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
       },
       {
         "digest": "3dbab4007d4d216121a9921fcb2f186729d42032b56b982fa4a9b527ee7e8e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
       },
       {
         "digest": "c94fb531fc6f93b1ab7d2263f8b98e821e06fa7c720ab60dd6ba48a019f9504a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5bde40583bbf848c5bdd937f0d4e840ee663dda3c1b0d383ca221a189db25052",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d0a24b397e8673f2399902222ec5000707c0be16b1b9274b15e7bd16cd859ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
       },
       {
         "digest": "fb5baaa95108dc4d1804c8b3e2048ae3d3df154b062358d2be02770b53d3031e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
       },
       {
         "digest": "2f5278af1456d3e332a876cfd139d14ab87abfe1b2ab280e8b3ed157dc16029e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
       },
       {
         "digest": "12b40ab241bd2f204f6b52e9edad48f2b286b9cfd75c700a8fda0bd0fb9eae06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
       },
       {
         "digest": "429c4d7a8281b27934e2e80ab05a59124d1548c5715bc8bbeffaed410ebf1f54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
       },
       {
         "digest": "6bccd747b4382ba5bb44485bc185342e259e0e6912ee5195e19ad1377a109adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
       },
       {
         "digest": "cda3f6fa774d22376572de6eec4b071b6ca235166ecf072a619b13802f92f314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
       },
       {
         "digest": "b0900a2d869cd1daf1f4779387c1233b0b719f3d9ec735a03f62dc5cd89124f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
       },
       {
         "digest": "0e4b4d11c8ef60df5a3b1aec5424ef8220e39fc1cd68c10fa282b292fedbf732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
     "digest": "472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
@@ -409,112 +409,112 @@
       {
         "digest": "9a02598050346306aaa7076279cd152c2e47417d154a90f1c1f735d770563eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
       },
       {
         "digest": "989a6a51ad88b068f8e9c2d3d7928dcad6f55e999b2749b87b5403b755d11f46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
       },
       {
         "digest": "059f49f77f01377211ccee0c73c2009da9c1cabf715ed2cde6ef810c16910256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
       },
       {
         "digest": "077830a294b7b075216a43898fb40303ef0cfee20c1fe58dc0a8fb66a937371b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
       },
       {
         "digest": "99953cfbdba42ecd130a4a1b898e1242d78aba662dd0fb9a6028836c41467dc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
       },
       {
         "digest": "0a212d90df53aa14b17e5c7d135d134e66dafd597ad3edae1bb588ff8373e44a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
       },
       {
         "digest": "307cd41ada8365c4e4dd7daa98b90dfb455fb3872298ff18d7c0f9e4f2a490d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
       },
       {
         "digest": "3dbab4007d4d216121a9921fcb2f186729d42032b56b982fa4a9b527ee7e8e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
       },
       {
         "digest": "c94fb531fc6f93b1ab7d2263f8b98e821e06fa7c720ab60dd6ba48a019f9504a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5bde40583bbf848c5bdd937f0d4e840ee663dda3c1b0d383ca221a189db25052",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d0a24b397e8673f2399902222ec5000707c0be16b1b9274b15e7bd16cd859ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
       },
       {
         "digest": "fb5baaa95108dc4d1804c8b3e2048ae3d3df154b062358d2be02770b53d3031e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
       },
       {
         "digest": "2f5278af1456d3e332a876cfd139d14ab87abfe1b2ab280e8b3ed157dc16029e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
       },
       {
         "digest": "12b40ab241bd2f204f6b52e9edad48f2b286b9cfd75c700a8fda0bd0fb9eae06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
       },
       {
         "digest": "429c4d7a8281b27934e2e80ab05a59124d1548c5715bc8bbeffaed410ebf1f54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
       },
       {
         "digest": "6bccd747b4382ba5bb44485bc185342e259e0e6912ee5195e19ad1377a109adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
       },
       {
         "digest": "cda3f6fa774d22376572de6eec4b071b6ca235166ecf072a619b13802f92f314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
       },
       {
         "digest": "b0900a2d869cd1daf1f4779387c1233b0b719f3d9ec735a03f62dc5cd89124f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
       },
       {
         "digest": "0e4b4d11c8ef60df5a3b1aec5424ef8220e39fc1cd68c10fa282b292fedbf732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
       },
       {
         "digest": "0343c85a66e5bc7a057e910137cef35932875c1913e5dbe76bb0849ff3e1cd95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-09-user-job-monitor-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-09-user-job-monitor-ui.md"
       },
       {
         "digest": "49316bacca1d30db0917fa182c1764653ad1fd7fc0d9be449f306d45c7fffeb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-10-admin-worker-monitor-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-10-admin-worker-monitor-ui.md"
       },
       {
         "digest": "f4982763eb1065aa0474c496ebc4cb65a9888db4a13046a67840c28d28752c3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-11-future-local-ai-mcp-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-11-future-local-ai-mcp-rollout.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -564,112 +564,112 @@
       {
         "digest": "9a02598050346306aaa7076279cd152c2e47417d154a90f1c1f735d770563eb2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-plan.md"
       },
       {
         "digest": "989a6a51ad88b068f8e9c2d3d7928dcad6f55e999b2749b87b5403b755d11f46",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/claude-spec.md"
       },
       {
         "digest": "059f49f77f01377211ccee0c73c2009da9c1cabf715ed2cde6ef810c16910256",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/deep_implement_config.json"
       },
       {
         "digest": "077830a294b7b075216a43898fb40303ef0cfee20c1fe58dc0a8fb66a937371b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/implementation/usage.md"
       },
       {
         "digest": "99953cfbdba42ecd130a4a1b898e1242d78aba662dd0fb9a6028836c41467dc8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-2.md"
       },
       {
         "digest": "0a212d90df53aa14b17e5c7d135d134e66dafd597ad3edae1bb588ff8373e44a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-3.md"
       },
       {
         "digest": "307cd41ada8365c4e4dd7daa98b90dfb455fb3872298ff18d7c0f9e4f2a490d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-4.md"
       },
       {
         "digest": "3dbab4007d4d216121a9921fcb2f186729d42032b56b982fa4a9b527ee7e8e99",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/plan-spec-completeness-round-5.md"
       },
       {
         "digest": "c94fb531fc6f93b1ab7d2263f8b98e821e06fa7c720ab60dd6ba48a019f9504a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "5bde40583bbf848c5bdd937f0d4e840ee663dda3c1b0d383ca221a189db25052",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/reviews/self-review-round-1.md"
       },
       {
         "digest": "2d0a24b397e8673f2399902222ec5000707c0be16b1b9274b15e7bd16cd859ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/index.md"
       },
       {
         "digest": "fb5baaa95108dc4d1804c8b3e2048ae3d3df154b062358d2be02770b53d3031e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-01-contracts-and-flags.md"
       },
       {
         "digest": "2f5278af1456d3e332a876cfd139d14ab87abfe1b2ab280e8b3ed157dc16029e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-02-worker-queue-scheduler.md"
       },
       {
         "digest": "12b40ab241bd2f204f6b52e9edad48f2b286b9cfd75c700a8fda0bd0fb9eae06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-03-lease-attempt-watchdog.md"
       },
       {
         "digest": "429c4d7a8281b27934e2e80ab05a59124d1548c5715bc8bbeffaed410ebf1f54",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-04-artifact-verification.md"
       },
       {
         "digest": "6bccd747b4382ba5bb44485bc185342e259e0e6912ee5195e19ad1377a109adf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-05-hyperframes-projection-storyboard.md"
       },
       {
         "digest": "cda3f6fa774d22376572de6eec4b071b6ca235166ecf072a619b13802f92f314",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-06-worker-connect-auth.md"
       },
       {
         "digest": "b0900a2d869cd1daf1f4779387c1233b0b719f3d9ec735a03f62dc5cd89124f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-07-worker-app-runtime-pack.md"
       },
       {
         "digest": "0e4b4d11c8ef60df5a3b1aec5424ef8220e39fc1cd68c10fa282b292fedbf732",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-08-tauri-hyperframes-executor.md"
       },
       {
         "digest": "0343c85a66e5bc7a057e910137cef35932875c1913e5dbe76bb0849ff3e1cd95",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-09-user-job-monitor-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-09-user-job-monitor-ui.md"
       },
       {
         "digest": "49316bacca1d30db0917fa182c1764653ad1fd7fc0d9be449f306d45c7fffeb1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-10-admin-worker-monitor-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-10-admin-worker-monitor-ui.md"
       },
       {
         "digest": "f4982763eb1065aa0474c496ebc4cb65a9888db4a13046a67840c28d28752c3d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-11-future-local-ai-mcp-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/124-smart-ai-hub-worker-app/sections/section-11-future-local-ai-mcp-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

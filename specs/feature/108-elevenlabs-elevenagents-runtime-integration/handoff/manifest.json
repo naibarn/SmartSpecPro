@@ -17,72 +17,72 @@
       {
         "digest": "96fe0e04693de064c29bcbaee68b409fcfbbb10d0cc2f9c06112bfa480c9daa2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
       },
       {
         "digest": "1debe46b4f81917241ebacd151ff3acf7a2b3fbfa4375a6b37cedaef4a4693ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
       },
       {
         "digest": "e735228d6ea4f9fa087b946d05908105b48976cf3315989f04794dbc14a95496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
       },
       {
         "digest": "3b48e521ef45244ab922fd5ae13d356fcd291fc2d7649d10d074cfde012465f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
       },
       {
         "digest": "ae33d74cd4342603782fcff2a66147aa47656abb2f1f50d1e5194abe626a5c24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
       },
       {
         "digest": "898b75293e6a88b5a5247a2c9483a544c6572ed83f59b9ae0d82ccc714da648c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0ced6b44a14084258eb685aa4947daeaf594b24cf74be7a11523c0c573ce8a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
       },
       {
         "digest": "ecc9fb1a82326168646b7c53bef06888a6f8a76776285bc71cb07822c73ea809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
       },
       {
         "digest": "e768dc66fe9ab399ef951f9ce61040616804e19e414598d826aca42634f37066",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
       },
       {
         "digest": "d622e68fa788caeafd1e772923493cda45c25d82bc5e81b5c72a88a5ceeb1101",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
       },
       {
         "digest": "0672f1ff2444671c5e0ab6346a106d4d576874d3d0e08592e9b4c682bd2b9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
       },
       {
         "digest": "92e493dd08e66ea4a9db46ea5cbe82c5cb2c28f635fd953b4d7b49027e7158d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
       },
       {
         "digest": "5f14e867949114f1687f6d6a50d9418e2425468a82e1ddd0ea3c7df49bb1cf7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
       },
       {
         "digest": "403cfc7137669a0c57e4c05264f1e2e12f0df027f74d1614e72b5c4eee518618",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "96fe0e04693de064c29bcbaee68b409fcfbbb10d0cc2f9c06112bfa480c9daa2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
       },
       {
         "digest": "1debe46b4f81917241ebacd151ff3acf7a2b3fbfa4375a6b37cedaef4a4693ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
       },
       {
         "digest": "e735228d6ea4f9fa087b946d05908105b48976cf3315989f04794dbc14a95496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
       },
       {
         "digest": "3b48e521ef45244ab922fd5ae13d356fcd291fc2d7649d10d074cfde012465f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
       },
       {
         "digest": "ae33d74cd4342603782fcff2a66147aa47656abb2f1f50d1e5194abe626a5c24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
       },
       {
         "digest": "898b75293e6a88b5a5247a2c9483a544c6572ed83f59b9ae0d82ccc714da648c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0ced6b44a14084258eb685aa4947daeaf594b24cf74be7a11523c0c573ce8a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
       },
       {
         "digest": "ecc9fb1a82326168646b7c53bef06888a6f8a76776285bc71cb07822c73ea809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
       },
       {
         "digest": "e768dc66fe9ab399ef951f9ce61040616804e19e414598d826aca42634f37066",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
       },
       {
         "digest": "d622e68fa788caeafd1e772923493cda45c25d82bc5e81b5c72a88a5ceeb1101",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
       },
       {
         "digest": "0672f1ff2444671c5e0ab6346a106d4d576874d3d0e08592e9b4c682bd2b9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
       },
       {
         "digest": "92e493dd08e66ea4a9db46ea5cbe82c5cb2c28f635fd953b4d7b49027e7158d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
       },
       {
         "digest": "5f14e867949114f1687f6d6a50d9418e2425468a82e1ddd0ea3c7df49bb1cf7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
       },
       {
         "digest": "403cfc7137669a0c57e4c05264f1e2e12f0df027f74d1614e72b5c4eee518618",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,78 +210,78 @@
       {
         "digest": "96fe0e04693de064c29bcbaee68b409fcfbbb10d0cc2f9c06112bfa480c9daa2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
       },
       {
         "digest": "1debe46b4f81917241ebacd151ff3acf7a2b3fbfa4375a6b37cedaef4a4693ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
       },
       {
         "digest": "e735228d6ea4f9fa087b946d05908105b48976cf3315989f04794dbc14a95496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
       },
       {
         "digest": "3b48e521ef45244ab922fd5ae13d356fcd291fc2d7649d10d074cfde012465f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
       },
       {
         "digest": "ae33d74cd4342603782fcff2a66147aa47656abb2f1f50d1e5194abe626a5c24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
       },
       {
         "digest": "898b75293e6a88b5a5247a2c9483a544c6572ed83f59b9ae0d82ccc714da648c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0ced6b44a14084258eb685aa4947daeaf594b24cf74be7a11523c0c573ce8a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
       },
       {
         "digest": "ecc9fb1a82326168646b7c53bef06888a6f8a76776285bc71cb07822c73ea809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
       },
       {
         "digest": "e768dc66fe9ab399ef951f9ce61040616804e19e414598d826aca42634f37066",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
       },
       {
         "digest": "d622e68fa788caeafd1e772923493cda45c25d82bc5e81b5c72a88a5ceeb1101",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
       },
       {
         "digest": "0672f1ff2444671c5e0ab6346a106d4d576874d3d0e08592e9b4c682bd2b9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
       },
       {
         "digest": "92e493dd08e66ea4a9db46ea5cbe82c5cb2c28f635fd953b4d7b49027e7158d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
       },
       {
         "digest": "5f14e867949114f1687f6d6a50d9418e2425468a82e1ddd0ea3c7df49bb1cf7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
       },
       {
         "digest": "403cfc7137669a0c57e4c05264f1e2e12f0df027f74d1614e72b5c4eee518618",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/spec.md",
     "digest": "fe5e9a637a0a303ee80533187bc2aeeb690ea6a3eaea08b4c68c2564c5844a9e",
@@ -334,72 +334,72 @@
       {
         "digest": "96fe0e04693de064c29bcbaee68b409fcfbbb10d0cc2f9c06112bfa480c9daa2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
       },
       {
         "digest": "1debe46b4f81917241ebacd151ff3acf7a2b3fbfa4375a6b37cedaef4a4693ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
       },
       {
         "digest": "e735228d6ea4f9fa087b946d05908105b48976cf3315989f04794dbc14a95496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
       },
       {
         "digest": "3b48e521ef45244ab922fd5ae13d356fcd291fc2d7649d10d074cfde012465f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
       },
       {
         "digest": "ae33d74cd4342603782fcff2a66147aa47656abb2f1f50d1e5194abe626a5c24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
       },
       {
         "digest": "898b75293e6a88b5a5247a2c9483a544c6572ed83f59b9ae0d82ccc714da648c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0ced6b44a14084258eb685aa4947daeaf594b24cf74be7a11523c0c573ce8a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
       },
       {
         "digest": "ecc9fb1a82326168646b7c53bef06888a6f8a76776285bc71cb07822c73ea809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
       },
       {
         "digest": "e768dc66fe9ab399ef951f9ce61040616804e19e414598d826aca42634f37066",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
       },
       {
         "digest": "d622e68fa788caeafd1e772923493cda45c25d82bc5e81b5c72a88a5ceeb1101",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
       },
       {
         "digest": "0672f1ff2444671c5e0ab6346a106d4d576874d3d0e08592e9b4c682bd2b9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
       },
       {
         "digest": "92e493dd08e66ea4a9db46ea5cbe82c5cb2c28f635fd953b4d7b49027e7158d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
       },
       {
         "digest": "5f14e867949114f1687f6d6a50d9418e2425468a82e1ddd0ea3c7df49bb1cf7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
       },
       {
         "digest": "403cfc7137669a0c57e4c05264f1e2e12f0df027f74d1614e72b5c4eee518618",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -611,72 +611,72 @@
       {
         "digest": "96fe0e04693de064c29bcbaee68b409fcfbbb10d0cc2f9c06112bfa480c9daa2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-plan.md"
       },
       {
         "digest": "1debe46b4f81917241ebacd151ff3acf7a2b3fbfa4375a6b37cedaef4a4693ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/claude-spec.md"
       },
       {
         "digest": "e735228d6ea4f9fa087b946d05908105b48976cf3315989f04794dbc14a95496",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation/deep_implement_config.json"
       },
       {
         "digest": "3b48e521ef45244ab922fd5ae13d356fcd291fc2d7649d10d074cfde012465f7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/final-quality-pass.md"
       },
       {
         "digest": "ae33d74cd4342603782fcff2a66147aa47656abb2f1f50d1e5194abe626a5c24",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/plan-completeness-review-2026-05-07.md"
       },
       {
         "digest": "898b75293e6a88b5a5247a2c9483a544c6572ed83f59b9ae0d82ccc714da648c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/section-cross-consistency.md"
       },
       {
         "digest": "0ced6b44a14084258eb685aa4947daeaf594b24cf74be7a11523c0c573ce8a6d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/reviews/self-review-round-1.md"
       },
       {
         "digest": "ecc9fb1a82326168646b7c53bef06888a6f8a76776285bc71cb07822c73ea809",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/index.md"
       },
       {
         "digest": "e768dc66fe9ab399ef951f9ce61040616804e19e414598d826aca42634f37066",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-01-provider-research.md"
       },
       {
         "digest": "d622e68fa788caeafd1e772923493cda45c25d82bc5e81b5c72a88a5ceeb1101",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-02-schema-contracts.md"
       },
       {
         "digest": "0672f1ff2444671c5e0ab6346a106d4d576874d3d0e08592e9b4c682bd2b9f70",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-03-backend-services.md"
       },
       {
         "digest": "92e493dd08e66ea4a9db46ea5cbe82c5cb2c28f635fd953b4d7b49027e7158d5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-04-api-callbacks.md"
       },
       {
         "digest": "5f14e867949114f1687f6d6a50d9418e2425468a82e1ddd0ea3c7df49bb1cf7e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-05-chat-admin-ui.md"
       },
       {
         "digest": "403cfc7137669a0c57e4c05264f1e2e12f0df027f74d1614e72b5c4eee518618",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections/section-06-observability-regression.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

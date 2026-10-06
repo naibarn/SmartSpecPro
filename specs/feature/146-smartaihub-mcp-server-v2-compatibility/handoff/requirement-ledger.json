@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L30"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L30"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L30",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L31"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L83"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L96"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L99"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L99"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L99",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L99",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L103"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L118"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L136"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L136"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L136",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L153"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L153"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L153",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L160"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L162"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L163"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L164"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L165"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L166"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L166"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L166",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L166",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L167"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L167"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L167",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L169"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L169"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L169",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L171"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L171"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L171",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L175"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L175"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L175",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L175",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L192"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L192"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L192",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L192",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L227"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L229"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L230"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L230"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L230",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L230",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L235"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L235"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L235",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L287"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L287"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L287",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L287",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L306"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L306"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L306",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L309"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L316"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L316"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L316",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L317"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L322"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L323"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L335"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L335"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L335",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L337"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L337"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L337",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L338"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L338"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L338",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L344"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L354"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L354"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L354",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L363"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L365"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L365"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L365",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L366"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L374"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L374"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L374",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L377"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L377"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L377",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L377",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L388"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L388"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L388",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L389"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L404"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L404"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L404",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L408"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L409"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L425"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L425"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L425",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L431"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L435"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L435"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L435",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L435",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L446"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L458"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L458"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L458",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L460"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L460"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L460",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L460",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L494"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L494"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L494",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L496"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L496"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L496",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L515"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L515"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L515",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L529"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L534"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L534"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L534",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L537"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L537"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L537",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L537",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L540"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L540"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L540",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L569"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L569"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L569",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L569",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L577"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L577"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L577",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L577",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L589"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L589"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L589",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L594"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L594"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L594",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L609"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L609"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L609",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L611"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L611"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L611",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L615"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L615"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L615",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L615",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L618"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L626"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L626"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L626",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L626",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L627"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L628"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L637"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L658"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L659"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L687"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L704"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L704"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L704",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L709"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L709"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L709",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L728"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L728"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L728",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L740"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L740"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L740",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L741"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L741"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L741",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L757"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L757"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L757",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L758"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L774"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L781"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L782"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L782"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L782",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L804"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L804"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L804",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L805"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L805"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L805",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L808"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L808"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L808",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L830"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L830"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L830",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L830",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L865"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L865"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L865",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L865",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L894"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L894"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L894",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L902"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L902"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L902",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L902",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L903"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L903"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L903",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L926"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L926"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L926",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L930"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L930"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L930",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L937"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L937"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L937",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L940"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L940"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L940",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L982"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L982"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L982",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L982",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L988"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L988"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L988",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1001"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1001"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1001",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1008"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1008"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1008",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1008",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1017"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1017"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1017",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1026"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1026"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1026",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1036"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1036"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1036",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1036",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1037"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1037"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1037",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1038"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1038"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1038",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1038",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1041"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1041"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1041",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1043"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1043"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1043",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1044"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1044"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1044",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1044",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1056"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1056"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1056",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1057"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1057"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1057",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1058"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1058"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1058",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1058",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1060"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1060"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1060",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1060",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1063"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1063"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1063",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1063",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1064"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1064"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1064",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1064",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1091"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1091"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1091",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1098"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1098"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1098",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1098",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1102"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1103"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1103"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1103",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1103",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1104"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1104"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1104",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1104",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1105"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1106"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1109"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1110"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1112"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1122"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1135"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1146"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1160"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1187"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1188"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1189"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1189"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1189",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1210"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1210"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1210",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1217"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1257"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1285"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1295"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1300"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1300"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1300",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1303"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1303"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1303",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1331"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1331"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1331",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1344"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1353"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1353"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1353",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1469"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1469"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1469",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1469",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1471"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1471"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1471",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1475"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1475"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1475",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1603"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1606"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1606"
       ],
-      "authority_source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1606",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md#L1606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

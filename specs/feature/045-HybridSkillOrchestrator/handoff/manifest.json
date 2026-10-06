@@ -24,92 +24,92 @@
       {
         "digest": "c09ae7b16c902417fa85ec82b38202e2d93819173e71505f1f2109417fb875f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
       },
       {
         "digest": "ac55d19bc315bdf6402656759faa9c30ec47b3da8ef23ed4e23041b8a09d38e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
       },
       {
         "digest": "851c80016b3af1369f221331e4400b82951422b38731c5701aca319ba676e5e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
       },
       {
         "digest": "8fc4b31dd3717606140f64bf0d1746a52911756522fd65857ad6698eb1b5e938",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
       },
       {
         "digest": "4fdaec2adbf1550ad6b3cbcbdacd1c85af249a4e39c6585157b4dc47eabc7465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
       },
       {
         "digest": "0f1b1ba105b9b36c02c324b90ed68a2dde9512bda6f3597f940bf6ae6f88f602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/index.md"
       },
       {
         "digest": "8a833919ae99015a622222b81d47824e9f8f374676bef3813b6bb491e721c6e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
       },
       {
         "digest": "e036c020409c642df782009c625759b797888ea5a13dd0632237a958af839d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
       },
       {
         "digest": "0c8ff72e2772c0a06856eb31c8b78bdcf82bdf65ab75bad1bda1e28d4f855386",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
       },
       {
         "digest": "5aecab6ddec36d28cac37f936990eb7e3f3483769061e9bb5f6caff392dbc9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
       },
       {
         "digest": "ea26a2052f3589d78dfe5856d8e31f8af92ee32f068d5a2a290ae1a112f903dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
       },
       {
         "digest": "064ebc5e1e65e62b0c9b32dafe75d5c83da2fbb9d2d99d7676d6b72697310053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
       },
       {
         "digest": "3a14abcbcdb2328808d90979b4f2a4eb89fb1ce3fa72dc6d28db07db17cba4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
       },
       {
         "digest": "d2aea6b82a156b7cac71bdfc72e3cbe7c768c18dceba7454956b54d23927dcc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
       },
       {
         "digest": "81427696fa8d8be37b790a7463e97d65b9ea5e2841524ad3229f2bfdb4002806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
       },
       {
         "digest": "06603340477587730fa1ecc45d2d74dd895720243bc3d612a9590818dffe41a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
       },
       {
         "digest": "f8bf9972f00a8454ce0305c2c77aa9b542972ba25805a41ae8854a270aaad113",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
       },
       {
         "digest": "4014c92c0d3c51aeeaecc6a0680b719580a135fe8142292d62c4577ffcab4df6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
       }
     ],
     "predecessors": [],
@@ -140,92 +140,92 @@
       {
         "digest": "c09ae7b16c902417fa85ec82b38202e2d93819173e71505f1f2109417fb875f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
       },
       {
         "digest": "ac55d19bc315bdf6402656759faa9c30ec47b3da8ef23ed4e23041b8a09d38e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
       },
       {
         "digest": "851c80016b3af1369f221331e4400b82951422b38731c5701aca319ba676e5e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
       },
       {
         "digest": "8fc4b31dd3717606140f64bf0d1746a52911756522fd65857ad6698eb1b5e938",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
       },
       {
         "digest": "4fdaec2adbf1550ad6b3cbcbdacd1c85af249a4e39c6585157b4dc47eabc7465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
       },
       {
         "digest": "0f1b1ba105b9b36c02c324b90ed68a2dde9512bda6f3597f940bf6ae6f88f602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/index.md"
       },
       {
         "digest": "8a833919ae99015a622222b81d47824e9f8f374676bef3813b6bb491e721c6e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
       },
       {
         "digest": "e036c020409c642df782009c625759b797888ea5a13dd0632237a958af839d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
       },
       {
         "digest": "0c8ff72e2772c0a06856eb31c8b78bdcf82bdf65ab75bad1bda1e28d4f855386",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
       },
       {
         "digest": "5aecab6ddec36d28cac37f936990eb7e3f3483769061e9bb5f6caff392dbc9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
       },
       {
         "digest": "ea26a2052f3589d78dfe5856d8e31f8af92ee32f068d5a2a290ae1a112f903dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
       },
       {
         "digest": "064ebc5e1e65e62b0c9b32dafe75d5c83da2fbb9d2d99d7676d6b72697310053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
       },
       {
         "digest": "3a14abcbcdb2328808d90979b4f2a4eb89fb1ce3fa72dc6d28db07db17cba4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
       },
       {
         "digest": "d2aea6b82a156b7cac71bdfc72e3cbe7c768c18dceba7454956b54d23927dcc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
       },
       {
         "digest": "81427696fa8d8be37b790a7463e97d65b9ea5e2841524ad3229f2bfdb4002806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
       },
       {
         "digest": "06603340477587730fa1ecc45d2d74dd895720243bc3d612a9590818dffe41a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
       },
       {
         "digest": "f8bf9972f00a8454ce0305c2c77aa9b542972ba25805a41ae8854a270aaad113",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
       },
       {
         "digest": "4014c92c0d3c51aeeaecc6a0680b719580a135fe8142292d62c4577ffcab4df6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -257,98 +257,98 @@
       {
         "digest": "c09ae7b16c902417fa85ec82b38202e2d93819173e71505f1f2109417fb875f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
       },
       {
         "digest": "ac55d19bc315bdf6402656759faa9c30ec47b3da8ef23ed4e23041b8a09d38e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
       },
       {
         "digest": "851c80016b3af1369f221331e4400b82951422b38731c5701aca319ba676e5e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
       },
       {
         "digest": "8fc4b31dd3717606140f64bf0d1746a52911756522fd65857ad6698eb1b5e938",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
       },
       {
         "digest": "4fdaec2adbf1550ad6b3cbcbdacd1c85af249a4e39c6585157b4dc47eabc7465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
       },
       {
         "digest": "0f1b1ba105b9b36c02c324b90ed68a2dde9512bda6f3597f940bf6ae6f88f602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/index.md"
       },
       {
         "digest": "8a833919ae99015a622222b81d47824e9f8f374676bef3813b6bb491e721c6e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
       },
       {
         "digest": "e036c020409c642df782009c625759b797888ea5a13dd0632237a958af839d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
       },
       {
         "digest": "0c8ff72e2772c0a06856eb31c8b78bdcf82bdf65ab75bad1bda1e28d4f855386",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
       },
       {
         "digest": "5aecab6ddec36d28cac37f936990eb7e3f3483769061e9bb5f6caff392dbc9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
       },
       {
         "digest": "ea26a2052f3589d78dfe5856d8e31f8af92ee32f068d5a2a290ae1a112f903dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
       },
       {
         "digest": "064ebc5e1e65e62b0c9b32dafe75d5c83da2fbb9d2d99d7676d6b72697310053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
       },
       {
         "digest": "3a14abcbcdb2328808d90979b4f2a4eb89fb1ce3fa72dc6d28db07db17cba4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
       },
       {
         "digest": "d2aea6b82a156b7cac71bdfc72e3cbe7c768c18dceba7454956b54d23927dcc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
       },
       {
         "digest": "81427696fa8d8be37b790a7463e97d65b9ea5e2841524ad3229f2bfdb4002806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
       },
       {
         "digest": "06603340477587730fa1ecc45d2d74dd895720243bc3d612a9590818dffe41a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
       },
       {
         "digest": "f8bf9972f00a8454ce0305c2c77aa9b542972ba25805a41ae8854a270aaad113",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
       },
       {
         "digest": "4014c92c0d3c51aeeaecc6a0680b719580a135fe8142292d62c4577ffcab4df6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/045-HybridSkillOrchestrator/spec.md",
     "digest": "1f88c7158c0215b6e9a5b8fb3c43a480af261469f7805db000716a7f76fe2a81",
@@ -401,92 +401,92 @@
       {
         "digest": "c09ae7b16c902417fa85ec82b38202e2d93819173e71505f1f2109417fb875f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
       },
       {
         "digest": "ac55d19bc315bdf6402656759faa9c30ec47b3da8ef23ed4e23041b8a09d38e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
       },
       {
         "digest": "851c80016b3af1369f221331e4400b82951422b38731c5701aca319ba676e5e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
       },
       {
         "digest": "8fc4b31dd3717606140f64bf0d1746a52911756522fd65857ad6698eb1b5e938",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
       },
       {
         "digest": "4fdaec2adbf1550ad6b3cbcbdacd1c85af249a4e39c6585157b4dc47eabc7465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
       },
       {
         "digest": "0f1b1ba105b9b36c02c324b90ed68a2dde9512bda6f3597f940bf6ae6f88f602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/index.md"
       },
       {
         "digest": "8a833919ae99015a622222b81d47824e9f8f374676bef3813b6bb491e721c6e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
       },
       {
         "digest": "e036c020409c642df782009c625759b797888ea5a13dd0632237a958af839d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
       },
       {
         "digest": "0c8ff72e2772c0a06856eb31c8b78bdcf82bdf65ab75bad1bda1e28d4f855386",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
       },
       {
         "digest": "5aecab6ddec36d28cac37f936990eb7e3f3483769061e9bb5f6caff392dbc9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
       },
       {
         "digest": "ea26a2052f3589d78dfe5856d8e31f8af92ee32f068d5a2a290ae1a112f903dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
       },
       {
         "digest": "064ebc5e1e65e62b0c9b32dafe75d5c83da2fbb9d2d99d7676d6b72697310053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
       },
       {
         "digest": "3a14abcbcdb2328808d90979b4f2a4eb89fb1ce3fa72dc6d28db07db17cba4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
       },
       {
         "digest": "d2aea6b82a156b7cac71bdfc72e3cbe7c768c18dceba7454956b54d23927dcc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
       },
       {
         "digest": "81427696fa8d8be37b790a7463e97d65b9ea5e2841524ad3229f2bfdb4002806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
       },
       {
         "digest": "06603340477587730fa1ecc45d2d74dd895720243bc3d612a9590818dffe41a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
       },
       {
         "digest": "f8bf9972f00a8454ce0305c2c77aa9b542972ba25805a41ae8854a270aaad113",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
       },
       {
         "digest": "4014c92c0d3c51aeeaecc6a0680b719580a135fe8142292d62c4577ffcab4df6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -839,92 +839,92 @@
       {
         "digest": "c09ae7b16c902417fa85ec82b38202e2d93819173e71505f1f2109417fb875f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-plan.md"
       },
       {
         "digest": "ac55d19bc315bdf6402656759faa9c30ec47b3da8ef23ed4e23041b8a09d38e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/claude-spec.md"
       },
       {
         "digest": "851c80016b3af1369f221331e4400b82951422b38731c5701aca319ba676e5e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/implementation/deep_implement_config.json"
       },
       {
         "digest": "8fc4b31dd3717606140f64bf0d1746a52911756522fd65857ad6698eb1b5e938",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/consolidated-fixes.md"
       },
       {
         "digest": "4fdaec2adbf1550ad6b3cbcbdacd1c85af249a4e39c6585157b4dc47eabc7465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/reviews/self-review-round-1.md"
       },
       {
         "digest": "0f1b1ba105b9b36c02c324b90ed68a2dde9512bda6f3597f940bf6ae6f88f602",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/index.md"
       },
       {
         "digest": "8a833919ae99015a622222b81d47824e9f8f374676bef3813b6bb491e721c6e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-01-types-config.md"
       },
       {
         "digest": "e036c020409c642df782009c625759b797888ea5a13dd0632237a958af839d28",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-02-skill-catalog.md"
       },
       {
         "digest": "0c8ff72e2772c0a06856eb31c8b78bdcf82bdf65ab75bad1bda1e28d4f855386",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-03-intent-classifier.md"
       },
       {
         "digest": "5aecab6ddec36d28cac37f936990eb7e3f3483769061e9bb5f6caff392dbc9cb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-04-param-extractor.md"
       },
       {
         "digest": "ea26a2052f3589d78dfe5856d8e31f8af92ee32f068d5a2a290ae1a112f903dc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-05-orchestrator-main.md"
       },
       {
         "digest": "064ebc5e1e65e62b0c9b32dafe75d5c83da2fbb9d2d99d7676d6b72697310053",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-06-pipeline-engine.md"
       },
       {
         "digest": "3a14abcbcdb2328808d90979b4f2a4eb89fb1ce3fa72dc6d28db07db17cba4e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-07-agent-loop.md"
       },
       {
         "digest": "d2aea6b82a156b7cac71bdfc72e3cbe7c768c18dceba7454956b54d23927dcc9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-08-result-merger.md"
       },
       {
         "digest": "81427696fa8d8be37b790a7463e97d65b9ea5e2841524ad3229f2bfdb4002806",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-09-quality-gate.md"
       },
       {
         "digest": "06603340477587730fa1ecc45d2d74dd895720243bc3d612a9590818dffe41a5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-10-audit-observability.md"
       },
       {
         "digest": "f8bf9972f00a8454ce0305c2c77aa9b542972ba25805a41ae8854a270aaad113",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-11-frontend-integration.md"
       },
       {
         "digest": "4014c92c0d3c51aeeaecc6a0680b719580a135fe8142292d62c4577ffcab4df6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/045-HybridSkillOrchestrator/sections/section-12-testing.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

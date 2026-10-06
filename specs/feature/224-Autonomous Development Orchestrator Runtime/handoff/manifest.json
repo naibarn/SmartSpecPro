@@ -14,7 +14,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "224",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replaceable",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -122,7 +122,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replaces",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L11375",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L11375",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -134,7 +134,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L104",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L104",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -146,7 +146,7 @@
         "referencing_spec_id": "226",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L3005",
         "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
         "successor_spec_id": "226"
       },
@@ -158,7 +158,7 @@
         "referencing_spec_id": "228",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L5200",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#L5200",
         "source_digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
         "successor_spec_id": "228"
       },
@@ -174,7 +174,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -191,7 +191,7 @@
           "R20",
           "R21"
         ],
-        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
         "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
         "successor_spec_id": "233"
       },
@@ -203,7 +203,7 @@
         "referencing_spec_id": "234",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L223",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L223",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -217,7 +217,7 @@
         "requirement_ids": [
           "R20-PRODUCT-EVOLUTION-HANDOFF-ALIGNMENT.MD"
         ],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -232,7 +232,7 @@
           "R1",
           "R2"
         ],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L174",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L174",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -248,7 +248,7 @@
           "R1.1",
           "R2.0"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L15",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L15",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -262,7 +262,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L580",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -278,7 +278,7 @@
           "R2",
           "R20"
         ],
-        "source": "specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/239-External Personal Agent Interoperability/spec.md#L88",
         "source_digest": "3cc923618ca059456ff65b3e90438b413db25d2f8d245a15671d155ce0e61b4a",
         "successor_spec_id": "239"
       },
@@ -290,7 +290,7 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
         "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "successor_spec_id": "240"
       },
@@ -302,7 +302,7 @@
         "referencing_spec_id": "242",
         "relation_text": "replacing",
         "requirement_ids": [],
-        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L88",
         "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "successor_spec_id": "242"
       },
@@ -314,7 +314,7 @@
         "referencing_spec_id": "243",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1893",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1893",
         "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
         "successor_spec_id": "243"
       },
@@ -332,7 +332,7 @@
           "R5-01",
           "R5-15"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -347,7 +347,7 @@
           "R1",
           "R2"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -362,7 +362,7 @@
           "R1.1",
           "R1.2"
         ],
-        "source": "specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/246-AI Scientific Discovery Studio/spec.md#L16",
         "source_digest": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
         "successor_spec_id": "246"
       },
@@ -376,7 +376,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/248-MCP Skills Extension/spec.md#L502",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/248-MCP Skills Extension/spec.md#L502",
         "source_digest": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
         "successor_spec_id": "248"
       },
@@ -388,7 +388,7 @@
         "referencing_spec_id": "250",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1092",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1092",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -400,7 +400,7 @@
         "referencing_spec_id": "250",
         "relation_text": "superseding",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1366",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1366",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -412,7 +412,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1381",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1381",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -424,7 +424,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L1528",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L1528",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -440,7 +440,7 @@
           "R0.7",
           "R1.3"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L19",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L19",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -456,7 +456,7 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L23",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L23",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -473,7 +473,7 @@
           "R0.4",
           "R0.5"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L27",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L27",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -487,7 +487,7 @@
         "requirement_ids": [
           "R0.4"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L30",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L30",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -501,7 +501,7 @@
         "requirement_ids": [
           "R0.8"
         ],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L40",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -513,7 +513,7 @@
         "referencing_spec_id": "250",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L489",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L489",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -525,7 +525,7 @@
         "referencing_spec_id": "250",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/250-Development-Reliability/spec.md#L533",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/250-Development-Reliability/spec.md#L533",
         "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "successor_spec_id": "250"
       },
@@ -539,7 +539,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L206",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -553,7 +553,7 @@
         "requirement_ids": [
           "R1.1"
         ],
-        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#L261",
         "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "successor_spec_id": "252"
       },
@@ -565,7 +565,7 @@
         "referencing_spec_id": "254",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L341",
         "source_digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
         "successor_spec_id": "254"
       },
@@ -577,7 +577,7 @@
         "referencing_spec_id": "261",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L143",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L143",
         "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
         "successor_spec_id": "261"
       },
@@ -589,7 +589,7 @@
         "referencing_spec_id": "261",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L2813",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L2813",
         "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
         "successor_spec_id": "261"
       },
@@ -601,7 +601,7 @@
         "referencing_spec_id": "278",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L188",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L188",
         "source_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
         "successor_spec_id": "278"
       },
@@ -613,7 +613,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L110",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -625,7 +625,7 @@
         "referencing_spec_id": "282",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L119",
         "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
         "successor_spec_id": "282"
       },
@@ -637,7 +637,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -649,7 +649,7 @@
         "referencing_spec_id": "224",
         "relation_text": "merging",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -661,7 +661,7 @@
         "referencing_spec_id": "224",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -673,7 +673,7 @@
         "referencing_spec_id": "224",
         "relation_text": "absorbing",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -685,7 +685,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replaceable",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       },
@@ -697,7 +697,7 @@
         "referencing_spec_id": "224",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
         "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "successor_spec_id": "224"
       }
@@ -735,13 +735,6 @@
         "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
-      },
-      {
-        "excerpt": "{\"cargoTarget\":\"x86_64-unknown-linux-gnu\",\"dependencyManifests\":{\"runtime\":[\"package.json\",\"pnpm-workspace.yaml\",\"pnpm-lock.yaml\",\"apps/web/package.json\",\"apps/runner-app/Cargo.toml\",\"apps/runner-app/Cargo.lock\",\"python-backend/pyproject.to",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 1,
-        "path": "apps/web/server/services/profiles/spec224-recovery-registered-runner-nonprod.v1.json"
       },
       {
         "excerpt": "{\"cargoTarget\":\"x86_64-unknown-linux-gnu\",\"dependencyManifests\":{\"runtime\":[\"package.json\",\"pnpm-workspace.yaml\",\"pnpm-lock.yaml\",\"apps/web/package.json\",\"apps/runner-app/Cargo.toml\",\"apps/runner-app/Cargo.lock\",\"python-backend/pyproject.to",
@@ -875,6 +868,13 @@
         "kind": "SOURCE",
         "line": 260,
         "path": "apps/web/server/services/jobReconciler.ts"
+      },
+      {
+        "excerpt": "console.error(\"[Feature186] Spec 224 approval acknowledgement reconciliation failed\", {",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 444,
+        "path": "apps/web/server/services/jobReconciler.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -907,7 +907,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
@@ -956,13 +956,6 @@
         "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
-      },
-      {
-        "excerpt": "{\"cargoTarget\":\"x86_64-unknown-linux-gnu\",\"dependencyManifests\":{\"runtime\":[\"package.json\",\"pnpm-workspace.yaml\",\"pnpm-lock.yaml\",\"apps/web/package.json\",\"apps/runner-app/Cargo.toml\",\"apps/runner-app/Cargo.lock\",\"python-backend/pyproject.to",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 1,
-        "path": "apps/web/server/services/profiles/spec224-recovery-registered-runner-nonprod.v1.json"
       },
       {
         "excerpt": "{\"cargoTarget\":\"x86_64-unknown-linux-gnu\",\"dependencyManifests\":{\"runtime\":[\"package.json\",\"pnpm-workspace.yaml\",\"pnpm-lock.yaml\",\"apps/web/package.json\",\"apps/runner-app/Cargo.toml\",\"apps/runner-app/Cargo.lock\",\"python-backend/pyproject.to",
@@ -1173,13 +1166,6 @@
         "kind": "SOURCE",
         "line": 1478,
         "path": "apps/web/server/services/spec224DevelopmentRunPersistence.ts"
-      },
-      {
-        "excerpt": "allowed: [\"cargo check --locked --offline\", \"focused Spec 224 Vitest\", \"focused Spec 224 PostgreSQL pytest\", \"profile-bound Remotion runtime exports via esbuild (no TypeScript typecheck)\"],",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 239,
-        "path": "apps/web/server/services/spec224ExecutionProfile.ts"
       },
       {
         "excerpt": "allowed: [\"cargo check --locked --offline\", \"focused Spec 224 Vitest\", \"focused Spec 224 PostgreSQL pytest\", \"profile-bound Remotion runtime exports via esbuild (no TypeScript typecheck)\"],",
@@ -1658,6 +1644,20 @@
         "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
       },
       {
+        "excerpt": "bySourceRef(baseline, \"spec:224@current#L16062\"),",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 75,
+        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
+      },
+      {
+        "excerpt": "bySourceRef(baseline, \"spec:224@current#L16064-L16068\"),",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 76,
+        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
+      },
+      {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
@@ -1679,13 +1679,6 @@
   },
   "relevance_assessment": {
     "active_references": [
-      {
-        "excerpt": "{\"cargoTarget\":\"x86_64-unknown-linux-gnu\",\"dependencyManifests\":{\"runtime\":[\"package.json\",\"pnpm-workspace.yaml\",\"pnpm-lock.yaml\",\"apps/web/package.json\",\"apps/runner-app/Cargo.toml\",\"apps/runner-app/Cargo.lock\",\"python-backend/pyproject.to",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 1,
-        "path": "apps/web/server/services/profiles/spec224-recovery-registered-runner-nonprod.v1.json"
-      },
       {
         "excerpt": "{\"cargoTarget\":\"x86_64-unknown-linux-gnu\",\"dependencyManifests\":{\"runtime\":[\"package.json\",\"pnpm-workspace.yaml\",\"pnpm-lock.yaml\",\"apps/web/package.json\",\"apps/runner-app/Cargo.toml\",\"apps/runner-app/Cargo.lock\",\"python-backend/pyproject.to",
         "identity_ambiguous": false,
@@ -1895,13 +1888,6 @@
         "kind": "SOURCE",
         "line": 1478,
         "path": "apps/web/server/services/spec224DevelopmentRunPersistence.ts"
-      },
-      {
-        "excerpt": "allowed: [\"cargo check --locked --offline\", \"focused Spec 224 Vitest\", \"focused Spec 224 PostgreSQL pytest\", \"profile-bound Remotion runtime exports via esbuild (no TypeScript typecheck)\"],",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 239,
-        "path": "apps/web/server/services/spec224ExecutionProfile.ts"
       },
       {
         "excerpt": "allowed: [\"cargo check --locked --offline\", \"focused Spec 224 Vitest\", \"focused Spec 224 PostgreSQL pytest\", \"profile-bound Remotion runtime exports via esbuild (no TypeScript typecheck)\"],",
@@ -2699,13 +2685,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 110,
-        "path": "apps/web/server/services/__tests__/spec224SpecBaseline.test.ts"
-      },
-      {
-        "excerpt": ").toEqual([\"spec:224@21#L3\", \"spec:224@21#L4\"]);",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 116,
         "path": "apps/web/server/services/__tests__/spec224SpecBaseline.test.ts"
       },
       {

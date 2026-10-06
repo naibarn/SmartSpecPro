@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L15"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L15"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L15",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L15",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L31"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L32"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L32"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L32",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L110"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L141"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L142"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L176"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L176"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L176",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L178"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L178"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L178",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L179"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L189"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L189"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L189",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L194"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L194"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L194",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L194",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L199"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L207"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L207"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L207",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L207",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L212"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L213"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L213"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L213",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L227"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L239"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L247"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L247"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L247",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L251"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L254"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L254"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L254",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L265"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L265"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L265",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L266"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L284"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L284"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L284",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L293"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L336"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L364"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L364"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L364",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L379"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L396"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L401"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L409"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L431"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L432"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L432"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L432",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L438"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L438"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L438",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L444"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L444"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L444",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L451"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L454"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L454"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L454",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L454",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L463"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L470"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L470"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L470",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L470",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L472"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L472"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L472",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L480"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L482"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L482"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L482",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L482",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L494"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L494"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L494",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L497"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L497"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L497",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L506"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L506"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L506",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L506",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L515"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L515"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L515",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L516"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L516"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L516",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L518"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L518"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L518",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L519"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L519"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L519",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L526"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L526"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L526",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L526",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L529"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L538"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L538"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L538",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L538",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L539"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L539"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L539",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L557"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L557"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L557",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L557",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L576"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L576"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L576",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L576",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L580"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L580"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L580",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L580",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L584"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L584"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L584",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L602"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L603"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L604"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L604"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L604",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L604",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L606"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L606"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L606",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L606",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L608"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L608"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L608",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L608",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L609"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L609"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L609",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L609",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L611"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L611"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L611",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L616"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L616"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L616",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L617"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L617"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L617",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L618"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L618"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L618",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L618",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L620"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L620"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L620",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L620",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L621"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L625"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L627"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L627"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L627",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L627",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L628"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L629"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L631"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L632"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L632"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L632",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L632",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L634"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L635"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L640"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L642"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L643"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L645"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L645"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L645",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L645",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L699"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L706"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L706"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L706",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L706",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L707"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L708"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L708"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L708",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L716"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L716"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L716",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L748"
       ],
-      "authority_source": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md#L748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

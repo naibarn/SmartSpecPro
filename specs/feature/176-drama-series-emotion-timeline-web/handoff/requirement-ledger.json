@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L15"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L15"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L15",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L15",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L48"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L80"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L86"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L88"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L88"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L88",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L101"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L105"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L112"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L116"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L116"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L116",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L116",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L118"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L122"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L132"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L134"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L136"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L136"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L136",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L146"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L148"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L160"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L183"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L187"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L189"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L189"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L189",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L200"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L217"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L223"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L223"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L223",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L223",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L227"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L238"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L241"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L242"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L246"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L246"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L246",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L264"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L270"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L276"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L276"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L276",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L278"
       ],
-      "authority_source": "specs/feature/176-drama-series-emotion-timeline-web/spec.md#L278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/176-drama-series-emotion-timeline-web/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

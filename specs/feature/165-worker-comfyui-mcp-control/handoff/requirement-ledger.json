@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L31"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L43"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L44"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L44"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L44",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L46"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L46"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L46",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L46",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L48"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L50"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L50"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L50",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L52"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L52"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L52",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L52",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L54"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L54"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L54",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L54",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L56"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L56"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L56",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L56",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L58"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L58"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L58",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L75"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L75"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L75",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L75",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L141"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L158"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L186"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L186"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L186",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L193"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L193"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L193",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L193",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L203"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L203"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L203",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L208"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L208"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L208",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L208",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L221"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L222"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L222"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L222",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L222",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L225"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L234"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L236"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L271"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L275"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L315"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L322"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L328"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L328"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L328",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L341"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L390"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L391"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L391"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L391",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L411"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L411"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L411",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L411",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L433"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L436"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L436"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L436",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L437"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L445"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L445"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L445",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L445",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L446"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L448"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L448"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L448",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L458"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L458"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L458",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L458",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L459"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L509"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L509"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L509",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L512"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L512"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L512",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L531"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L531"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L531",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L531",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L541"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L541"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L541",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L541",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L543"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L543"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L543",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L543",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L551"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L551"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L551",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L584"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L584"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L584",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L584",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L622"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L628"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L642"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L653"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L653"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L653",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L658"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L699"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L721"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L722"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L722"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L722",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L723"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L723"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L723",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L758"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L777"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L778"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L778"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L778",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L795"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L795"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L795",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L795",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L843"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L843"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L843",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L853"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L853"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L853",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L853",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L859"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L859"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L859",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L860"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L860"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L860",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L860",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L890"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L890"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L890",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L904"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L904"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L904",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L914"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L914"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L914",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L915"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L935"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L935"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L935",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L948"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L948"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L948",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L950"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L950"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L950",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L950",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L958"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L958"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L958",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L964"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L964"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L964",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L964",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L968"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L968"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L968",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L968",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L970"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L970"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L970",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L980"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L980"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L980",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L993"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L993"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L993",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1003"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1003"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1003",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1051"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1051"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1051",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1051",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1074"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1074"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1074",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1078"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1078"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1078",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1078",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1086"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1086"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1086",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1086",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1097"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1097"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1097",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1097",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1180"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1182"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1182"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1182",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1247"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1247"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1247",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1274"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1274"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1274",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1284"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1284"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1284",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1315"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1326"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1326"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1326",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1331"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1331"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1331",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1339"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1339"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1339",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1363"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1368"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1369"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1373"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1373"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1373",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1390"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1396"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1397"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1397"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1397",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1399"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1409"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1410"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1410"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1410",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1456"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1456"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1456",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1456",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1465"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1465"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1465",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1465",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1484"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1484"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1484",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1540"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1540"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1540",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1540",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1546"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1546"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1546",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1546",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1551"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1551"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1551",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1553"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1553"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1553",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1553",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1560"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1560"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1560",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1560",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1564"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1564"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1564",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1564",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1570"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1570"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1570",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1570",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1596"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1596"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1596",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1624"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1624"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1624",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1624",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1673"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1688"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1689"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1691"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1694"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1694"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1694",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1709"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1709"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1709",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1734"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1734"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1734",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1755"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1759"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1759"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1759",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1760"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1760"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1760",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1776"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1776"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1776",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1777"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1779"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1897"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1897"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1897",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1897",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1901"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1901"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1901",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1904"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1904"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1904",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1904",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1933"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1933"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1933",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1935"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1935"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1935",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1937"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1937"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1937",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1941"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1941"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1941",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1941",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1943"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1943"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1943",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1946"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1946"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1946",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1946",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1948"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1948"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1948",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1950"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1950"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1950",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1950",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1952"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1952"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1952",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1952",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1955"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1955"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1955",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1957"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1957"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1957",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1957",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1958"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1958"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1958",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1960"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1960"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1960",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1963"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1963"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1963",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1963",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1965"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1965"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1965",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1969"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1969"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1969",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1972"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1972"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1972",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1972",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1975"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1975"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1975",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1975",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1977"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1977"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1977",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1980"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1980"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1980",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1984"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1984"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1984",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1984",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1986"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1986"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1986",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1986",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1987"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1987"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1987",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1987",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1989"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1989"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1989",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1991"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1991"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1991",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1991",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1993"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1993"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1993",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1998"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1998"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L1998",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L1998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2003"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2003"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2003",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2003",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2006"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2006"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2006",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2009"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2009"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2009",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2009",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2011"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2011"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2011",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2017"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2017"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2017",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2019"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2019"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2019",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2022"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2024"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2024"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2024",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2027"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2030"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2030"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2030",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2032"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2032"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2032",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2035"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2035"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2035",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2035",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2037"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2037"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2037",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2037",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2040"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2040"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2040",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2040",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2043"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2043"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2043",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2045"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2045"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2045",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2045",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2048"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2048"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2048",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2048",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2066"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2066"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2066",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2102"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2105"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2121"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2123"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2186"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2186"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2186",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2186",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2187"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2191"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2198"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2206"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2206"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2206",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2206",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2225"
       ],
-      "authority_source": "specs/feature/165-worker-comfyui-mcp-control/spec.md#L2225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/165-worker-comfyui-mcp-control/spec.md#L2225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

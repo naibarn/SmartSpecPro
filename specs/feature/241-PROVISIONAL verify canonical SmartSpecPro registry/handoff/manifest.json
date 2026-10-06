@@ -14,7 +14,7 @@
         "referencing_spec_id": "241",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L133",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L133",
         "source_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
         "successor_spec_id": "241"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "241",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137",
         "source_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
         "successor_spec_id": "241"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "241",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568",
         "source_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
         "successor_spec_id": "241"
       }
@@ -108,7 +108,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md",
     "digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",

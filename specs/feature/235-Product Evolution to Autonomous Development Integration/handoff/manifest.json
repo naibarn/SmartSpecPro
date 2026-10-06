@@ -16,7 +16,7 @@
         "requirement_ids": [
           "R20-PRODUCT-EVOLUTION-HANDOFF-ALIGNMENT.MD"
         ],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -31,7 +31,7 @@
           "R1",
           "R2"
         ],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L174",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L174",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -45,7 +45,7 @@
         "requirement_ids": [
           "R20-PRODUCT-EVOLUTION-HANDOFF-ALIGNMENT.MD"
         ],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -57,7 +57,7 @@
         "referencing_spec_id": "235",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -69,7 +69,7 @@
         "referencing_spec_id": "235",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -81,7 +81,7 @@
         "referencing_spec_id": "235",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L225",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L225",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": null
       },
@@ -93,7 +93,7 @@
         "referencing_spec_id": "235",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L225",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L225",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": null
       },
@@ -105,7 +105,7 @@
         "referencing_spec_id": "235",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L225",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L225",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": null
       },
@@ -120,7 +120,7 @@
           "R1",
           "R2"
         ],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L158",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       }
@@ -190,7 +190,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md",
     "digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",

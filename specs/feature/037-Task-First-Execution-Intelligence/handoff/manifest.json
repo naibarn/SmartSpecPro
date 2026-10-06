@@ -17,47 +17,47 @@
       {
         "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
       },
       {
         "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
       },
       {
         "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
       },
       {
         "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
       },
       {
         "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
       },
       {
         "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
       },
       {
         "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
       },
       {
         "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
       }
     ],
     "predecessors": [],
@@ -88,47 +88,47 @@
       {
         "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
       },
       {
         "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
       },
       {
         "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
       },
       {
         "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
       },
       {
         "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
       },
       {
         "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
       },
       {
         "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
       },
       {
         "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
       },
       {
         "excerpt": "// ── Task Execution Intelligence (Spec 037 §03) ────────────────────────",
@@ -167,53 +167,53 @@
       {
         "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
       },
       {
         "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
       },
       {
         "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
       },
       {
         "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
       },
       {
         "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
       },
       {
         "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
       },
       {
         "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
       },
       {
         "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md",
     "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
@@ -266,47 +266,47 @@
       {
         "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
       },
       {
         "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
       },
       {
         "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
       },
       {
         "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
       },
       {
         "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
       },
       {
         "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
       },
       {
         "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
       },
       {
         "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
       },
       {
         "excerpt": "// ── Task Execution Intelligence (Spec 037 §03) ────────────────────────",
@@ -506,47 +506,47 @@
       {
         "digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json"
       },
       {
         "digest": "7b6aa933db0d198da73725bee4c5a428be312cbf02ff7c6bea4059bef34da1df",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/implementation/usage.md"
       },
       {
         "digest": "161c8236bfa4b992275e6b2387f8f3215a24392f989faace1108e10af1cf4163",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/reviews/self-review-2026-03-11.md"
       },
       {
         "digest": "068d163cdcdfdacb71cc355a5a72e3bc6050515e8ac3b10737363be94f39b764",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/index.md"
       },
       {
         "digest": "d79f57f31a7cd78a023775ef158c3612d02a6e5c9e5b08269c4e6ae9b7eee6a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-01-runtime-correction.md"
       },
       {
         "digest": "86b6ea4634ee975bb45b47b072532c713168e66bc376395ba58697ba9d1a23ae",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-02-capability-registry-and-skill-policy.md"
       },
       {
         "digest": "9204247c71b674911c366decec770f082a70650c1c18267904596a7a08741b00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-03-task-planner-and-billing.md"
       },
       {
         "digest": "f307ef118170f0de6fcb463ca67ce21f308bb476d35ef1d87db0d68c2fef88ff",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-04-direct-artifact-execution.md"
       },
       {
         "digest": "9a1e94132ca82ba54651670e8bbe5fb3c88e4c53296f43a07b0bf45fe70a1115",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/037-Task-First-Execution-Intelligence/sections/section-05-agency-integration-and-rollout.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

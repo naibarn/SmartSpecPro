@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L35"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L35"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L35",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L35",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L36"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L36"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L36",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L36",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L37"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L37"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L37",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L37",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L38"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L38"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L38",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L38",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L114"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L146"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L179"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L180"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L181"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L181"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L181",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L181",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L187"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L187"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L187",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L187",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L188"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L197"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L197"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L197",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L197",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L198"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L199"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L199"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L199",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L199",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L200"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L200"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L200",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L200",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L201"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L201"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L201",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L201",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L202"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L202"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L202",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L202",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L203"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L203"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L203",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L204"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L204"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L204",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L210"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L210"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L210",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L211"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L212"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L213"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L213"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L213",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L213",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L214"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L214"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L214",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L214",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L215"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L215"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L215",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L216"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L217"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L217"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L217",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L217",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L224"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L224"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L224",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L224",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L225"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L228"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L228"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L228",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L228",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L229"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L232"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L233"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L233"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L233",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L236"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L237"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L238"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L241"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L242"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L245"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L245"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L245",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/012-AddTextClip/spec.md#L305"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L305"
       ],
-      "authority_source": "specs/feature/012-AddTextClip/spec.md#L305",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/spec.md#L305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

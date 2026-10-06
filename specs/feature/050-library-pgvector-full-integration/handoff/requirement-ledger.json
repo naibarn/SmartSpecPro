@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L32"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L32"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L32",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L80"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L81"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L81"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L81",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L82"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L82"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L82",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L83"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L84"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L85"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L85"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L85",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L86"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L88"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L88"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L88",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L89"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L89"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L89",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L90"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L90"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L90",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L91"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L91"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L91",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L91",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L92"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L92"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L92",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L94"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L94"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L94",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L96"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L100"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L100"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L100",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L100",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L101"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L101"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L101",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L101",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L102"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L123"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L128"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L136"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L136"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L136",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L144"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L146"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L251"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L257"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L258"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L301"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L301"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L301",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L346"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L346"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L346",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L382"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L386"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L386"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L386",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L394"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L471"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L471"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L471",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L501"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L501"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L501",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L501",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L507"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L507"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L507",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L507",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L530"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L530"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L530",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L530",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L532"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L532"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L532",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L532",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L534"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L534"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L534",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L534",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L535"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L535"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L535",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L536"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L536"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L536",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L536",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L659"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L661"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L665"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L665"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L665",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L666"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L670"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L693"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L693"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L693",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L693",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L704"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L704"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L704",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L704",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L708"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L708"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L708",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L708",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L710"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L710"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L710",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L710",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L714"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L714",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L738"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L742"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L742"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L742",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L743"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L743"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L743",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L744"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L744"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L744",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L745"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L745"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L745",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L745",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L746"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L768"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L768"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L768",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L770"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L771"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L771"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L771",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L771",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L772"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L772"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L772",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L772",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L773"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L777"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L779"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L780"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L780"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L780",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L781"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L781"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L781",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L781",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L787"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L787"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L787",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L788"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L788",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L789"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L790"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L790"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L790",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L827"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L827"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L827",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L827",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L890"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L890"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L890",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L891"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L891"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L891",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L891",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L892"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L892"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L892",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L893"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L893"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L893",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L893",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L894"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L894"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L894",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L894",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L895"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L895"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L895",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L895",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L896"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L896"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L896",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L896",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L897"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L897"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L897",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L897",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L899"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L899"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L899",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L899",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,10 +1721,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L901",
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L901",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L909"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L901",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L901",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1744,9 +1744,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L902"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L902"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L902",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L902",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L903"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L903"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L903",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L910"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L910"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L910",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L910",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L911"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L911"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L911",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1832,9 +1832,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L912"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L912"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L912",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L912",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1854,9 +1854,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L913"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L913"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L913",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L913",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1876,9 +1876,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L914"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L914"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L914",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1898,9 +1898,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L915"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1920,9 +1920,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L916"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L916"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L916",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L916",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1942,9 +1942,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L918"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L918"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L918",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L918",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1964,9 +1964,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L920"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L920"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L920",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L920",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1986,9 +1986,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L921"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L921"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L921",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L921",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2008,9 +2008,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L922"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L922"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L922",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L922",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2030,9 +2030,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L923"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L923"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L923",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L923",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2052,9 +2052,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L925"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L925"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L925",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2074,9 +2074,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L927"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L927"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L927",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L927",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2096,9 +2096,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L928"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2118,9 +2118,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L929"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L929"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L929",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2140,9 +2140,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L935"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L935"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L935",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L935",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2162,9 +2162,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L936"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L936"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L936",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L936",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2184,9 +2184,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L937"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L937"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L937",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2206,9 +2206,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L938"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L938"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L938",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2228,9 +2228,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L939"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L939"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L939",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2250,9 +2250,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L940"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L940"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L940",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L940",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2272,9 +2272,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L948"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L948"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L948",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2294,9 +2294,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L952"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L952"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L952",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L952",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2316,9 +2316,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L953"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L953"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L953",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L953",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2338,9 +2338,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L954"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L954"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L954",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2360,9 +2360,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L958"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L958"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L958",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2382,9 +2382,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L962"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L962"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L962",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L962",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2404,9 +2404,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L963"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L963"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L963",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L963",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2426,9 +2426,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L964"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L964"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L964",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L964",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2448,9 +2448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L965"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L965"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L965",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2470,9 +2470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L969"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L969"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L969",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L969",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2492,9 +2492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L971"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L971"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L971",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L971",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2514,9 +2514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L973"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L973"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L973",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L973",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2536,9 +2536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L974"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L974"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L974",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L974",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2558,9 +2558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L980"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L980"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L980",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2580,9 +2580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L982"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L982"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L982",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L982",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2602,9 +2602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L983"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L983"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L983",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L983",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2624,9 +2624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L987"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L987"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L987",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L987",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2646,9 +2646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L988"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L988"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L988",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L988",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2668,9 +2668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L989"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L989"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L989",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2690,9 +2690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L993"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L993"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L993",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2712,9 +2712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L997"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L997"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L997",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2734,9 +2734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L998"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L998"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L998",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L998",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2756,9 +2756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L999"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L999"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L999",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2778,9 +2778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1000"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1000"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1000",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2800,9 +2800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1002"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1002"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1002",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2822,9 +2822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1004"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1004"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1004",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1004",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2844,9 +2844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1005"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1005"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1005",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2866,9 +2866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1006"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1006"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1006",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2888,9 +2888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1007"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1007"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1007",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2910,9 +2910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1011"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1011"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1011",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1011",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2932,9 +2932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1015"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1015"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1015",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2954,9 +2954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1016"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1016"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1016",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1016",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2976,9 +2976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1017"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1017"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1017",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1017",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2998,9 +2998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1018"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3020,9 +3020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1019"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1019"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1019",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1019",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3042,9 +3042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1021"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1021"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1021",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3064,9 +3064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1023"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1023"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1023",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1023",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3086,9 +3086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1024"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1024"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1024",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3108,9 +3108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1083"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1083"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1083",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3130,9 +3130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1089"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1089"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1089",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3152,9 +3152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1093"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1093"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1093",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3174,9 +3174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1109"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3196,9 +3196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1110"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3218,9 +3218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1111"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3240,9 +3240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1112"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3262,9 +3262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1113"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3284,9 +3284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1115"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3306,9 +3306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1117"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1117"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1117",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1117",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3328,9 +3328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1118"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1118"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1118",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1118",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3350,9 +3350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1122"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3372,9 +3372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1123"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1123"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1123",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1123",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3394,9 +3394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1124"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3416,9 +3416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1125"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1125"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1125",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3438,9 +3438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1129"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1129"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1129",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1129",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3460,9 +3460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1130"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1130"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1130",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3482,9 +3482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1131"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3504,9 +3504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1132"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3526,9 +3526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1133"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1133"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1133",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3548,9 +3548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/050-library-pgvector-full-integration/spec.md#L1229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1229"
       ],
-      "authority_source": "specs/feature/050-library-pgvector-full-integration/spec.md#L1229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/050-library-pgvector-full-integration/spec.md#L1229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

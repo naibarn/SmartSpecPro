@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L27"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L27"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L27",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L27",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L79"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L79"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L79",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L80"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L80"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L80",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L81"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L81"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L81",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L82"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L82"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L82",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L83"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L84"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L84"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L84",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L84",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L85"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L85"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L85",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L86"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L86"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L86",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L86",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L87"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L87"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L87",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L87",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L88"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L88"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L88",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L88",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L89"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L89"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L89",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L89",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L140"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L152"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L155"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L158"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L163"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L212"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L232"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L233"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L233"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L233",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L233",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L234"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L235"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L235"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L235",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L235",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L236"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L236"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L236",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L236",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L237"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L238"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L239"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L240"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L240",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L241"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L242"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L243"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L243"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L243",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,10 +665,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L244",
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L305"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L244",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L305"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L244",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -688,9 +688,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L245"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L245"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L245",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -710,9 +710,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L246"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L246"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L246",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -732,9 +732,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L247"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L247"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L247",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -754,9 +754,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L248"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L248"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L248",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -776,9 +776,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L249"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -798,9 +798,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L250"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L250"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L250",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -820,9 +820,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L254"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L254"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L254",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L254",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -842,9 +842,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L255"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L255"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L255",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L255",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -864,9 +864,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L256"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -886,9 +886,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L257"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -908,9 +908,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L258"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -930,9 +930,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L259"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -952,9 +952,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L260"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L260"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L260",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L260",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -974,9 +974,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L261"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L261"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L261",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L261",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -996,9 +996,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L262"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L262"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L262",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L262",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1018,9 +1018,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L263"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L263"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L263",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L263",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1040,9 +1040,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L264"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1062,9 +1062,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L265"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L265"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L265",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1084,9 +1084,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L266"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1106,9 +1106,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L267"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1128,9 +1128,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L268"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1150,9 +1150,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L269"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1172,9 +1172,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L270"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1194,9 +1194,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L271"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1216,9 +1216,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L272"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1238,9 +1238,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L273"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L273"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L273",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1260,9 +1260,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L274"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L274"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L274",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1282,9 +1282,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L275"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1304,9 +1304,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L276"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L276"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L276",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1326,9 +1326,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L277"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1348,9 +1348,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L278"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1370,9 +1370,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L279"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L279"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L279",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1392,9 +1392,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L280"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1414,9 +1414,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L281"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1436,9 +1436,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L282"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1458,9 +1458,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L283"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L283"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L283",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1480,9 +1480,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L284"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L284"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L284",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1502,9 +1502,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L285"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1524,9 +1524,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L289"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L289"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L289",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1546,9 +1546,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L290"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L290"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L290",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1568,9 +1568,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L291"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L291"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L291",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1590,9 +1590,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L292"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L292"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L292",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1612,9 +1612,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L293"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1634,9 +1634,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L294"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1656,9 +1656,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L295"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1678,9 +1678,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L296"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L296"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L296",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1700,9 +1700,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L297"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L297"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L297",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1722,9 +1722,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L298"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L298"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L298",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1744,9 +1744,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L299"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,10 +1766,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L300",
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L411"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L300",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L411"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L300",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1789,9 +1789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L301"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L301"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L301",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1811,9 +1811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L302"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L302"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L302",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L302",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1833,9 +1833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L303"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L303"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L303",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1855,9 +1855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L304"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L304"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L304",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1877,9 +1877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L306"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L306"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L306",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1899,9 +1899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L307"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L307"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L307",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1921,9 +1921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L308"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L308"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L308",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1943,9 +1943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L309"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1965,9 +1965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L310"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1987,9 +1987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L311"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L311"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L311",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L311",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2009,9 +2009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L315"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L315"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L315",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L315",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2031,9 +2031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L316"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L316"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L316",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L316",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2053,9 +2053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L317"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2075,9 +2075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L318"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L318"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L318",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2097,9 +2097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L319"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L319"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L319",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2119,9 +2119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L320"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L320"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L320",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2141,9 +2141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L321"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L321"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L321",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2163,9 +2163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L322"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2185,9 +2185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L323"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2207,9 +2207,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L324"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L324"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L324",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2229,9 +2229,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L325"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L325"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L325",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L325",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2251,9 +2251,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L326"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L326"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L326",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L326",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2273,9 +2273,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L327"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L327"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L327",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L327",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2295,9 +2295,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L328"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L328"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L328",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L328",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2317,9 +2317,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L329"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L329"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L329",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L329",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2339,9 +2339,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L330"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2361,9 +2361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L331"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L331"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L331",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2383,9 +2383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L332"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2405,9 +2405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L333"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L333"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L333",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L333",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2427,9 +2427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L334"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L334"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L334",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2449,9 +2449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L335"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L335"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L335",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L335",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2471,9 +2471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L339"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L339"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L339",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L339",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2493,9 +2493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L340"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L340"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L340",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L340",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2515,9 +2515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L341"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2537,9 +2537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L342"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2559,9 +2559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L343"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L343"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L343",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L343",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2581,9 +2581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L344"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L344"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L344",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L344",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2603,9 +2603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L345"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L345"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L345",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L345",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2625,9 +2625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L346"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L346"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L346",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L346",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2647,9 +2647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L347"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L347"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L347",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2669,9 +2669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L348"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2691,9 +2691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L349"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L349"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L349",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L349",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2713,9 +2713,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L350"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L350"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L350",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2735,9 +2735,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L351"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2757,9 +2757,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L352"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L352"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L352",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2779,9 +2779,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L353"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L353"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L353",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L353",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2801,9 +2801,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L354"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L354"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L354",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L354",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2823,9 +2823,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L355"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L355"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L355",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L355",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2845,9 +2845,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L356"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L356"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L356",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L356",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2867,9 +2867,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L357"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L357"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L357",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2889,9 +2889,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L358"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L358"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L358",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2911,9 +2911,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L362"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L362"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L362",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2933,9 +2933,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L363"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2955,9 +2955,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L364"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L364"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L364",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2977,9 +2977,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L365"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L365"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L365",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2999,9 +2999,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L366"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3021,9 +3021,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L367"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L367"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L367",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L367",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3043,9 +3043,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L368"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3065,9 +3065,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L369"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3087,9 +3087,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L370"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3109,9 +3109,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L371"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L371"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L371",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3131,9 +3131,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L372"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3153,9 +3153,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L373"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L373"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L373",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3175,9 +3175,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L374"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L374"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L374",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3197,9 +3197,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L375"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3219,9 +3219,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L376"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3241,9 +3241,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L380"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L380"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L380",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L380",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3263,9 +3263,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L381"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3285,9 +3285,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L382"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3307,9 +3307,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L383"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L383"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L383",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3329,9 +3329,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L384"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L384"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L384",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3351,9 +3351,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L385"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L385"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L385",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3373,9 +3373,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L386"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L386"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L386",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3395,9 +3395,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L387"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L387"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L387",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3417,9 +3417,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L388"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L388"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L388",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L388",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3439,9 +3439,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L389"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3461,9 +3461,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L390"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3483,9 +3483,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L394"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L394"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L394",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L394",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3505,9 +3505,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L395"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L395"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L395",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3527,9 +3527,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L396"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3549,9 +3549,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L397"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L397"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L397",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L397",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3571,9 +3571,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L398"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L398"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L398",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3593,9 +3593,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L399"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3615,9 +3615,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L400"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L400"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L400",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3637,9 +3637,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L401"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3659,9 +3659,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L402"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L402"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L402",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3681,9 +3681,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L403"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L403"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L403",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3703,9 +3703,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L404"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L404"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L404",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3725,9 +3725,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L405"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L405"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L405",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3747,9 +3747,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L406"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L406"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L406",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L406",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3769,9 +3769,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L407"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L407"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L407",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L407",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3791,9 +3791,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L408"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3813,9 +3813,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L409"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3835,9 +3835,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L410"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L410"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L410",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3857,9 +3857,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L412"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L412"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L412",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3879,9 +3879,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L413"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L413"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L413",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3901,9 +3901,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L414"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L414"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L414",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3923,9 +3923,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L418"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L418"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L418",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3945,9 +3945,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L419"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L419"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L419",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3967,9 +3967,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L420"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L420"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L420",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3989,9 +3989,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L421"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L421"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L421",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L421",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4011,9 +4011,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L422"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L422"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L422",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4033,9 +4033,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L423"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L423"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L423",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4055,9 +4055,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L424"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L424"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L424",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L424",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4077,9 +4077,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L425"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L425"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L425",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4099,9 +4099,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L426"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4121,9 +4121,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L427"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L427"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L427",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4143,9 +4143,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L428"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L428"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L428",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4165,9 +4165,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L429"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L429"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L429",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4187,9 +4187,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L433"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L433"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L433",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L433",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4209,9 +4209,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L434"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L434"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L434",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L434",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4231,9 +4231,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L435"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L435"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L435",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L435",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4253,9 +4253,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L436"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L436"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L436",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4275,9 +4275,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L437"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4297,9 +4297,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L500"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4319,9 +4319,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L517"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L517"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L517",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L517",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4341,9 +4341,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L518"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L518"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L518",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L518",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4363,9 +4363,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L519"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L519"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L519",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L519",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4385,9 +4385,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L520"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L520"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L520",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L520",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4407,9 +4407,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L521"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4429,9 +4429,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L522"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L522"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L522",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4451,9 +4451,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L523"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L523"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L523",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4473,9 +4473,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L525"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4495,9 +4495,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L586"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4517,9 +4517,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L587"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L587"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L587",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L587",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4539,9 +4539,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L588"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L588"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L588",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L588",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4561,9 +4561,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L589"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L589"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L589",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4583,9 +4583,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L590"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L590"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L590",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L590",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4605,9 +4605,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L591"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L591"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L591",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L591",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4627,9 +4627,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L592"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4649,9 +4649,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L593"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L593"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L593",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L593",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4671,9 +4671,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L594"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L594"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L594",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L594",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4693,9 +4693,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/079-autonomous-work-transformation-platform/spec.md#L595"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L595"
       ],
-      "authority_source": "specs/feature/079-autonomous-work-transformation-platform/spec.md#L595",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/079-autonomous-work-transformation-platform/spec.md#L595",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -14,7 +14,7 @@
         "referencing_spec_id": "222",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L10206",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L10206",
         "source_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
         "successor_spec_id": "222"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "230",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2222",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2222",
         "source_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
         "successor_spec_id": "230"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "231",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "231",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -92,7 +92,7 @@
           "R5-01",
           "R5-15"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -104,7 +104,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       },
@@ -116,7 +116,7 @@
         "referencing_spec_id": "256",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
         "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "successor_spec_id": "256"
       }
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",

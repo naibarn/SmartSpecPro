@@ -17,97 +17,97 @@
       {
         "digest": "e19e1e884c314898a385042e190a859ed3513a56382b56afff0e0253b9107ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-plan.md"
       },
       {
         "digest": "bdbe1a5ba4e04c78fce39024ff0dc81d04d4f02b8c835a9f4e7d12cdb03fa11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-spec.md"
       },
       {
         "digest": "0cf1e910634c8cde930d3b084de2a2feb6a29852f02961ccb443da88f66d87c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce1efaf8700fdc34dccfd509cebb451a3ef8a7ce22ecc366a676f5ddb6a3d03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/usage.md"
       },
       {
         "digest": "ca0f905c9445bf1e41900784fa60f12a69d16fdc29c358100339b2fd67fccf22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
       },
       {
         "digest": "dacc36cc15ae8b532a29037cdd8c3943076b1565ef74abe7345890843450620d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/index.md"
       },
       {
         "digest": "f6a0a98b2acea94170ea60abc432b752575507dc1b1ceb903ca80d917b759180",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
       },
       {
         "digest": "f4ab6bd9f3c0bfc7c7555f3ffc9bdb6bea113fabfdbaaa620896c74a2a8b5751",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
       },
       {
         "digest": "14263928030a8f001035db40a1878d9e3aee13757c751f16eb664bb41599384e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
       },
       {
         "digest": "d85e754e740efe27d3ea5c1195b605268e736a4543c8baf88151f15610da0b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
       },
       {
         "digest": "3302d0c65c07896f68919d8ed90746f5bc21e568d4a6d7bc3077b195fba8d3b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
       },
       {
         "digest": "157aba6723c49c5a5ca7934b9b63337dcd9bf56544e466835e0fb926636cf781",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
       },
       {
         "digest": "32cc7c79dce7e408e4b04a00209fd80d3b9d5d9d1939b2542f9f7506866b47bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
       },
       {
         "digest": "24c012c882ae8f9d6029a816e87fb297423572ce216deced7b1b7d48863cb501",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
       },
       {
         "digest": "f8adb5d88f7108ad569b9905d36306e20c7b36795be0f7710f621c79f771322d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
       },
       {
         "digest": "4efdc952c84256c8baa5e1b32416cd9448a3d4f2c81aaac7cec40055047affd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
       },
       {
         "digest": "3c7c83fa9a2f2790577cdc45de752a8552c880c80c83c19bc492523a652d9064",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
       },
       {
         "digest": "10c3e460b6e65fc0360a6524611df0d019be12473f03a7acbff0778a3eed591c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
       },
       {
         "digest": "f929b0089606c65468a2dffcc099f4b882ecd6b368952b4abde7bdd030942903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "e19e1e884c314898a385042e190a859ed3513a56382b56afff0e0253b9107ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-plan.md"
       },
       {
         "digest": "bdbe1a5ba4e04c78fce39024ff0dc81d04d4f02b8c835a9f4e7d12cdb03fa11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-spec.md"
       },
       {
         "digest": "0cf1e910634c8cde930d3b084de2a2feb6a29852f02961ccb443da88f66d87c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce1efaf8700fdc34dccfd509cebb451a3ef8a7ce22ecc366a676f5ddb6a3d03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/usage.md"
       },
       {
         "digest": "ca0f905c9445bf1e41900784fa60f12a69d16fdc29c358100339b2fd67fccf22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
       },
       {
         "digest": "dacc36cc15ae8b532a29037cdd8c3943076b1565ef74abe7345890843450620d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/index.md"
       },
       {
         "digest": "f6a0a98b2acea94170ea60abc432b752575507dc1b1ceb903ca80d917b759180",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
       },
       {
         "digest": "f4ab6bd9f3c0bfc7c7555f3ffc9bdb6bea113fabfdbaaa620896c74a2a8b5751",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
       },
       {
         "digest": "14263928030a8f001035db40a1878d9e3aee13757c751f16eb664bb41599384e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
       },
       {
         "digest": "d85e754e740efe27d3ea5c1195b605268e736a4543c8baf88151f15610da0b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
       },
       {
         "digest": "3302d0c65c07896f68919d8ed90746f5bc21e568d4a6d7bc3077b195fba8d3b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
       },
       {
         "digest": "157aba6723c49c5a5ca7934b9b63337dcd9bf56544e466835e0fb926636cf781",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
       },
       {
         "digest": "32cc7c79dce7e408e4b04a00209fd80d3b9d5d9d1939b2542f9f7506866b47bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
       },
       {
         "digest": "24c012c882ae8f9d6029a816e87fb297423572ce216deced7b1b7d48863cb501",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
       },
       {
         "digest": "f8adb5d88f7108ad569b9905d36306e20c7b36795be0f7710f621c79f771322d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
       },
       {
         "digest": "4efdc952c84256c8baa5e1b32416cd9448a3d4f2c81aaac7cec40055047affd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
       },
       {
         "digest": "3c7c83fa9a2f2790577cdc45de752a8552c880c80c83c19bc492523a652d9064",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
       },
       {
         "digest": "10c3e460b6e65fc0360a6524611df0d019be12473f03a7acbff0778a3eed591c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
       },
       {
         "digest": "f929b0089606c65468a2dffcc099f4b882ecd6b368952b4abde7bdd030942903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_10_dark\", labelTh: \"Spec 10 บรรทัด Dark\", labelEn: \"Spec sheet 10 lines dark\", kind: \"spec\" },",
@@ -267,103 +267,103 @@
       {
         "digest": "e19e1e884c314898a385042e190a859ed3513a56382b56afff0e0253b9107ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-plan.md"
       },
       {
         "digest": "bdbe1a5ba4e04c78fce39024ff0dc81d04d4f02b8c835a9f4e7d12cdb03fa11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-spec.md"
       },
       {
         "digest": "0cf1e910634c8cde930d3b084de2a2feb6a29852f02961ccb443da88f66d87c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce1efaf8700fdc34dccfd509cebb451a3ef8a7ce22ecc366a676f5ddb6a3d03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/usage.md"
       },
       {
         "digest": "ca0f905c9445bf1e41900784fa60f12a69d16fdc29c358100339b2fd67fccf22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
       },
       {
         "digest": "dacc36cc15ae8b532a29037cdd8c3943076b1565ef74abe7345890843450620d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/index.md"
       },
       {
         "digest": "f6a0a98b2acea94170ea60abc432b752575507dc1b1ceb903ca80d917b759180",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
       },
       {
         "digest": "f4ab6bd9f3c0bfc7c7555f3ffc9bdb6bea113fabfdbaaa620896c74a2a8b5751",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
       },
       {
         "digest": "14263928030a8f001035db40a1878d9e3aee13757c751f16eb664bb41599384e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
       },
       {
         "digest": "d85e754e740efe27d3ea5c1195b605268e736a4543c8baf88151f15610da0b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
       },
       {
         "digest": "3302d0c65c07896f68919d8ed90746f5bc21e568d4a6d7bc3077b195fba8d3b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
       },
       {
         "digest": "157aba6723c49c5a5ca7934b9b63337dcd9bf56544e466835e0fb926636cf781",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
       },
       {
         "digest": "32cc7c79dce7e408e4b04a00209fd80d3b9d5d9d1939b2542f9f7506866b47bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
       },
       {
         "digest": "24c012c882ae8f9d6029a816e87fb297423572ce216deced7b1b7d48863cb501",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
       },
       {
         "digest": "f8adb5d88f7108ad569b9905d36306e20c7b36795be0f7710f621c79f771322d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
       },
       {
         "digest": "4efdc952c84256c8baa5e1b32416cd9448a3d4f2c81aaac7cec40055047affd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
       },
       {
         "digest": "3c7c83fa9a2f2790577cdc45de752a8552c880c80c83c19bc492523a652d9064",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
       },
       {
         "digest": "10c3e460b6e65fc0360a6524611df0d019be12473f03a7acbff0778a3eed591c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
       },
       {
         "digest": "f929b0089606c65468a2dffcc099f4b882ecd6b368952b4abde7bdd030942903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/010-GoogleDriveScope/spec.md",
     "digest": "d88a74f52eb569797a749b3ac86cc0553abc91bcc8a90ae1d781ad2634fc6bc3",
@@ -416,107 +416,107 @@
       {
         "digest": "e19e1e884c314898a385042e190a859ed3513a56382b56afff0e0253b9107ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-plan.md"
       },
       {
         "digest": "bdbe1a5ba4e04c78fce39024ff0dc81d04d4f02b8c835a9f4e7d12cdb03fa11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-spec.md"
       },
       {
         "digest": "0cf1e910634c8cde930d3b084de2a2feb6a29852f02961ccb443da88f66d87c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce1efaf8700fdc34dccfd509cebb451a3ef8a7ce22ecc366a676f5ddb6a3d03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/usage.md"
       },
       {
         "digest": "ca0f905c9445bf1e41900784fa60f12a69d16fdc29c358100339b2fd67fccf22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
       },
       {
         "digest": "dacc36cc15ae8b532a29037cdd8c3943076b1565ef74abe7345890843450620d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/index.md"
       },
       {
         "digest": "f6a0a98b2acea94170ea60abc432b752575507dc1b1ceb903ca80d917b759180",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
       },
       {
         "digest": "f4ab6bd9f3c0bfc7c7555f3ffc9bdb6bea113fabfdbaaa620896c74a2a8b5751",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
       },
       {
         "digest": "14263928030a8f001035db40a1878d9e3aee13757c751f16eb664bb41599384e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
       },
       {
         "digest": "d85e754e740efe27d3ea5c1195b605268e736a4543c8baf88151f15610da0b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
       },
       {
         "digest": "3302d0c65c07896f68919d8ed90746f5bc21e568d4a6d7bc3077b195fba8d3b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
       },
       {
         "digest": "157aba6723c49c5a5ca7934b9b63337dcd9bf56544e466835e0fb926636cf781",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
       },
       {
         "digest": "32cc7c79dce7e408e4b04a00209fd80d3b9d5d9d1939b2542f9f7506866b47bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
       },
       {
         "digest": "24c012c882ae8f9d6029a816e87fb297423572ce216deced7b1b7d48863cb501",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
       },
       {
         "digest": "f8adb5d88f7108ad569b9905d36306e20c7b36795be0f7710f621c79f771322d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
       },
       {
         "digest": "4efdc952c84256c8baa5e1b32416cd9448a3d4f2c81aaac7cec40055047affd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
       },
       {
         "digest": "3c7c83fa9a2f2790577cdc45de752a8552c880c80c83c19bc492523a652d9064",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
       },
       {
         "digest": "10c3e460b6e65fc0360a6524611df0d019be12473f03a7acbff0778a3eed591c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
       },
       {
         "digest": "f929b0089606c65468a2dffcc099f4b882ecd6b368952b4abde7bdd030942903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
       },
       {
         "digest": "67d868dcf395c48b8e59421f07a1f23e6ef099d88001ae8314bbf60f67cc5e0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-14-disconnect-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-14-disconnect-cleanup.md"
       },
       {
         "digest": "8b55904d988a6ad7324762a47286d3384cbca55161780af54380a3976efdfe26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-15-security-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-15-security-hardening.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_10_dark\", labelTh: \"Spec 10 บรรทัด Dark\", labelEn: \"Spec sheet 10 lines dark\", kind: \"spec\" },",
@@ -965,107 +965,107 @@
       {
         "digest": "e19e1e884c314898a385042e190a859ed3513a56382b56afff0e0253b9107ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-plan.md"
       },
       {
         "digest": "bdbe1a5ba4e04c78fce39024ff0dc81d04d4f02b8c835a9f4e7d12cdb03fa11c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/claude-spec.md"
       },
       {
         "digest": "0cf1e910634c8cde930d3b084de2a2feb6a29852f02961ccb443da88f66d87c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/deep_implement_config.json"
       },
       {
         "digest": "ce1efaf8700fdc34dccfd509cebb451a3ef8a7ce22ecc366a676f5ddb6a3d03c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/implementation/usage.md"
       },
       {
         "digest": "ca0f905c9445bf1e41900784fa60f12a69d16fdc29c358100339b2fd67fccf22",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/reviews/iteration-1-opus.md"
       },
       {
         "digest": "dacc36cc15ae8b532a29037cdd8c3943076b1565ef74abe7345890843450620d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/index.md"
       },
       {
         "digest": "f6a0a98b2acea94170ea60abc432b752575507dc1b1ceb903ca80d917b759180",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-01-admin-config.md"
       },
       {
         "digest": "f4ab6bd9f3c0bfc7c7555f3ffc9bdb6bea113fabfdbaaa620896c74a2a8b5751",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-02-database-schema.md"
       },
       {
         "digest": "14263928030a8f001035db40a1878d9e3aee13757c751f16eb664bb41599384e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-03-oauth-consent.md"
       },
       {
         "digest": "d85e754e740efe27d3ea5c1195b605268e736a4543c8baf88151f15610da0b01",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-04-credit-billing.md"
       },
       {
         "digest": "3302d0c65c07896f68919d8ed90746f5bc21e568d4a6d7bc3077b195fba8d3b2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-05-budget-protection.md"
       },
       {
         "digest": "157aba6723c49c5a5ca7934b9b63337dcd9bf56544e466835e0fb926636cf781",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-06-content-extraction.md"
       },
       {
         "digest": "32cc7c79dce7e408e4b04a00209fd80d3b9d5d9d1939b2542f9f7506866b47bf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-07-edit-in-google.md"
       },
       {
         "digest": "24c012c882ae8f9d6029a816e87fb297423572ce216deced7b1b7d48863cb501",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-08-virtual-references.md"
       },
       {
         "digest": "f8adb5d88f7108ad569b9905d36306e20c7b36795be0f7710f621c79f771322d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-09-mcp-server.md"
       },
       {
         "digest": "4efdc952c84256c8baa5e1b32416cd9448a3d4f2c81aaac7cec40055047affd9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-10-federated-search.md"
       },
       {
         "digest": "3c7c83fa9a2f2790577cdc45de752a8552c880c80c83c19bc492523a652d9064",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-11-sync-webhooks.md"
       },
       {
         "digest": "10c3e460b6e65fc0360a6524611df0d019be12473f03a7acbff0778a3eed591c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-12-dashboard-ui.md"
       },
       {
         "digest": "f929b0089606c65468a2dffcc099f4b882ecd6b368952b4abde7bdd030942903",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-13-rate-limiting.md"
       },
       {
         "digest": "67d868dcf395c48b8e59421f07a1f23e6ef099d88001ae8314bbf60f67cc5e0c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-14-disconnect-cleanup.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-14-disconnect-cleanup.md"
       },
       {
         "digest": "8b55904d988a6ad7324762a47286d3384cbca55161780af54380a3976efdfe26",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/010-GoogleDriveScope/sections/section-15-security-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/010-GoogleDriveScope/sections/section-15-security-hardening.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

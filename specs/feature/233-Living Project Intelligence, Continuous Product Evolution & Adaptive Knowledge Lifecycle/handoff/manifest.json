@@ -19,7 +19,7 @@
           "R20",
           "R21"
         ],
-        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
         "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
         "successor_spec_id": "233"
       },
@@ -36,7 +36,7 @@
           "R20",
           "R21"
         ],
-        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
         "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
         "successor_spec_id": "233"
       },
@@ -51,7 +51,7 @@
           "R20",
           "R21-LIVING-USE-CASE-DEMAND-ALIGNMENT.MD"
         ],
-        "source": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md#L152",
         "source_digest": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
         "successor_spec_id": "234"
       },
@@ -65,7 +65,7 @@
         "requirement_ids": [
           "R20-PRODUCT-EVOLUTION-HANDOFF-ALIGNMENT.MD"
         ],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L168",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -77,7 +77,7 @@
         "referencing_spec_id": "235",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md#L307",
         "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "successor_spec_id": "235"
       },
@@ -89,7 +89,7 @@
         "referencing_spec_id": "238",
         "relation_text": "merged",
         "requirement_ids": [],
-        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L423",
         "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "successor_spec_id": "238"
       },
@@ -101,7 +101,7 @@
         "referencing_spec_id": "241",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L133",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L133",
         "source_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
         "successor_spec_id": "241"
       },
@@ -113,7 +113,7 @@
         "referencing_spec_id": "241",
         "relation_text": "supersedes",
         "requirement_ids": [],
-        "source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L137",
         "source_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
         "successor_spec_id": "241"
       },
@@ -125,7 +125,7 @@
         "referencing_spec_id": "241",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L568",
         "source_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
         "successor_spec_id": "241"
       },
@@ -137,7 +137,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1051",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1051",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -149,7 +149,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -163,7 +163,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L682",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L682",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -175,7 +175,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -189,7 +189,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L953",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L953",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -201,7 +201,7 @@
         "referencing_spec_id": "251",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/251-creator-workspace-media-localization/spec.md#L46",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/251-creator-workspace-media-localization/spec.md#L46",
         "source_digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
         "successor_spec_id": "251"
       }
@@ -271,7 +271,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
     "digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",

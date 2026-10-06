@@ -17,37 +17,37 @@
       {
         "digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ab4605a419ca10e949e1965da915a2be7f7c80322b37935f674b400fb40296e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
       },
       {
         "digest": "8c4e833c04be9a71e6499f57c397d0730d6460dea26a4c187dafee01acc3873b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
       },
       {
         "digest": "7390056943c5b8ddd7711fdec36a749dcbbce2d5d400d0a0c049f42faf525814",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
       },
       {
         "digest": "fc6ea615b3cd40150f42fe3dace65267d5f835da7a8133781fcf69f1ff0d211f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
       },
       {
         "digest": "1f4bfcb00da4c31b4f139dc3c8bec2da622d2c27b24b747f7150566a52774e4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
       },
       {
         "digest": "74a6aeec0c6d65ee2a4c3aa131bdc1c1e21043352b95b336cc58151775161916",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
       }
     ],
     "predecessors": [],
@@ -78,37 +78,37 @@
       {
         "digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ab4605a419ca10e949e1965da915a2be7f7c80322b37935f674b400fb40296e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
       },
       {
         "digest": "8c4e833c04be9a71e6499f57c397d0730d6460dea26a4c187dafee01acc3873b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
       },
       {
         "digest": "7390056943c5b8ddd7711fdec36a749dcbbce2d5d400d0a0c049f42faf525814",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
       },
       {
         "digest": "fc6ea615b3cd40150f42fe3dace65267d5f835da7a8133781fcf69f1ff0d211f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
       },
       {
         "digest": "1f4bfcb00da4c31b4f139dc3c8bec2da622d2c27b24b747f7150566a52774e4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
       },
       {
         "digest": "74a6aeec0c6d65ee2a4c3aa131bdc1c1e21043352b95b336cc58151775161916",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -140,43 +140,43 @@
       {
         "digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ab4605a419ca10e949e1965da915a2be7f7c80322b37935f674b400fb40296e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
       },
       {
         "digest": "8c4e833c04be9a71e6499f57c397d0730d6460dea26a4c187dafee01acc3873b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
       },
       {
         "digest": "7390056943c5b8ddd7711fdec36a749dcbbce2d5d400d0a0c049f42faf525814",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
       },
       {
         "digest": "fc6ea615b3cd40150f42fe3dace65267d5f835da7a8133781fcf69f1ff0d211f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
       },
       {
         "digest": "1f4bfcb00da4c31b4f139dc3c8bec2da622d2c27b24b747f7150566a52774e4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
       },
       {
         "digest": "74a6aeec0c6d65ee2a4c3aa131bdc1c1e21043352b95b336cc58151775161916",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md",
     "digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
@@ -229,37 +229,37 @@
       {
         "digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ab4605a419ca10e949e1965da915a2be7f7c80322b37935f674b400fb40296e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
       },
       {
         "digest": "8c4e833c04be9a71e6499f57c397d0730d6460dea26a4c187dafee01acc3873b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
       },
       {
         "digest": "7390056943c5b8ddd7711fdec36a749dcbbce2d5d400d0a0c049f42faf525814",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
       },
       {
         "digest": "fc6ea615b3cd40150f42fe3dace65267d5f835da7a8133781fcf69f1ff0d211f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
       },
       {
         "digest": "1f4bfcb00da4c31b4f139dc3c8bec2da622d2c27b24b747f7150566a52774e4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
       },
       {
         "digest": "74a6aeec0c6d65ee2a4c3aa131bdc1c1e21043352b95b336cc58151775161916",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -444,37 +444,37 @@
       {
         "digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json"
       },
       {
         "digest": "3ab4605a419ca10e949e1965da915a2be7f7c80322b37935f674b400fb40296e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/index.md"
       },
       {
         "digest": "8c4e833c04be9a71e6499f57c397d0730d6460dea26a4c187dafee01acc3873b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-01-document-model-and-subgraphs.md"
       },
       {
         "digest": "7390056943c5b8ddd7711fdec36a749dcbbce2d5d400d0a0c049f42faf525814",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-02-canonical-ir-and-compile-planning.md"
       },
       {
         "digest": "fc6ea615b3cd40150f42fe3dace65267d5f835da7a8133781fcf69f1ff0d211f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-03-runtime-adapters-and-bridge-orchestration.md"
       },
       {
         "digest": "1f4bfcb00da4c31b4f139dc3c8bec2da622d2c27b24b747f7150566a52774e4c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-04-agency-builder-ux-and-migration.md"
       },
       {
         "digest": "74a6aeec0c6d65ee2a4c3aa131bdc1c1e21043352b95b336cc58151775161916",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

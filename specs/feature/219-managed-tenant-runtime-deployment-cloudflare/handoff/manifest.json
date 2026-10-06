@@ -14,7 +14,7 @@
         "referencing_spec_id": "219",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L67",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L67",
         "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
         "successor_spec_id": "219"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "219",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L1373",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L1373",
         "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
         "successor_spec_id": "219"
       }
@@ -145,7 +145,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
     "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",

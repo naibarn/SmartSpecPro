@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L32"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L32"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L32",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L32",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L43"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L48"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L48"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L48",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L48",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L58"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L58"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L58",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L58",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L64"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L64"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L64",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L76"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L76"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L76",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L76",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L140"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L149"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L149"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L149",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L211"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L211"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L211",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L231"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L249"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L253"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L253"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L253",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L264"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L285"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L314"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L314"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L314",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L314",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L338"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L338"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L338",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L341"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L341"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L341",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L341",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L366"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L376"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L376"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L376",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L376",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L425"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L425"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L425",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L480"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L480",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L480",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L487"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L487"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L487",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L487",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L514"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L514"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L514",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L559"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L559"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L559",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L601"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L601"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L601",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L601",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L602"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L602"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L602",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L602",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L646"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L646"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L646",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L652"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L661"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L670"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L692"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L700"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L700"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L700",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L714"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L714",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L716"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L716"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L716",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L722"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L722"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L722",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L731"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L731"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L731",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L734"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L734"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L734",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L734",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L735"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L735"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L735",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L735",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L755"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L759"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L759"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L759",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L759",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L774"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L828"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L828"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L828",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L828",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L842"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L842"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L842",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L842",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L861"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L861"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L861",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L861",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L866"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L866"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L866",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L866",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L881"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L881"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L881",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L890"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L890"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L890",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L890",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L945"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L945"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L945",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L974"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L974"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L974",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L974",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1005"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1005"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1005",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1005",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1022"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1022"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1022",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1022",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1025"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1025"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1025",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1025",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1032"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1032"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1032",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1055"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1055"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1055",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1066"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1066"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1066",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1066",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1080"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1080"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1080",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1106"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1143"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1143"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1143",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1180"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1180"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1180",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1195"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1195"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1195",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1195",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1242"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1269"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1283"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1283"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1283",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1309"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1317"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1336"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1336"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1336",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1336",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1338"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1338"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1338",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1338",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1358"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1358"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1358",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1358",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1389"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1393"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1393"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1393",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1459"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1464"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1464"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1464",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1464",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1476"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1476"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1476",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1479"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1479"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1479",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1479",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1514"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1514"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1514",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1516"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1516"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1516",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1555"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1555"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1555",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1555",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1561"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1561"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1561",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1561",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1578"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1578"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1578",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1583"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1583"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1583",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1583",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1596"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1596"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1596",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1596",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1597"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1597"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1597",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1597",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1640"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1652"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1679"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1679"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1679",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1679",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1689"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1689"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1689",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1689",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1714"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1714",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1752"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1752"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1752",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1790"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1790"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1790",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1804"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1804"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1804",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1846"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1846"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1846",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1846",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1914"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1914"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1914",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1928"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1958"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1958"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1958",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1974"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1974"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1974",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1974",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1976"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1976"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1976",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1976",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1987"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1987"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1987",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1987",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1993"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1993"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1993",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L1993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2002"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2002"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2002",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2043"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2043"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2043",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2043",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2096"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2096"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2096",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2096",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2128"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2179"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2179"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2179",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2237"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2237"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2237",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2237",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2245"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2245"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2245",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2249"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2292"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2292"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2292",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2294"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2296"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2296"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2296",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2334"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2334"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2334",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2334",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2378"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2378"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2378",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2378",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2384"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2384"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2384",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2387"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2387"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2387",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2387",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2412"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2412"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2412",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2412",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2417"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2417"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2417",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2430"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2430"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2430",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2440"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2440"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2440",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2440",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2448"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2448"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2448",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2515"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2515"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2515",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2515",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2516"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2516"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2516",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2516",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2521"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2521"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2521",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2521",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2547"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2547"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2547",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2547",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2551"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2551"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2551",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2551",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2582"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2582"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2582",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2586"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2587"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2587"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2587",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2587",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2592"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2622"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2622"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2622",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2622",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2628"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2628"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2628",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2628",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2629"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2631"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2633"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2633"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2633",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2633",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2634"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2635"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2636"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2637"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2638"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2638"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2638",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2639"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2639"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2639",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2639",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2640"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2641"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2641"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2641",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2641",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2642"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2644"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2644"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2644",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2646"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2646"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2646",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2646",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2649"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2651"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2651"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2651",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2653"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2653"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2653",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2653",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2654"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2654"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2654",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2656"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2658"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2660"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2660"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2660",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2664"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2664"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2664",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2664",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2666"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2669"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2669"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2669",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2669",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2675"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2675"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2675",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2675",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2678"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2678"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2678",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2678",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2681"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2681"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2681",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2681",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2683"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2683"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2683",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2685"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2685"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2685",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2685",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2688"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2688"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2688",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2688",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2691"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2697"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2697"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2697",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2698"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2698"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2698",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2698",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2699"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2700"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2700"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2700",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2700",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2701"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2701"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2701",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2701",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2702"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2702"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2702",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2702",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2705"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2705"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2705",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2705",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2707"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2707"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2707",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2707",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2709"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2709"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2709",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2712"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2712"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2712",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2712",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2714"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2714"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2714",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2714",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2716"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2716"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2716",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2716",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2719"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2719"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2719",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2719",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2721"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2721"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2721",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2721",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2722"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2722"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2722",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2722",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2723"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2723"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2723",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2724"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2724"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2724",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2724",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2727"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2727"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2727",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2727",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2729"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2729"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2729",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2730"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2730"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2730",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2737"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2737"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2737",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2738"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2739"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2742"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2742"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2742",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2744"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2744"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2744",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2744",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2746"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2748"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2750"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2750"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2750",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2752"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2752"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2752",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2752",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2755"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2755"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2755",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2755",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4185,9 +4185,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2757"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2757"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2757",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2757",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4207,9 +4207,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2760"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2760"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2760",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2760",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4229,9 +4229,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2764"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2764"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2764",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2764",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4251,9 +4251,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2767"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2767"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2767",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2767",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4273,9 +4273,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2770"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4295,9 +4295,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2773"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4317,9 +4317,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2776"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2776"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2776",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4339,9 +4339,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2779"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4361,9 +4361,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2782"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2782"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2782",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2782",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4383,9 +4383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2785"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2785"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2785",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4405,9 +4405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2789"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4427,9 +4427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2792"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2792"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2792",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4449,9 +4449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2796"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2796"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2796",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4471,9 +4471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2803"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2803"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2803",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2803",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4493,9 +4493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2804"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2804"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2804",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4515,9 +4515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2805"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2805"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2805",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4537,9 +4537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2806"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2806"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2806",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4559,9 +4559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2807"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2807"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2807",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2807",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4581,9 +4581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2808"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2808"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2808",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2808",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4603,9 +4603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2809"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2809"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2809",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2809",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4625,9 +4625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2818"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2818"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2818",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2818",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4647,9 +4647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2850"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2850"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2850",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2850",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4669,9 +4669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2856"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2856"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2856",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2856",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4691,9 +4691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2914"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2914"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2914",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4713,9 +4713,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2915"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4735,9 +4735,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2943"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2943"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2943",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2943",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4757,9 +4757,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2945"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2945"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2945",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4779,9 +4779,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2950"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2950"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2950",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2950",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4801,9 +4801,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2953"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2953"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2953",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2953",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4823,9 +4823,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2955"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2955"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2955",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2955",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4845,9 +4845,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2958"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2958"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2958",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2958",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4867,9 +4867,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2960"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2960"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2960",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2960",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4889,9 +4889,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2962"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2962"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2962",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2962",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4911,9 +4911,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2965"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2965"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2965",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2965",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4933,9 +4933,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2967"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2967"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2967",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2967",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4955,9 +4955,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2970"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2970"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2970",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4977,9 +4977,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2972"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2972"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2972",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2972",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4999,9 +4999,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2975"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2975"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2975",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2975",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5021,9 +5021,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2977"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2977"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2977",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2977",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5043,9 +5043,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2978"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2978"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2978",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2978",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5065,9 +5065,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2980"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2980"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2980",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2980",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5087,9 +5087,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2981"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2981"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2981",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2981",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5109,9 +5109,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2983"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2983"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2983",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2983",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5131,9 +5131,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2984"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2984"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2984",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2984",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5153,9 +5153,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2986"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2986"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2986",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2986",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5175,9 +5175,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2989"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2989"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2989",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2989",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5197,9 +5197,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2991"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2991"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2991",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2991",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5219,9 +5219,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2994"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2994"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2994",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2994",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5241,9 +5241,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2995"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2995"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2995",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2995",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5263,9 +5263,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2997"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2997"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2997",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5285,9 +5285,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2999"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2999"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2999",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L2999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5307,9 +5307,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3000"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3000"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3000",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3000",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5329,9 +5329,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3002"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3002"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3002",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3002",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5351,9 +5351,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3006"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3006"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3006",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5373,9 +5373,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3007"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3007"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3007",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5395,9 +5395,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3009"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3009"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3009",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3009",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5417,9 +5417,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3012"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3012"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3012",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3012",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5439,9 +5439,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3015"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3015"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3015",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5461,9 +5461,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3018"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5483,9 +5483,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3021"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3021"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3021",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3021",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5505,9 +5505,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3024"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3024"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3024",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3024",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5527,9 +5527,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3027"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3027"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3027",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3027",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5549,9 +5549,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3030"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3030"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3030",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5571,9 +5571,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3032"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3032"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3032",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3032",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5593,9 +5593,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3034"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3034"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3034",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3034",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5615,9 +5615,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3036"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3036"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3036",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3036",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5637,9 +5637,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3039"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3039"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3039",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3039",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5659,9 +5659,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3041"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3041"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3041",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3041",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5681,9 +5681,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3044"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3044"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3044",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3044",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5703,9 +5703,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3046"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3046"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3046",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3046",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5725,9 +5725,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3049"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3049"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3049",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3049",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5747,9 +5747,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3052"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3052"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3052",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3052",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5769,9 +5769,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3054"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3054"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3054",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3054",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5791,9 +5791,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3056"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3056"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3056",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3056",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5813,9 +5813,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3072"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3072"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3072",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5835,9 +5835,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3090"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3090"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3090",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3090",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5857,9 +5857,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3091"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3091"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3091",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -5879,9 +5879,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3113"
       ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L3113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

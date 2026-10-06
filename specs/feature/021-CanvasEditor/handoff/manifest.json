@@ -17,97 +17,97 @@
       {
         "digest": "560b15353674cbf6b4361b56d0e1f27db7ded3a969ee76a4a068e8fc4003138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "30b81f20a49b5246d82959c90992247639883cdf175ed19b05c41816184cce84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
       },
       {
         "digest": "cae4fefa1f6a3a60d1061017265f77751f16d55907ebd211ec57daad6656fdd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-01-review.md"
       },
       {
         "digest": "ac26855d982e3e7518fce42508bad1361b64192b3157a1f9f485051eb5e66ca9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-02-review.md"
       },
       {
         "digest": "5365062448d77a8348b90f9ddd4e17c8a564fd879092c3a564df1d3a0fb0d632",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-03-review.md"
       },
       {
         "digest": "40ebf26d3ed0b87950778febc46ade30d8e3209210a04f7253715285cf7d741c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-04-review.md"
       },
       {
         "digest": "bda13da17da307d1b33118f5a4630d990b42acea02cc52f8f2e7c9be732cf0ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-05-review.md"
       },
       {
         "digest": "c3a4e27db9233752764caad8ea59d573962034ec1b7cd5ebb5fdebddda6b6dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-06-review.md"
       },
       {
         "digest": "84512135c40be15fa2761bd3484e99ea923029b4159ab0401f3fdb4bea4a35a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-07-review.md"
       },
       {
         "digest": "0db02f7892627652a5c87c591ddb94309624f716108cb91c83608582f0246a97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-08-review.md"
       },
       {
         "digest": "24eeb9af7e4d652c7cb9f9de54f438509ec0898723ceac3505ce7bc03cfae465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-09-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-09-review.md"
       },
       {
         "digest": "d7f8f5d152e404942bfebd999f8e1e32776788ab7e0a1772761679db9eaac1ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-10-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-10-review.md"
       },
       {
         "digest": "9b9aad9462a1e6ac6ac08d57d66dfa1921729121867c9dfc19daa5ef717ecb2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/index.md"
       },
       {
         "digest": "29893365c33a775b1c1f36c7b5c159374bf43468193e9fb1114ce043ef18b62f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
       },
       {
         "digest": "e3c7db8125c99fe9b097fe0464cdfe3823824766dade21650afc18ea0cb718c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
       },
       {
         "digest": "8d25a621567a8551ea71a6123ec8b61345405489fae5d93a96f77761b5021f5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
       },
       {
         "digest": "fd0d04911cfc29d5b1bdccbfa13b4cf974927e57169404dc21f9e058a2aea172",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
       },
       {
         "digest": "7c2e32ae5a3735d641803345e9ff4ee2ee4b6b8d98d20f8b7333bebfe37658a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
       },
       {
         "digest": "eab105a2d76053354ced62e630c8240573b045b6ded983e53c5f8b99f76d4a9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "560b15353674cbf6b4361b56d0e1f27db7ded3a969ee76a4a068e8fc4003138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "30b81f20a49b5246d82959c90992247639883cdf175ed19b05c41816184cce84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
       },
       {
         "digest": "cae4fefa1f6a3a60d1061017265f77751f16d55907ebd211ec57daad6656fdd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-01-review.md"
       },
       {
         "digest": "ac26855d982e3e7518fce42508bad1361b64192b3157a1f9f485051eb5e66ca9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-02-review.md"
       },
       {
         "digest": "5365062448d77a8348b90f9ddd4e17c8a564fd879092c3a564df1d3a0fb0d632",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-03-review.md"
       },
       {
         "digest": "40ebf26d3ed0b87950778febc46ade30d8e3209210a04f7253715285cf7d741c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-04-review.md"
       },
       {
         "digest": "bda13da17da307d1b33118f5a4630d990b42acea02cc52f8f2e7c9be732cf0ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-05-review.md"
       },
       {
         "digest": "c3a4e27db9233752764caad8ea59d573962034ec1b7cd5ebb5fdebddda6b6dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-06-review.md"
       },
       {
         "digest": "84512135c40be15fa2761bd3484e99ea923029b4159ab0401f3fdb4bea4a35a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-07-review.md"
       },
       {
         "digest": "0db02f7892627652a5c87c591ddb94309624f716108cb91c83608582f0246a97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-08-review.md"
       },
       {
         "digest": "24eeb9af7e4d652c7cb9f9de54f438509ec0898723ceac3505ce7bc03cfae465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-09-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-09-review.md"
       },
       {
         "digest": "d7f8f5d152e404942bfebd999f8e1e32776788ab7e0a1772761679db9eaac1ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-10-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-10-review.md"
       },
       {
         "digest": "9b9aad9462a1e6ac6ac08d57d66dfa1921729121867c9dfc19daa5ef717ecb2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/index.md"
       },
       {
         "digest": "29893365c33a775b1c1f36c7b5c159374bf43468193e9fb1114ce043ef18b62f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
       },
       {
         "digest": "e3c7db8125c99fe9b097fe0464cdfe3823824766dade21650afc18ea0cb718c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
       },
       {
         "digest": "8d25a621567a8551ea71a6123ec8b61345405489fae5d93a96f77761b5021f5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
       },
       {
         "digest": "fd0d04911cfc29d5b1bdccbfa13b4cf974927e57169404dc21f9e058a2aea172",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
       },
       {
         "digest": "7c2e32ae5a3735d641803345e9ff4ee2ee4b6b8d98d20f8b7333bebfe37658a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
       },
       {
         "digest": "eab105a2d76053354ced62e630c8240573b045b6ded983e53c5f8b99f76d4a9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "560b15353674cbf6b4361b56d0e1f27db7ded3a969ee76a4a068e8fc4003138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "30b81f20a49b5246d82959c90992247639883cdf175ed19b05c41816184cce84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
       },
       {
         "digest": "cae4fefa1f6a3a60d1061017265f77751f16d55907ebd211ec57daad6656fdd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-01-review.md"
       },
       {
         "digest": "ac26855d982e3e7518fce42508bad1361b64192b3157a1f9f485051eb5e66ca9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-02-review.md"
       },
       {
         "digest": "5365062448d77a8348b90f9ddd4e17c8a564fd879092c3a564df1d3a0fb0d632",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-03-review.md"
       },
       {
         "digest": "40ebf26d3ed0b87950778febc46ade30d8e3209210a04f7253715285cf7d741c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-04-review.md"
       },
       {
         "digest": "bda13da17da307d1b33118f5a4630d990b42acea02cc52f8f2e7c9be732cf0ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-05-review.md"
       },
       {
         "digest": "c3a4e27db9233752764caad8ea59d573962034ec1b7cd5ebb5fdebddda6b6dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-06-review.md"
       },
       {
         "digest": "84512135c40be15fa2761bd3484e99ea923029b4159ab0401f3fdb4bea4a35a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-07-review.md"
       },
       {
         "digest": "0db02f7892627652a5c87c591ddb94309624f716108cb91c83608582f0246a97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-08-review.md"
       },
       {
         "digest": "24eeb9af7e4d652c7cb9f9de54f438509ec0898723ceac3505ce7bc03cfae465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-09-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-09-review.md"
       },
       {
         "digest": "d7f8f5d152e404942bfebd999f8e1e32776788ab7e0a1772761679db9eaac1ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-10-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-10-review.md"
       },
       {
         "digest": "9b9aad9462a1e6ac6ac08d57d66dfa1921729121867c9dfc19daa5ef717ecb2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/index.md"
       },
       {
         "digest": "29893365c33a775b1c1f36c7b5c159374bf43468193e9fb1114ce043ef18b62f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
       },
       {
         "digest": "e3c7db8125c99fe9b097fe0464cdfe3823824766dade21650afc18ea0cb718c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
       },
       {
         "digest": "8d25a621567a8551ea71a6123ec8b61345405489fae5d93a96f77761b5021f5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
       },
       {
         "digest": "fd0d04911cfc29d5b1bdccbfa13b4cf974927e57169404dc21f9e058a2aea172",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
       },
       {
         "digest": "7c2e32ae5a3735d641803345e9ff4ee2ee4b6b8d98d20f8b7333bebfe37658a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
       },
       {
         "digest": "eab105a2d76053354ced62e630c8240573b045b6ded983e53c5f8b99f76d4a9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/021-CanvasEditor/spec.md",
     "digest": "6b81b85773674dd8e01ff6f02e48f9f860887c80c23a2a6906039d72c6f5e444",
@@ -409,117 +409,117 @@
       {
         "digest": "560b15353674cbf6b4361b56d0e1f27db7ded3a969ee76a4a068e8fc4003138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "30b81f20a49b5246d82959c90992247639883cdf175ed19b05c41816184cce84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
       },
       {
         "digest": "cae4fefa1f6a3a60d1061017265f77751f16d55907ebd211ec57daad6656fdd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-01-review.md"
       },
       {
         "digest": "ac26855d982e3e7518fce42508bad1361b64192b3157a1f9f485051eb5e66ca9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-02-review.md"
       },
       {
         "digest": "5365062448d77a8348b90f9ddd4e17c8a564fd879092c3a564df1d3a0fb0d632",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-03-review.md"
       },
       {
         "digest": "40ebf26d3ed0b87950778febc46ade30d8e3209210a04f7253715285cf7d741c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-04-review.md"
       },
       {
         "digest": "bda13da17da307d1b33118f5a4630d990b42acea02cc52f8f2e7c9be732cf0ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-05-review.md"
       },
       {
         "digest": "c3a4e27db9233752764caad8ea59d573962034ec1b7cd5ebb5fdebddda6b6dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-06-review.md"
       },
       {
         "digest": "84512135c40be15fa2761bd3484e99ea923029b4159ab0401f3fdb4bea4a35a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-07-review.md"
       },
       {
         "digest": "0db02f7892627652a5c87c591ddb94309624f716108cb91c83608582f0246a97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-08-review.md"
       },
       {
         "digest": "24eeb9af7e4d652c7cb9f9de54f438509ec0898723ceac3505ce7bc03cfae465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-09-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-09-review.md"
       },
       {
         "digest": "d7f8f5d152e404942bfebd999f8e1e32776788ab7e0a1772761679db9eaac1ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-10-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-10-review.md"
       },
       {
         "digest": "9b9aad9462a1e6ac6ac08d57d66dfa1921729121867c9dfc19daa5ef717ecb2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/index.md"
       },
       {
         "digest": "29893365c33a775b1c1f36c7b5c159374bf43468193e9fb1114ce043ef18b62f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
       },
       {
         "digest": "e3c7db8125c99fe9b097fe0464cdfe3823824766dade21650afc18ea0cb718c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
       },
       {
         "digest": "8d25a621567a8551ea71a6123ec8b61345405489fae5d93a96f77761b5021f5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
       },
       {
         "digest": "fd0d04911cfc29d5b1bdccbfa13b4cf974927e57169404dc21f9e058a2aea172",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
       },
       {
         "digest": "7c2e32ae5a3735d641803345e9ff4ee2ee4b6b8d98d20f8b7333bebfe37658a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
       },
       {
         "digest": "eab105a2d76053354ced62e630c8240573b045b6ded983e53c5f8b99f76d4a9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
       },
       {
         "digest": "43a34c344d906ab8cff2ba68175685dd92c803089fcb566ae1bb2dd00082157b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-07-template-trust-boundary-and-security-guards.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-07-template-trust-boundary-and-security-guards.md"
       },
       {
         "digest": "aa7f6afb7725dd4d4c6acc7f0d3dddd80616413ec0a0940a912389e1f82d8c1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-08-rollout-observability-and-ops-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-08-rollout-observability-and-ops-hardening.md"
       },
       {
         "digest": "0751f704f5e534705015274079b67637ad5381d73c79ab88ff06ef45bf07fc72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-09-regression-performance-and-accessibility-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-09-regression-performance-and-accessibility-gates.md"
       },
       {
         "digest": "ab93e7937886674b2021e54c2cad93dbb8b98271b54a150dea3f8dcd3ac1862b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-10-release-readiness-and-cutover.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-10-release-readiness-and-cutover.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -569,117 +569,117 @@
       {
         "digest": "560b15353674cbf6b4361b56d0e1f27db7ded3a969ee76a4a068e8fc4003138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "30b81f20a49b5246d82959c90992247639883cdf175ed19b05c41816184cce84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/iteration-1-summary.md"
       },
       {
         "digest": "cae4fefa1f6a3a60d1061017265f77751f16d55907ebd211ec57daad6656fdd7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-01-review.md"
       },
       {
         "digest": "ac26855d982e3e7518fce42508bad1361b64192b3157a1f9f485051eb5e66ca9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-02-review.md"
       },
       {
         "digest": "5365062448d77a8348b90f9ddd4e17c8a564fd879092c3a564df1d3a0fb0d632",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-03-review.md"
       },
       {
         "digest": "40ebf26d3ed0b87950778febc46ade30d8e3209210a04f7253715285cf7d741c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-04-review.md"
       },
       {
         "digest": "bda13da17da307d1b33118f5a4630d990b42acea02cc52f8f2e7c9be732cf0ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-05-review.md"
       },
       {
         "digest": "c3a4e27db9233752764caad8ea59d573962034ec1b7cd5ebb5fdebddda6b6dc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-06-review.md"
       },
       {
         "digest": "84512135c40be15fa2761bd3484e99ea923029b4159ab0401f3fdb4bea4a35a0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-07-review.md"
       },
       {
         "digest": "0db02f7892627652a5c87c591ddb94309624f716108cb91c83608582f0246a97",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-08-review.md"
       },
       {
         "digest": "24eeb9af7e4d652c7cb9f9de54f438509ec0898723ceac3505ce7bc03cfae465",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-09-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-09-review.md"
       },
       {
         "digest": "d7f8f5d152e404942bfebd999f8e1e32776788ab7e0a1772761679db9eaac1ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/reviews/section-10-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/reviews/section-10-review.md"
       },
       {
         "digest": "9b9aad9462a1e6ac6ac08d57d66dfa1921729121867c9dfc19daa5ef717ecb2e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/index.md"
       },
       {
         "digest": "29893365c33a775b1c1f36c7b5c159374bf43468193e9fb1114ce043ef18b62f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-01-canvas-runtime-foundation.md"
       },
       {
         "digest": "e3c7db8125c99fe9b097fe0464cdfe3823824766dade21650afc18ea0cb718c6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-02-v2-schema-and-contracts.md"
       },
       {
         "digest": "8d25a621567a8551ea71a6123ec8b61345405489fae5d93a96f77761b5021f5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-03-desktop-interactions-and-command-model.md"
       },
       {
         "digest": "fd0d04911cfc29d5b1bdccbfa13b4cf974927e57169404dc21f9e058a2aea172",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-04-mobile-safe-core-interactions.md"
       },
       {
         "digest": "7c2e32ae5a3735d641803345e9ff4ee2ee4b6b8d98d20f8b7333bebfe37658a7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-05-autosave-conflict-and-recovery.md"
       },
       {
         "digest": "eab105a2d76053354ced62e630c8240573b045b6ded983e53c5f8b99f76d4a9b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-06-export-degradation-and-warning-contract.md"
       },
       {
         "digest": "43a34c344d906ab8cff2ba68175685dd92c803089fcb566ae1bb2dd00082157b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-07-template-trust-boundary-and-security-guards.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-07-template-trust-boundary-and-security-guards.md"
       },
       {
         "digest": "aa7f6afb7725dd4d4c6acc7f0d3dddd80616413ec0a0940a912389e1f82d8c1c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-08-rollout-observability-and-ops-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-08-rollout-observability-and-ops-hardening.md"
       },
       {
         "digest": "0751f704f5e534705015274079b67637ad5381d73c79ab88ff06ef45bf07fc72",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-09-regression-performance-and-accessibility-gates.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-09-regression-performance-and-accessibility-gates.md"
       },
       {
         "digest": "ab93e7937886674b2021e54c2cad93dbb8b98271b54a150dea3f8dcd3ac1862b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/021-CanvasEditor/sections/section-10-release-readiness-and-cutover.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/021-CanvasEditor/sections/section-10-release-readiness-and-cutover.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

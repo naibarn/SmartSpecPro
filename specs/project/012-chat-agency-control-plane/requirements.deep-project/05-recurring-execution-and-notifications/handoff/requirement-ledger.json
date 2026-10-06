@@ -1,10 +1,10 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
-      "authority_source": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications/spec.md",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

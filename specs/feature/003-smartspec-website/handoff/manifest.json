@@ -17,7 +17,7 @@
       {
         "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/003-smartspec-website/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/003-smartspec-website/plan.md"
       }
     ],
     "predecessors": [],
@@ -48,7 +48,7 @@
       {
         "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/003-smartspec-website/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/003-smartspec-website/plan.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -80,13 +80,13 @@
       {
         "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/003-smartspec-website/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/003-smartspec-website/plan.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/003-smartspec-website/spec.md",
     "digest": "4c86898746dc72c74b85604a292b125f0397fb38229b7c7eb35f6ee341de67de",
@@ -139,7 +139,7 @@
       {
         "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/003-smartspec-website/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/003-smartspec-website/plan.md"
       }
     ],
     "stale_fields": [],
@@ -167,7 +167,7 @@
       {
         "digest": "40530b58aa0e38cb866d13ac5c7535ac6d750b19270479f544f87b8b2b774ccc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/003-smartspec-website/plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/003-smartspec-website/plan.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

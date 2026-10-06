@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L15"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L15"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L15",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L15",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L39"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L39"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L39",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L39",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L61"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L61"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L61",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L61",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L106"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L106"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L106",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L108"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L110"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L124"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L124"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L124",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L171"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L171"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L171",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L177"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L177"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L177",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L177",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L183"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L183"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L183",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L183",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L256"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L256"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L256",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L256",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L320"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L320"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L320",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L379"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L385"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L385"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L385",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L411"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L411"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L411",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L411",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L455"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L455"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L455",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L455",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L472"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L472"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L472",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L475"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L475"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L475",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L476"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L476"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L476",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L476",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L511"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L511"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L511",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L511",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L561"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L561"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L561",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L561",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L586"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L592"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L592"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L592",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L592",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L600"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L600"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L600",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L600",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L603"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L603"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L603",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L603",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L621"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L621"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L621",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L621",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L623"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L623"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L623",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L623",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L643"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L672"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L674"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L674"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L674",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L674",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L691"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L697"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L697"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L697",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L697",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L720"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L720"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L720",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L720",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L756"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L756"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L756",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L762"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L762"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L762",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L795"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L795"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L795",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L795",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L805"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L805"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L805",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L813"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L813"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L813",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L815"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L815"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L815",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L844"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L844"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L844",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L844",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L858"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L858"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L858",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L858",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L877"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L877"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L877",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L892"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L892"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L892",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L909"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L909",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L925"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L925"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L925",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L925",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L931"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L931"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L931",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L931",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L933"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L933"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L933",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L933",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L949"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L949"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L949",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L949",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L975"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L975"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L975",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L975",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1109"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1115"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1131"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1131"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1131",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1154"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1154"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1154",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1221"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1221"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1221",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1221",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1232"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1232"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1232",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1232",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1234"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1234"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1234",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1234",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1240"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1240",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1250"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1250"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1250",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1264"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1264"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1264",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1264",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1266"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1268"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1269"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1270"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1271"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1271"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1271",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1271",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1272"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1273"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1273"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1273",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1273",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1274"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1274"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1274",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1274",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1275"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1275"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1275",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1275",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1277"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1285"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1348"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1363"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1369"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1390"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1415"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1436"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1436"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1436",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1451"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1514"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1514"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1514",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1514",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1565"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1565"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1565",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1565",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,10 +1743,10 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1573",
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1591"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1573",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1591"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1573",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1766,9 +1766,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1625"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1625"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1625",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1625",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1788,9 +1788,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1638"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1638"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1638",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1638",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1810,9 +1810,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1756"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1756"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1756",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1832,9 +1832,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1758"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1758"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1758",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1758",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1854,9 +1854,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1867"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1867"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1867",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1867",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1876,9 +1876,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1868"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1868"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1868",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1868",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1898,9 +1898,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1869"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1869"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1869",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1869",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1920,9 +1920,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1870"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1870"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1870",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1870",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1942,9 +1942,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1871"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1871"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1871",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1871",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1964,9 +1964,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1872"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1872"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1872",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1872",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1986,9 +1986,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1873"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1873"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1873",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1873",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2008,9 +2008,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1874"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1874"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1874",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1874",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2030,9 +2030,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1875"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1875"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1875",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1875",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2052,9 +2052,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1876"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1876"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1876",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2074,9 +2074,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1877"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1877"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1877",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1877",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2096,9 +2096,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1878"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1878"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1878",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1878",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2118,9 +2118,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1879"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1879"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1879",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1879",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2140,9 +2140,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1880"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1880"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1880",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1880",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2162,9 +2162,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1881"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1881"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1881",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1881",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2184,9 +2184,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1909"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1909"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1909",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1909",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2206,9 +2206,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1910"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1910"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1910",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1910",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2228,9 +2228,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1911"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1911"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1911",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1911",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2250,9 +2250,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1912"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1912"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1912",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1912",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2272,9 +2272,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1913"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1913"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1913",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1913",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2294,9 +2294,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1914"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1914"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1914",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1914",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2316,9 +2316,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1915"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2338,9 +2338,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1916"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1916"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1916",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1916",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2360,9 +2360,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1917"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1917"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1917",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1917",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2382,9 +2382,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1918"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1918"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1918",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1918",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2404,9 +2404,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1919"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1919"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1919",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1919",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2426,9 +2426,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1920"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1920"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1920",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1920",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2448,9 +2448,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1921"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1921"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1921",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1921",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2470,9 +2470,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1927"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1927"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1927",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L1927",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2492,9 +2492,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2026"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2026"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2026",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2514,9 +2514,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2030"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2030"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2030",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2030",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2536,9 +2536,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2057"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2057"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2057",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2558,9 +2558,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2081"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2081"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2081",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2081",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2580,9 +2580,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2084"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2084"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2084",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2084",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2602,9 +2602,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2093"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2093"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2093",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2093",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2624,9 +2624,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2121"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2121"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2121",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2121",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2646,9 +2646,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2133"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2133"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2133",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2133",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2668,9 +2668,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2135"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2690,9 +2690,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2140"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2712,9 +2712,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2142"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2734,9 +2734,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2148"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2756,9 +2756,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2150"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2150"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2150",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2778,9 +2778,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2164"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2800,9 +2800,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2165"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2822,9 +2822,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2168"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2844,9 +2844,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2174"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2174"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2174",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2866,9 +2866,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2182"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2182"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2182",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2888,9 +2888,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2184"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2184"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2184",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2910,9 +2910,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2188"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2188"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2188",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2188",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2932,9 +2932,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2198"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2198"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2198",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2198",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2954,9 +2954,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2227"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2227"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2227",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2227",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2976,9 +2976,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2231"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2231"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2231",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2231",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2998,9 +2998,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2238"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3020,9 +3020,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2259"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3042,9 +3042,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2272"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3064,9 +3064,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2291"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2291"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2291",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2291",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3086,9 +3086,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2304"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2304"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2304",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3108,9 +3108,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2330"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3130,9 +3130,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2351"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2351"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2351",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3152,9 +3152,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2374"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2374"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2374",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3174,9 +3174,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2405"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2405"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2405",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3196,9 +3196,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2416"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2416"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2416",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3218,9 +3218,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2443"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2443"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2443",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3240,9 +3240,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2488"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2488"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2488",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2488",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3262,9 +3262,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2489"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2489"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2489",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2489",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3284,9 +3284,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2490"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2490"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2490",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2490",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3306,9 +3306,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2491"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2491"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2491",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2491",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3328,9 +3328,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2492"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2492"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2492",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2492",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3350,9 +3350,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2493"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2493"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2493",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2493",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3372,9 +3372,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2494"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2494"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2494",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2494",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3394,9 +3394,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2495"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2495"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2495",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2495",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3416,9 +3416,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2496"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2496"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2496",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2496",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3438,9 +3438,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2497"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2497"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2497",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2497",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3460,9 +3460,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2498"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2498"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2498",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2498",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3482,9 +3482,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2499"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2499"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2499",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2499",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3504,9 +3504,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2524"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2524",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3526,9 +3526,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2589"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2589"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2589",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2589",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3548,9 +3548,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2630"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2630"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2630",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3570,9 +3570,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2640"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2640"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2640",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2640",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3592,9 +3592,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2642"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3614,9 +3614,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2650"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2650"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2650",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3636,9 +3636,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2654"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2654"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2654",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2654",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3658,9 +3658,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2656"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3680,9 +3680,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2657"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2657"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2657",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3702,9 +3702,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2658"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3724,9 +3724,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2660"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2660"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2660",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3746,9 +3746,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2661"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3768,9 +3768,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2668"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2668"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2668",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3790,9 +3790,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2682"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2682"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2682",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2682",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3812,9 +3812,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2683"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2683"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2683",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2683",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3834,9 +3834,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2687"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2687"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2687",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2687",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3856,9 +3856,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2691"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2691"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2691",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2691",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3878,9 +3878,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2699"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2699"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2699",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2699",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3900,9 +3900,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2726"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2726"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2726",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3922,9 +3922,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2728"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2728"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2728",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3944,9 +3944,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2736"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2736"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2736",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2736",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3966,9 +3966,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2738"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3988,9 +3988,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2754"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2754"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2754",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2754",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4010,9 +4010,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2756"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2756"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2756",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2756",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4032,9 +4032,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2762"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2762"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2762",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4054,9 +4054,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2768"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2768"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2768",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2768",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4076,9 +4076,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2770"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2770"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2770",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2770",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4098,9 +4098,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2778"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2778"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2778",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4120,9 +4120,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2784"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2784"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2784",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4142,9 +4142,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2800"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2800"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2800",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4164,9 +4164,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2809"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2809"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2809",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2809",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4186,9 +4186,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2848"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2848"
       ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2848",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2848",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

@@ -17,82 +17,82 @@
       {
         "digest": "ae25e0b19cd960fe9f0617c30a1bc9035f8145b7501c69d98a4c2a4ef4420a38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-plan.md"
       },
       {
         "digest": "2e6b6e5e61f3dab89bc08f50700b3fa4d533a11c8902b6b0b01ded3ebbf37be1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-spec.md"
       },
       {
         "digest": "1804cc10b3c14a554c5e3346fe7b9e190abc4e814625d190addbc8ae3c90ebe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
       },
       {
         "digest": "1d9d10eff14283c1817d8c9faf9533a93cd9a7720cffe90e9390aed83a2d3343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/index.md"
       },
       {
         "digest": "39ae7ed196235a56be8e76007119981d218a5403842ddaf017b346b774835499",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
       },
       {
         "digest": "0b0bb62ba63c7208e931ab9bad79e819445fc0fe34667e1dd782ed962bb90feb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
       },
       {
         "digest": "7aefd2efdb536b0272c4baf4957caa793510f824c7a9e99d96a91348f595688e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
       },
       {
         "digest": "30ce9c5caaab356c27fd92f51db34fe0ac81433f2fdf5deb2f19bfbf9ccd7998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
       },
       {
         "digest": "130f83b729d9eecfc067aeffe6d8be0d6e9039c2b2dd38e68054876ccad0f271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
       },
       {
         "digest": "6f9f7b6db4157b6ce0ed053bd3b2a7d48d655aa1ad56cb1c573a7a94369da5f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
       },
       {
         "digest": "d498b3fffeef3999052ad0e0adddde35221039035cbb4ba0015b91ca5ccd138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
       },
       {
         "digest": "1a686e5bc167713cd3371f8a73622ed16cce006321a3829bbeb78cad533e5010",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
       },
       {
         "digest": "33756305c11923ef7d2ee0e4f9419313848745ff8fe49f5410d1ee55816657b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
       },
       {
         "digest": "1329eee08c0ee5c419d1286e41e7710900dfe3818ceb3db04ab066cc8d02ef52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
       },
       {
         "digest": "1503935f77c27e07bc8f59e05fe90d556c92ae098a918336a4162e291b5d5c0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
       },
       {
         "digest": "deca1ad3ad378803e5f686e3cd28fc3aa8c7467563266eb7f4059bce77d4fc4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
       }
     ],
     "predecessors": [],
@@ -123,82 +123,82 @@
       {
         "digest": "ae25e0b19cd960fe9f0617c30a1bc9035f8145b7501c69d98a4c2a4ef4420a38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-plan.md"
       },
       {
         "digest": "2e6b6e5e61f3dab89bc08f50700b3fa4d533a11c8902b6b0b01ded3ebbf37be1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-spec.md"
       },
       {
         "digest": "1804cc10b3c14a554c5e3346fe7b9e190abc4e814625d190addbc8ae3c90ebe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
       },
       {
         "digest": "1d9d10eff14283c1817d8c9faf9533a93cd9a7720cffe90e9390aed83a2d3343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/index.md"
       },
       {
         "digest": "39ae7ed196235a56be8e76007119981d218a5403842ddaf017b346b774835499",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
       },
       {
         "digest": "0b0bb62ba63c7208e931ab9bad79e819445fc0fe34667e1dd782ed962bb90feb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
       },
       {
         "digest": "7aefd2efdb536b0272c4baf4957caa793510f824c7a9e99d96a91348f595688e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
       },
       {
         "digest": "30ce9c5caaab356c27fd92f51db34fe0ac81433f2fdf5deb2f19bfbf9ccd7998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
       },
       {
         "digest": "130f83b729d9eecfc067aeffe6d8be0d6e9039c2b2dd38e68054876ccad0f271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
       },
       {
         "digest": "6f9f7b6db4157b6ce0ed053bd3b2a7d48d655aa1ad56cb1c573a7a94369da5f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
       },
       {
         "digest": "d498b3fffeef3999052ad0e0adddde35221039035cbb4ba0015b91ca5ccd138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
       },
       {
         "digest": "1a686e5bc167713cd3371f8a73622ed16cce006321a3829bbeb78cad533e5010",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
       },
       {
         "digest": "33756305c11923ef7d2ee0e4f9419313848745ff8fe49f5410d1ee55816657b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
       },
       {
         "digest": "1329eee08c0ee5c419d1286e41e7710900dfe3818ceb3db04ab066cc8d02ef52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
       },
       {
         "digest": "1503935f77c27e07bc8f59e05fe90d556c92ae098a918336a4162e291b5d5c0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
       },
       {
         "digest": "deca1ad3ad378803e5f686e3cd28fc3aa8c7467563266eb7f4059bce77d4fc4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -230,88 +230,88 @@
       {
         "digest": "ae25e0b19cd960fe9f0617c30a1bc9035f8145b7501c69d98a4c2a4ef4420a38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-plan.md"
       },
       {
         "digest": "2e6b6e5e61f3dab89bc08f50700b3fa4d533a11c8902b6b0b01ded3ebbf37be1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-spec.md"
       },
       {
         "digest": "1804cc10b3c14a554c5e3346fe7b9e190abc4e814625d190addbc8ae3c90ebe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
       },
       {
         "digest": "1d9d10eff14283c1817d8c9faf9533a93cd9a7720cffe90e9390aed83a2d3343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/index.md"
       },
       {
         "digest": "39ae7ed196235a56be8e76007119981d218a5403842ddaf017b346b774835499",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
       },
       {
         "digest": "0b0bb62ba63c7208e931ab9bad79e819445fc0fe34667e1dd782ed962bb90feb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
       },
       {
         "digest": "7aefd2efdb536b0272c4baf4957caa793510f824c7a9e99d96a91348f595688e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
       },
       {
         "digest": "30ce9c5caaab356c27fd92f51db34fe0ac81433f2fdf5deb2f19bfbf9ccd7998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
       },
       {
         "digest": "130f83b729d9eecfc067aeffe6d8be0d6e9039c2b2dd38e68054876ccad0f271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
       },
       {
         "digest": "6f9f7b6db4157b6ce0ed053bd3b2a7d48d655aa1ad56cb1c573a7a94369da5f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
       },
       {
         "digest": "d498b3fffeef3999052ad0e0adddde35221039035cbb4ba0015b91ca5ccd138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
       },
       {
         "digest": "1a686e5bc167713cd3371f8a73622ed16cce006321a3829bbeb78cad533e5010",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
       },
       {
         "digest": "33756305c11923ef7d2ee0e4f9419313848745ff8fe49f5410d1ee55816657b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
       },
       {
         "digest": "1329eee08c0ee5c419d1286e41e7710900dfe3818ceb3db04ab066cc8d02ef52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
       },
       {
         "digest": "1503935f77c27e07bc8f59e05fe90d556c92ae098a918336a4162e291b5d5c0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
       },
       {
         "digest": "deca1ad3ad378803e5f686e3cd28fc3aa8c7467563266eb7f4059bce77d4fc4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/044-MultimodalChatMemory/spec.md",
     "digest": "bccc66b74b3b2ae7a6418bfe0acdcbfbab921ee82d14a6c858fd31d20fa37b2b",
@@ -364,82 +364,82 @@
       {
         "digest": "ae25e0b19cd960fe9f0617c30a1bc9035f8145b7501c69d98a4c2a4ef4420a38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-plan.md"
       },
       {
         "digest": "2e6b6e5e61f3dab89bc08f50700b3fa4d533a11c8902b6b0b01ded3ebbf37be1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-spec.md"
       },
       {
         "digest": "1804cc10b3c14a554c5e3346fe7b9e190abc4e814625d190addbc8ae3c90ebe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
       },
       {
         "digest": "1d9d10eff14283c1817d8c9faf9533a93cd9a7720cffe90e9390aed83a2d3343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/index.md"
       },
       {
         "digest": "39ae7ed196235a56be8e76007119981d218a5403842ddaf017b346b774835499",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
       },
       {
         "digest": "0b0bb62ba63c7208e931ab9bad79e819445fc0fe34667e1dd782ed962bb90feb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
       },
       {
         "digest": "7aefd2efdb536b0272c4baf4957caa793510f824c7a9e99d96a91348f595688e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
       },
       {
         "digest": "30ce9c5caaab356c27fd92f51db34fe0ac81433f2fdf5deb2f19bfbf9ccd7998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
       },
       {
         "digest": "130f83b729d9eecfc067aeffe6d8be0d6e9039c2b2dd38e68054876ccad0f271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
       },
       {
         "digest": "6f9f7b6db4157b6ce0ed053bd3b2a7d48d655aa1ad56cb1c573a7a94369da5f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
       },
       {
         "digest": "d498b3fffeef3999052ad0e0adddde35221039035cbb4ba0015b91ca5ccd138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
       },
       {
         "digest": "1a686e5bc167713cd3371f8a73622ed16cce006321a3829bbeb78cad533e5010",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
       },
       {
         "digest": "33756305c11923ef7d2ee0e4f9419313848745ff8fe49f5410d1ee55816657b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
       },
       {
         "digest": "1329eee08c0ee5c419d1286e41e7710900dfe3818ceb3db04ab066cc8d02ef52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
       },
       {
         "digest": "1503935f77c27e07bc8f59e05fe90d556c92ae098a918336a4162e291b5d5c0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
       },
       {
         "digest": "deca1ad3ad378803e5f686e3cd28fc3aa8c7467563266eb7f4059bce77d4fc4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
       }
     ],
     "stale_fields": [],
@@ -467,82 +467,82 @@
       {
         "digest": "ae25e0b19cd960fe9f0617c30a1bc9035f8145b7501c69d98a4c2a4ef4420a38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-plan.md"
       },
       {
         "digest": "2e6b6e5e61f3dab89bc08f50700b3fa4d533a11c8902b6b0b01ded3ebbf37be1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/claude-spec.md"
       },
       {
         "digest": "1804cc10b3c14a554c5e3346fe7b9e190abc4e814625d190addbc8ae3c90ebe1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/reviews/iteration-1-opus.md"
       },
       {
         "digest": "1d9d10eff14283c1817d8c9faf9533a93cd9a7720cffe90e9390aed83a2d3343",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/index.md"
       },
       {
         "digest": "39ae7ed196235a56be8e76007119981d218a5403842ddaf017b346b774835499",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-01-schema-and-migration.md"
       },
       {
         "digest": "0b0bb62ba63c7208e931ab9bad79e819445fc0fe34667e1dd782ed962bb90feb",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-02-media-asset-service.md"
       },
       {
         "digest": "7aefd2efdb536b0272c4baf4957caa793510f824c7a9e99d96a91348f595688e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-03-vision-pipeline-python.md"
       },
       {
         "digest": "30ce9c5caaab356c27fd92f51db34fe0ac81433f2fdf5deb2f19bfbf9ccd7998",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-04-embedding-provider.md"
       },
       {
         "digest": "130f83b729d9eecfc067aeffe6d8be0d6e9039c2b2dd38e68054876ccad0f271",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-05-visual-state-service.md"
       },
       {
         "digest": "6f9f7b6db4157b6ce0ed053bd3b2a7d48d655aa1ad56cb1c573a7a94369da5f1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-06-retrieval-and-reference-resolution.md"
       },
       {
         "digest": "d498b3fffeef3999052ad0e0adddde35221039035cbb4ba0015b91ca5ccd138d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-07-context-packing-integration.md"
       },
       {
         "digest": "1a686e5bc167713cd3371f8a73622ed16cce006321a3829bbeb78cad533e5010",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-08-ingestion-hook-and-credits.md"
       },
       {
         "digest": "33756305c11923ef7d2ee0e4f9419313848745ff8fe49f5410d1ee55816657b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-09-safety-and-feature-flags.md"
       },
       {
         "digest": "1329eee08c0ee5c419d1286e41e7710900dfe3818ceb3db04ab066cc8d02ef52",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-10-user-controls-and-deletion.md"
       },
       {
         "digest": "1503935f77c27e07bc8f59e05fe90d556c92ae098a918336a4162e291b5d5c0f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-11-chat-ui-gallery.md"
       },
       {
         "digest": "deca1ad3ad378803e5f686e3cd28fc3aa8c7467563266eb7f4059bce77d4fc4e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/044-MultimodalChatMemory/sections/section-12-backfill-and-integration-tests.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

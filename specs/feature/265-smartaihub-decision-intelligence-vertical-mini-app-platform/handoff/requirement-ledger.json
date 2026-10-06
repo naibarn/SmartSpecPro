@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L20"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L20"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L20",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L20",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L43"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L62"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L62"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L62",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L62",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L70"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L70"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L70",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L96"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L96"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L96",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L102"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L102"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L102",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L113"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L115"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L115"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L115",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L115",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L128"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L128"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L128",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L132"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L132"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L132",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L132",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L142"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L146"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L160"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L161"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L162"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L162"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L162",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L162",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L163"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L163"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L163",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L163",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L164"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L165"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L191"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L301"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L301"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L301",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L301",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L304"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L304"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L304",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L304",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L330"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L363"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L386"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L386"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L386",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L386",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L398"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L398"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L398",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L405"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L405"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L405",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L405",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L422"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L422"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L422",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L422",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L439"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L439"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L439",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L444"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L444"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L444",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L444",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L473"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L473"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L473",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L475"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L475"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L475",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L475",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L522"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L522"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L522",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L522",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L523"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L523"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L523",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L523",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L524"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L524"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L524",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L524",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L525"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L525"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L525",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L525",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L528"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L528"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L528",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L528",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L571"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L571"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L571",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L571",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L573"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L573"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L573",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L586"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L586"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L586",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L586",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L605"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L605"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L605",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L605",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L610"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L610"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L610",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L610",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L611"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L611"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L611",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L612"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L612"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L612",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L612",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L616"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L616"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L616",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L616",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L634"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L634"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L634",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L634",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L652"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L666"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L668"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L668"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L668",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L668",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L672"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L673"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L692"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L692"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L692",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L692",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L694"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L694"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L694",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L694",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L703"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L703"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L703",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L703",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L709"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L709"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L709",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L723"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L723"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L723",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L723",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L732"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L732"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L732",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L762"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L762"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L762",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L762",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L791"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L797"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L797"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L797",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L797",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L799"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L799"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L799",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L815"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L815"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L815",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L815",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L824"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L824"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L824",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L824",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L835"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L835"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L835",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L835",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L837"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L843"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L843"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L843",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L843",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L845"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L845"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L845",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L875"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L875"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L875",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L875",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L897"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L897"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L897",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L897",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L928"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L928"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L928",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L928",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L930"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L930"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L930",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L948"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L948"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L948",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L948",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L954"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L954"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L954",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L954",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L968"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L968"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L968",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L968",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L970"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L970"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L970",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1001"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1001"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1001",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1001",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1018"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1018"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1018",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1018",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1020"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1020"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1020",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1020",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1059"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1059"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1059",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1059",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1076"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1076"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1076",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1089"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1089"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1089",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1089",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1091"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1091"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1091",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1091",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1122"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1168"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1168"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1168",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1191"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1191"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1191",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1191",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1239"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1268"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1280"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1299"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1303"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1303"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1303",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1303",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1330"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1330"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1330",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1330",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1332"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1332"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1332",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1332",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1342"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1342"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1342",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1342",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1348"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1348"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1348",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1348",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1350"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1350"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1350",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1350",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1352"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1352"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1352",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1352",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1370"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1372"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1389"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1391"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1391"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1391",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1393"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1393"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1393",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1393",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1399"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1409"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1415"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1423"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1423"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1423",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1443"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1443"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1443",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1443",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1468"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1468"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1468",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1468",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1545"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1545"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1545",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1545",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1559"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1559"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1559",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1559",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1580"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1580"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1580",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1580",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1598"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1598"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1598",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1598",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1658"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1728"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1728"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1728",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1728",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1729"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1729"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1729",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1729",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1730"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1730"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1730",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1730",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1731"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1731"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1731",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1731",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1732"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1732"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1732",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1732",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1733"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1733"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1733",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1733",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1737"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1737"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1737",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1737",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1738"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1738"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1738",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1738",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1739"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1739"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1739",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1739",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1740"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1740"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1740",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1741"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1741"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1741",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1742"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1742"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1742",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1746"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1746"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1746",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1746",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1747"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1747"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1747",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1747",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1748"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1748"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1748",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1748",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1749"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1749"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1749",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1749",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1750"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1750"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1750",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1750",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1751"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1751"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1751",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1751",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1772"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1772"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1772",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1772",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1773"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1773"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1773",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1773",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1774"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1774"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1774",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1774",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1775"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1775"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1775",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1775",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1776"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1776"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1776",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1776",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1777"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1777"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1777",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1777",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1778"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1778"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1778",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1778",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1779"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1779"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1779",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1780"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1780"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1780",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1780",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1784"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1784"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1784",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1784",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1785"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1785"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1785",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1785",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1786"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1786"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1786",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1786",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1787"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1787"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1787",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1787",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1788"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1788"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1788",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1788",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1789"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1789"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1789",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1789",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1790"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1790"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1790",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1790",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1794"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1794"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1794",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1794",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1796"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1796"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1796",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1796",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1797"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1797"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1797",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1797",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1798"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1798"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1798",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1798",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1799"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1799"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1799",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1799",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1800"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1800"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1800",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1800",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1804"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1804"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1804",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1804",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1805"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1805"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1805",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1805",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1806"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1806"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1806",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1807"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1807"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1807",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1807",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1811"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1811"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1811",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1811",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1812"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1812"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1812",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1812",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1813"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1813"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1813",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1813",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1814"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1814"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1814",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1814",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1845"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1845"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1845",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1845",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1867"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1867"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1867",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1867",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1876"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1876"
       ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1876",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1876",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

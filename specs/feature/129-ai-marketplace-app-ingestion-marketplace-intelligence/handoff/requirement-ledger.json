@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L29"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L29"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L29",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L29",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L31"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L31"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L31",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L31",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L41"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L41"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L41",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L43"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L43"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L43",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L43",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L83"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L83"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L83",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L83",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L85"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L85"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L85",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L85",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L107"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L134"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L134"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L134",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L135"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L135"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L135",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L135",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L136"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L136"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L136",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L136",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L137"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L137"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L137",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L137",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L138"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L138"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L138",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L139"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L139"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L139",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L139",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L140"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L140"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L140",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L140",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L141"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L141"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L141",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L141",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L142"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L142"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L142",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L143"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L143"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L143",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L143",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L144"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L144"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L144",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L144",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L145"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L145"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L145",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L146"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L146"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L146",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L147"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L147"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L147",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L148"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L148"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L148",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L148",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L149"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L149"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L149",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L150"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L150"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L150",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L150",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L151"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L151"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L151",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L152"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L152"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L152",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L153"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L153"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L153",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L154"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L154"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L154",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L154",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L155"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L155"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L155",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L156"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L157"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L157"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L157",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L158"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L159"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L159"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L159",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L160"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L160"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L160",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L160",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L161"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L218"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L218"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L218",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L218",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -797,9 +797,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L220"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L220"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L220",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -819,9 +819,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L395"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L395"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L395",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -841,9 +841,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L449"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L509"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L509"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L509",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L509",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -885,9 +885,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L527"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L527"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L527",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L527",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -907,9 +907,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L529"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L529"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L529",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L529",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -929,9 +929,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L535"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L535"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L535",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -951,9 +951,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L544"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L544"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L544",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L544",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -973,9 +973,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L572"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L572"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L572",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -995,9 +995,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L573"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L573"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L573",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L573",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1017,9 +1017,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L574"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L574"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L574",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L574",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1039,9 +1039,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L575"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L575"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L575",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L575",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1061,9 +1061,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L576"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L576"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L576",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L576",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1083,9 +1083,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L577"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L577"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L577",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L577",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1105,9 +1105,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L578"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L578"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L578",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L578",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1127,9 +1127,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L579"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L579"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L579",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L579",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1149,9 +1149,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L580"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L580"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L580",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L580",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1171,9 +1171,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L581"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L581"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L581",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L581",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1193,9 +1193,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L582"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L582"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L582",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L582",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1215,9 +1215,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L631"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1237,9 +1237,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L642"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1259,9 +1259,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L740"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L740"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L740",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L740",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1281,9 +1281,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L791"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L791"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L791",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L791",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1303,9 +1303,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L793"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L793"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L793",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L793",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1325,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L835"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L835"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L835",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L835",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1347,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L837"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L837"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L837",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L837",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1369,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1008"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1008"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1008",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1008",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1391,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1009"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1009"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1009",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1009",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1413,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1010"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1010"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1010",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1010",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1435,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1067"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1067"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1067",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1067",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1122"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1122"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1122",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1164"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1164"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1164",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1164",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1165"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1165"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1165",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1219"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1219"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1219",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1219",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1220"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1220"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1220",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1220",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1277"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1278"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1279"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1279"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1279",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1280"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1281"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1363"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1390"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1392"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1399"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1765,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1563"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1563"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1563",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1563",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1787,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1572"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1572"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1572",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1572",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1809,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1595"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1595"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1595",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1595",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1831,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1659"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1853,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1851"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1851"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1851",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1851",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1875,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1859"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1859"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1859",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1859",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1897,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1863"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1863"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1863",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1863",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1919,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1993"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1993"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1993",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L1993",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1941,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2007"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2007"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2007",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2007",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1963,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2071"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2071"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2071",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2071",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2072"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2072"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2072",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2072",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2074"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2074"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2074",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2080"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2080"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2080",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2080",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2149"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2149"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2149",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2153"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2153"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2153",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2153",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2095,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2156"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2156"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2156",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2156",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2117,9 +2117,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2157"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2157"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2157",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2157",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2139,9 +2139,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2158"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2158"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2158",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2158",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2161,9 +2161,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2159"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2159"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2159",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2183,9 +2183,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2161"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2161"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2161",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2205,9 +2205,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2171"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2171"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2171",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2227,9 +2227,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2196"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2196"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2196",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2196",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2249,9 +2249,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2238"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2271,9 +2271,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2239"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2239"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2239",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2239",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2293,9 +2293,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2240"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2240"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2240",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2240",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2315,9 +2315,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2241"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2241"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2241",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2241",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2337,9 +2337,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2242"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2242"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2242",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2242",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2359,9 +2359,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2243"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2243"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2243",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2243",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2381,9 +2381,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2244"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2244"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2244",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2403,9 +2403,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2245"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2245"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2245",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2245",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2425,9 +2425,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2246"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2246"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2246",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2246",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2447,9 +2447,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2247"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2247"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2247",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2247",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2469,9 +2469,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2248"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2248"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2248",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2491,9 +2491,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2249"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2249"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2249",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2249",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2513,9 +2513,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2250"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2250"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2250",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2250",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2535,9 +2535,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2251"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2251"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2251",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2251",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2557,9 +2557,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2252"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2252"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2252",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2252",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2579,9 +2579,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2253"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2253"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2253",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2253",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2601,9 +2601,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2257"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2257"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2257",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2257",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2623,9 +2623,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2258"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2258"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2258",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2645,9 +2645,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2259"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2259"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2259",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2259",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2667,9 +2667,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2265"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2265"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2265",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2265",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2689,9 +2689,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2266"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2266"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2266",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2266",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2711,9 +2711,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2267"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2267"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2267",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2267",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2733,9 +2733,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2268"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2268"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2268",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2268",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2755,9 +2755,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2269"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2269"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2269",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2269",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2777,9 +2777,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2270"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2270"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2270",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2270",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2799,9 +2799,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2276"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2276"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2276",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2276",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2821,9 +2821,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2277"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2277"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2277",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2277",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2843,9 +2843,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2278"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2278"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2278",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2278",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2865,9 +2865,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2279"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2279"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2279",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2887,9 +2887,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2280"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2280"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2280",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2909,9 +2909,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2281"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2281"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2281",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2281",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2931,9 +2931,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2282"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2282"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2282",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2282",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2953,9 +2953,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2283"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2283"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2283",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2283",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2975,9 +2975,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2284"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2284"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2284",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2284",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2997,9 +2997,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2285"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2285"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2285",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2285",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3019,9 +3019,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2286"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3041,9 +3041,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2292"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2292"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2292",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2292",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3063,9 +3063,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2293"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3085,9 +3085,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2294"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3107,9 +3107,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2295"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2295"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2295",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2295",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3129,9 +3129,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2296"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2296"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2296",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3151,9 +3151,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2297"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2297"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2297",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3173,9 +3173,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2298"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2298"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2298",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2298",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3195,9 +3195,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2299"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2299"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2299",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2299",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3217,9 +3217,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2305"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2305"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2305",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2305",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3239,9 +3239,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2306"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2306"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2306",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2306",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3261,9 +3261,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2307"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2307"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2307",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2307",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3283,9 +3283,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2308"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2308"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2308",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2308",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3305,9 +3305,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2309"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2309"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2309",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2309",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3327,9 +3327,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2310"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2310"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2310",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2310",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3349,9 +3349,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2311"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2311"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2311",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2311",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3371,9 +3371,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2317"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2317"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2317",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2317",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3393,9 +3393,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2318"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2318"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2318",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3415,9 +3415,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2319"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2319"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2319",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2319",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3437,9 +3437,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2320"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2320"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2320",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2320",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3459,9 +3459,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2321"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2321"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2321",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2321",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3481,9 +3481,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2322"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2322"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2322",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2322",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3503,9 +3503,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2323"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2323"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2323",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2323",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3525,9 +3525,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2324"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2324"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2324",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2324",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3547,9 +3547,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2401"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3569,9 +3569,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2402"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2402"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2402",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3591,9 +3591,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2403"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2403"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2403",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2403",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3613,9 +3613,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2404"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2404"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2404",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3635,9 +3635,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2408"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3657,9 +3657,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2409"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3679,9 +3679,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2410"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2410"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2410",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2410",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3701,9 +3701,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2414"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2414"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2414",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2414",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3723,9 +3723,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2415"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3745,9 +3745,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2416"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2416"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2416",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3767,9 +3767,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2439"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2439"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2439",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2439",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3789,9 +3789,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2684"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2684"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2684",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2684",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3811,9 +3811,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2742"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2742"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2742",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2742",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3833,9 +3833,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2743"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2743"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2743",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2743",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3855,9 +3855,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2841"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2841"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2841",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2841",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3877,9 +3877,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2915"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2915"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2915",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2915",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3899,9 +3899,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2930"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2930"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2930",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2930",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3921,9 +3921,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2959"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2959"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2959",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3943,9 +3943,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2999"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2999"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2999",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L2999",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3965,9 +3965,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3006"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3006"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3006",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3006",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -3987,9 +3987,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3029"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3029"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3029",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3029",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4009,9 +4009,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3031"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3031"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3031",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3031",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4031,9 +4031,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3053"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3053"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3053",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3053",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4053,9 +4053,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3057"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3057"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3057",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4075,9 +4075,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3076"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3076"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3076",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3076",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4097,9 +4097,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3092"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3092"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3092",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3092",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4119,9 +4119,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3105"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3105"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3105",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4141,9 +4141,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3108"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -4163,9 +4163,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3109"
       ],
-      "authority_source": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md#L3109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

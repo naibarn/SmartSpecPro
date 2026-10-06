@@ -17,67 +17,67 @@
       {
         "digest": "76c91aa38f1d1bb7077ddbdf579831697257e4ed21035b369cda763aa413a670",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-plan.md"
       },
       {
         "digest": "1fdc690edd9aacb9677c080e3b18bb34aedb72044c14cf3c479ad3a21b37f182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-spec.md"
       },
       {
         "digest": "219e8dbea188c28f8363761839bdd05954070f5d31016772ed6112497ce6a9a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
       },
       {
         "digest": "d81a8da4f1a82df5f434ce45c4f7d6b6d3128b2e094813c94c597a85a3cbe7b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/usage.md"
       },
       {
         "digest": "8780884fee05d1507502f590cf96a4cbef62b2d197c305492bd07aa92dd1e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "af20b52e6aaa151e7b11432aab0a126613b905039831f6856a678c0218c9ae93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
       },
       {
         "digest": "5dbb7084a5bec13a0da1dd7532578a9340879a165eb4197d098c92b510e157d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/index.md"
       },
       {
         "digest": "0b5edb4a9f8187cd0b6b01e1acf707ac1c38d028144e66dd81d14d8b0fcf4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
       },
       {
         "digest": "1f2f4d4474da2d3475c6ca9c397699419379ebca80c764d78519ffc1bd1c78c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
       },
       {
         "digest": "2cb7c75823cd4c7cc4b64db2fb84b8fa11fb10f1ccbbc9b8a676c041a6cb5c90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
       },
       {
         "digest": "ca8168b6624dbb6723c8ab3ec53fde20ef0a7b764fac626a624224a99af8e897",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
       },
       {
         "digest": "5d680d09878e66df77e6d9a7275cfd13b1f05b692c11a6b338d0f96fe41b4596",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
       },
       {
         "digest": "1ad4d66a675246445f21d6b3352ccbe58e3aaa60616c5ee672c71817247d98ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
       }
     ],
     "predecessors": [],
@@ -108,67 +108,67 @@
       {
         "digest": "76c91aa38f1d1bb7077ddbdf579831697257e4ed21035b369cda763aa413a670",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-plan.md"
       },
       {
         "digest": "1fdc690edd9aacb9677c080e3b18bb34aedb72044c14cf3c479ad3a21b37f182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-spec.md"
       },
       {
         "digest": "219e8dbea188c28f8363761839bdd05954070f5d31016772ed6112497ce6a9a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
       },
       {
         "digest": "d81a8da4f1a82df5f434ce45c4f7d6b6d3128b2e094813c94c597a85a3cbe7b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/usage.md"
       },
       {
         "digest": "8780884fee05d1507502f590cf96a4cbef62b2d197c305492bd07aa92dd1e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "af20b52e6aaa151e7b11432aab0a126613b905039831f6856a678c0218c9ae93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
       },
       {
         "digest": "5dbb7084a5bec13a0da1dd7532578a9340879a165eb4197d098c92b510e157d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/index.md"
       },
       {
         "digest": "0b5edb4a9f8187cd0b6b01e1acf707ac1c38d028144e66dd81d14d8b0fcf4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
       },
       {
         "digest": "1f2f4d4474da2d3475c6ca9c397699419379ebca80c764d78519ffc1bd1c78c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
       },
       {
         "digest": "2cb7c75823cd4c7cc4b64db2fb84b8fa11fb10f1ccbbc9b8a676c041a6cb5c90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
       },
       {
         "digest": "ca8168b6624dbb6723c8ab3ec53fde20ef0a7b764fac626a624224a99af8e897",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
       },
       {
         "digest": "5d680d09878e66df77e6d9a7275cfd13b1f05b692c11a6b338d0f96fe41b4596",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
       },
       {
         "digest": "1ad4d66a675246445f21d6b3352ccbe58e3aaa60616c5ee672c71817247d98ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -200,73 +200,73 @@
       {
         "digest": "76c91aa38f1d1bb7077ddbdf579831697257e4ed21035b369cda763aa413a670",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-plan.md"
       },
       {
         "digest": "1fdc690edd9aacb9677c080e3b18bb34aedb72044c14cf3c479ad3a21b37f182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-spec.md"
       },
       {
         "digest": "219e8dbea188c28f8363761839bdd05954070f5d31016772ed6112497ce6a9a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
       },
       {
         "digest": "d81a8da4f1a82df5f434ce45c4f7d6b6d3128b2e094813c94c597a85a3cbe7b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/usage.md"
       },
       {
         "digest": "8780884fee05d1507502f590cf96a4cbef62b2d197c305492bd07aa92dd1e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "af20b52e6aaa151e7b11432aab0a126613b905039831f6856a678c0218c9ae93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
       },
       {
         "digest": "5dbb7084a5bec13a0da1dd7532578a9340879a165eb4197d098c92b510e157d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/index.md"
       },
       {
         "digest": "0b5edb4a9f8187cd0b6b01e1acf707ac1c38d028144e66dd81d14d8b0fcf4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
       },
       {
         "digest": "1f2f4d4474da2d3475c6ca9c397699419379ebca80c764d78519ffc1bd1c78c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
       },
       {
         "digest": "2cb7c75823cd4c7cc4b64db2fb84b8fa11fb10f1ccbbc9b8a676c041a6cb5c90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
       },
       {
         "digest": "ca8168b6624dbb6723c8ab3ec53fde20ef0a7b764fac626a624224a99af8e897",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
       },
       {
         "digest": "5d680d09878e66df77e6d9a7275cfd13b1f05b692c11a6b338d0f96fe41b4596",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
       },
       {
         "digest": "1ad4d66a675246445f21d6b3352ccbe58e3aaa60616c5ee672c71817247d98ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/022-byteplus-modelark-api/spec.md",
     "digest": "30e3d848f62a071dd5ee24eb7762c7c2582ee66e8c2f8d280e3352e7d400eecc",
@@ -319,67 +319,67 @@
       {
         "digest": "76c91aa38f1d1bb7077ddbdf579831697257e4ed21035b369cda763aa413a670",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-plan.md"
       },
       {
         "digest": "1fdc690edd9aacb9677c080e3b18bb34aedb72044c14cf3c479ad3a21b37f182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-spec.md"
       },
       {
         "digest": "219e8dbea188c28f8363761839bdd05954070f5d31016772ed6112497ce6a9a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
       },
       {
         "digest": "d81a8da4f1a82df5f434ce45c4f7d6b6d3128b2e094813c94c597a85a3cbe7b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/usage.md"
       },
       {
         "digest": "8780884fee05d1507502f590cf96a4cbef62b2d197c305492bd07aa92dd1e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "af20b52e6aaa151e7b11432aab0a126613b905039831f6856a678c0218c9ae93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
       },
       {
         "digest": "5dbb7084a5bec13a0da1dd7532578a9340879a165eb4197d098c92b510e157d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/index.md"
       },
       {
         "digest": "0b5edb4a9f8187cd0b6b01e1acf707ac1c38d028144e66dd81d14d8b0fcf4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
       },
       {
         "digest": "1f2f4d4474da2d3475c6ca9c397699419379ebca80c764d78519ffc1bd1c78c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
       },
       {
         "digest": "2cb7c75823cd4c7cc4b64db2fb84b8fa11fb10f1ccbbc9b8a676c041a6cb5c90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
       },
       {
         "digest": "ca8168b6624dbb6723c8ab3ec53fde20ef0a7b764fac626a624224a99af8e897",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
       },
       {
         "digest": "5d680d09878e66df77e6d9a7275cfd13b1f05b692c11a6b338d0f96fe41b4596",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
       },
       {
         "digest": "1ad4d66a675246445f21d6b3352ccbe58e3aaa60616c5ee672c71817247d98ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -591,67 +591,67 @@
       {
         "digest": "76c91aa38f1d1bb7077ddbdf579831697257e4ed21035b369cda763aa413a670",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-plan.md"
       },
       {
         "digest": "1fdc690edd9aacb9677c080e3b18bb34aedb72044c14cf3c479ad3a21b37f182",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/claude-spec.md"
       },
       {
         "digest": "219e8dbea188c28f8363761839bdd05954070f5d31016772ed6112497ce6a9a9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/deep_implement_config.json"
       },
       {
         "digest": "d81a8da4f1a82df5f434ce45c4f7d6b6d3128b2e094813c94c597a85a3cbe7b1",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/implementation/usage.md"
       },
       {
         "digest": "8780884fee05d1507502f590cf96a4cbef62b2d197c305492bd07aa92dd1e70a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "af20b52e6aaa151e7b11432aab0a126613b905039831f6856a678c0218c9ae93",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/reviews/iteration-1-summary.md"
       },
       {
         "digest": "5dbb7084a5bec13a0da1dd7532578a9340879a165eb4197d098c92b510e157d4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/index.md"
       },
       {
         "digest": "0b5edb4a9f8187cd0b6b01e1acf707ac1c38d028144e66dd81d14d8b0fcf4c08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-01-nodejs-template.md"
       },
       {
         "digest": "1f2f4d4474da2d3475c6ca9c397699419379ebca80c764d78519ffc1bd1c78c2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-02-nodejs-media-models.md"
       },
       {
         "digest": "2cb7c75823cd4c7cc4b64db2fb84b8fa11fb10f1ccbbc9b8a676c041a6cb5c90",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-03-python-adapter.md"
       },
       {
         "digest": "ca8168b6624dbb6723c8ab3ec53fde20ef0a7b764fac626a624224a99af8e897",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-04-python-adapter-tests.md"
       },
       {
         "digest": "5d680d09878e66df77e6d9a7275cfd13b1f05b692c11a6b338d0f96fe41b4596",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-05-gateway-routing.md"
       },
       {
         "digest": "1ad4d66a675246445f21d6b3352ccbe58e3aaa60616c5ee672c71817247d98ea",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/022-byteplus-modelark-api/sections/section-06-polling-integration.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

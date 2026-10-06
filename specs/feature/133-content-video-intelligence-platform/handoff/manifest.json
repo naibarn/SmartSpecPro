@@ -17,72 +17,72 @@
       {
         "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-plan.md"
       },
       {
         "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-spec.md"
       },
       {
         "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
       },
       {
         "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/index.md"
       },
       {
         "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
       },
       {
         "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
       },
       {
         "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
       },
       {
         "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
       },
       {
         "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
       },
       {
         "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
       },
       {
         "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
       },
       {
         "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
       }
     ],
     "predecessors": [],
@@ -113,72 +113,72 @@
       {
         "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-plan.md"
       },
       {
         "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-spec.md"
       },
       {
         "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
       },
       {
         "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/index.md"
       },
       {
         "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
       },
       {
         "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
       },
       {
         "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
       },
       {
         "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
       },
       {
         "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
       },
       {
         "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
       },
       {
         "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
       },
       {
         "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -210,78 +210,78 @@
       {
         "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-plan.md"
       },
       {
         "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-spec.md"
       },
       {
         "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
       },
       {
         "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/index.md"
       },
       {
         "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
       },
       {
         "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
       },
       {
         "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
       },
       {
         "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
       },
       {
         "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
       },
       {
         "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
       },
       {
         "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
       },
       {
         "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/133-content-video-intelligence-platform/spec.md",
     "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
@@ -334,72 +334,72 @@
       {
         "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-plan.md"
       },
       {
         "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-spec.md"
       },
       {
         "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
       },
       {
         "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/index.md"
       },
       {
         "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
       },
       {
         "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
       },
       {
         "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
       },
       {
         "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
       },
       {
         "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
       },
       {
         "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
       },
       {
         "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
       },
       {
         "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -449,72 +449,72 @@
       {
         "digest": "c6813eb030acb3c54050c51211187f27be4e731504b743b8edfb8716f5fdc6de",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-plan.md"
       },
       {
         "digest": "90333b19bb0a95b20bccbfa448a34c9de37ecdcd45007d499512a2371ae49be5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/claude-spec.md"
       },
       {
         "digest": "26b706597e5deebec57b3dad22ff0784ff88bf4bca82dda43e48280942b3117c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/plan-vs-spec-completeness-round-1.md"
       },
       {
         "digest": "8b1ee134a0294d3b4eacaabc20aa0c4bba595bf8842e546145d874d61481a4ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "f6881f93fe5a7b2b44c5feac902b27fb58864fc77cdb212d96f403d38a068ddf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/reviews/self-review-round-1.md"
       },
       {
         "digest": "d35609f39a246cedd8e9668c15057ba9fac6c8719ef9f0c4876695e619eec48c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/index.md"
       },
       {
         "digest": "a2f4f234fe3373d74a4caec00318edba5a7ee574821863a810b1988793bc38ac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md"
       },
       {
         "digest": "69cbb7af47216c48e191fbc51e2176d3e68f8e7c44e88d31865afe4b8e4a76fe",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md"
       },
       {
         "digest": "ec28998e46b8061053b5de05172392cea58b875ded1b681712b4bc989e4b6555",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-03-worker-contract-golden-fixtures.md"
       },
       {
         "digest": "d52a4708aeedbffd59349465c32f362000a8039ece0146ada6a13bbdc6ce264a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md"
       },
       {
         "digest": "ad7d26cc938a723ab2ffa94d94485a616f4c039a7b0db0fa99f962467f67c700",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-05-db-tables-brand-kit.md"
       },
       {
         "digest": "d596e8fb55c9748e8e6c99183b1668422193abd2a57ffb4b5bd4109180a0d2f4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-06-claim-validation-qa-loop.md"
       },
       {
         "digest": "b651a4700f235c509605bec8497a82891f0bb6166568988482d3126466da5b68",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-07-router-async-queue-harness.md"
       },
       {
         "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -17,97 +17,97 @@
       {
         "digest": "48dab9b022da092f2aba15941490f1eb6cfdcf3852d35dacbaffb9288ed74264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "6235713b2864392c0febef44e25b364d86b2e3403226f655124f9e6d7a83f619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
       },
       {
         "digest": "4934f593fa3ce6fae38b358747e646208afa503c8774138c6cfab6a5403bc9e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
       },
       {
         "digest": "8b914655268e2cc6768e7ac0c69cab2f440b9ac3654b0069aa47d10459aeedac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-01-review.md"
       },
       {
         "digest": "31c3c4c548db4ebc73d8a65d5a6fb033dad9c1424403533e31b1ba236b2ca406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-02-review.md"
       },
       {
         "digest": "5a933b0286e525f0da000bc86db5be7b50ebf1c4f806bfc9bddf1e64339c01e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-03-review.md"
       },
       {
         "digest": "f5af01da9a17b67b862c112f542eefb466cb591fda0a24a2820cd77e64f0b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-04-review.md"
       },
       {
         "digest": "d5ce4b1d2432044b3d3a19b611a12d2a191eae50d4bcf12aab1c2e933b6795db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-05-review.md"
       },
       {
         "digest": "bb534c5e783e516e3a4820d2b292887f8aaf944856c0d6b1cd6e160a905a97c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-06-review.md"
       },
       {
         "digest": "3e6c3bc983b3dd20dbb3f26e3d4d0cee4ad475cb98ad086e7b8a04b6ea1f321e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-07-review.md"
       },
       {
         "digest": "6200e385ae43d50c12518ed0edba01b1059dcd301c7a5bf65258be4b64820774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-08-review.md"
       },
       {
         "digest": "ff6296f457a3af4d41a87d6510d345144ee45518a4ac57df3ba9e1c8e57ad4b9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/index.md"
       },
       {
         "digest": "6bc26eb464cb9ee16e4735888fedd424c301bd2aa846c964331d47c50cb238f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
       },
       {
         "digest": "3fab55e3330f461b01cb7bafcb0ded245ef28452ac80e3caa5d4848ab5474cde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
       },
       {
         "digest": "49c6cf6f93952f5db054641e6e6f5b22273c394448d77e3382875675c2f03a6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
       },
       {
         "digest": "8306c77f637eaa5f1ce2ff1d91577ca6d5b58d58db3a687f7f4640d4c98ad204",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
       },
       {
         "digest": "6e2bd438b6f8722de7600a3322e0186ac5aab1d8e36859fd23b4a227cdea4dd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
       },
       {
         "digest": "32c5ddaf5f93c68fe261cbc48fbc67757f454526a791e5678c55bc85ede7048f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
       },
       {
         "digest": "ce2152460281e9a607161c0119081eebd091d24f5dcd925fb30f946e9c5eaf98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "48dab9b022da092f2aba15941490f1eb6cfdcf3852d35dacbaffb9288ed74264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "6235713b2864392c0febef44e25b364d86b2e3403226f655124f9e6d7a83f619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
       },
       {
         "digest": "4934f593fa3ce6fae38b358747e646208afa503c8774138c6cfab6a5403bc9e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
       },
       {
         "digest": "8b914655268e2cc6768e7ac0c69cab2f440b9ac3654b0069aa47d10459aeedac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-01-review.md"
       },
       {
         "digest": "31c3c4c548db4ebc73d8a65d5a6fb033dad9c1424403533e31b1ba236b2ca406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-02-review.md"
       },
       {
         "digest": "5a933b0286e525f0da000bc86db5be7b50ebf1c4f806bfc9bddf1e64339c01e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-03-review.md"
       },
       {
         "digest": "f5af01da9a17b67b862c112f542eefb466cb591fda0a24a2820cd77e64f0b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-04-review.md"
       },
       {
         "digest": "d5ce4b1d2432044b3d3a19b611a12d2a191eae50d4bcf12aab1c2e933b6795db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-05-review.md"
       },
       {
         "digest": "bb534c5e783e516e3a4820d2b292887f8aaf944856c0d6b1cd6e160a905a97c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-06-review.md"
       },
       {
         "digest": "3e6c3bc983b3dd20dbb3f26e3d4d0cee4ad475cb98ad086e7b8a04b6ea1f321e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-07-review.md"
       },
       {
         "digest": "6200e385ae43d50c12518ed0edba01b1059dcd301c7a5bf65258be4b64820774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-08-review.md"
       },
       {
         "digest": "ff6296f457a3af4d41a87d6510d345144ee45518a4ac57df3ba9e1c8e57ad4b9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/index.md"
       },
       {
         "digest": "6bc26eb464cb9ee16e4735888fedd424c301bd2aa846c964331d47c50cb238f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
       },
       {
         "digest": "3fab55e3330f461b01cb7bafcb0ded245ef28452ac80e3caa5d4848ab5474cde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
       },
       {
         "digest": "49c6cf6f93952f5db054641e6e6f5b22273c394448d77e3382875675c2f03a6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
       },
       {
         "digest": "8306c77f637eaa5f1ce2ff1d91577ca6d5b58d58db3a687f7f4640d4c98ad204",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
       },
       {
         "digest": "6e2bd438b6f8722de7600a3322e0186ac5aab1d8e36859fd23b4a227cdea4dd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
       },
       {
         "digest": "32c5ddaf5f93c68fe261cbc48fbc67757f454526a791e5678c55bc85ede7048f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
       },
       {
         "digest": "ce2152460281e9a607161c0119081eebd091d24f5dcd925fb30f946e9c5eaf98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_12_light\", labelTh: \"Spec 12 บรรทัด Light\", labelEn: \"Spec sheet 12 lines light\", kind: \"spec\" },",
@@ -267,103 +267,103 @@
       {
         "digest": "48dab9b022da092f2aba15941490f1eb6cfdcf3852d35dacbaffb9288ed74264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "6235713b2864392c0febef44e25b364d86b2e3403226f655124f9e6d7a83f619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
       },
       {
         "digest": "4934f593fa3ce6fae38b358747e646208afa503c8774138c6cfab6a5403bc9e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
       },
       {
         "digest": "8b914655268e2cc6768e7ac0c69cab2f440b9ac3654b0069aa47d10459aeedac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-01-review.md"
       },
       {
         "digest": "31c3c4c548db4ebc73d8a65d5a6fb033dad9c1424403533e31b1ba236b2ca406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-02-review.md"
       },
       {
         "digest": "5a933b0286e525f0da000bc86db5be7b50ebf1c4f806bfc9bddf1e64339c01e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-03-review.md"
       },
       {
         "digest": "f5af01da9a17b67b862c112f542eefb466cb591fda0a24a2820cd77e64f0b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-04-review.md"
       },
       {
         "digest": "d5ce4b1d2432044b3d3a19b611a12d2a191eae50d4bcf12aab1c2e933b6795db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-05-review.md"
       },
       {
         "digest": "bb534c5e783e516e3a4820d2b292887f8aaf944856c0d6b1cd6e160a905a97c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-06-review.md"
       },
       {
         "digest": "3e6c3bc983b3dd20dbb3f26e3d4d0cee4ad475cb98ad086e7b8a04b6ea1f321e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-07-review.md"
       },
       {
         "digest": "6200e385ae43d50c12518ed0edba01b1059dcd301c7a5bf65258be4b64820774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-08-review.md"
       },
       {
         "digest": "ff6296f457a3af4d41a87d6510d345144ee45518a4ac57df3ba9e1c8e57ad4b9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/index.md"
       },
       {
         "digest": "6bc26eb464cb9ee16e4735888fedd424c301bd2aa846c964331d47c50cb238f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
       },
       {
         "digest": "3fab55e3330f461b01cb7bafcb0ded245ef28452ac80e3caa5d4848ab5474cde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
       },
       {
         "digest": "49c6cf6f93952f5db054641e6e6f5b22273c394448d77e3382875675c2f03a6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
       },
       {
         "digest": "8306c77f637eaa5f1ce2ff1d91577ca6d5b58d58db3a687f7f4640d4c98ad204",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
       },
       {
         "digest": "6e2bd438b6f8722de7600a3322e0186ac5aab1d8e36859fd23b4a227cdea4dd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
       },
       {
         "digest": "32c5ddaf5f93c68fe261cbc48fbc67757f454526a791e5678c55bc85ede7048f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
       },
       {
         "digest": "ce2152460281e9a607161c0119081eebd091d24f5dcd925fb30f946e9c5eaf98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/012-AddTextClip/spec.md",
     "digest": "b93d6c9cccdf978f925953ad34e7e13e246de0d0f742bf1c02a523bbb8eb68bc",
@@ -416,102 +416,102 @@
       {
         "digest": "48dab9b022da092f2aba15941490f1eb6cfdcf3852d35dacbaffb9288ed74264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "6235713b2864392c0febef44e25b364d86b2e3403226f655124f9e6d7a83f619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
       },
       {
         "digest": "4934f593fa3ce6fae38b358747e646208afa503c8774138c6cfab6a5403bc9e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
       },
       {
         "digest": "8b914655268e2cc6768e7ac0c69cab2f440b9ac3654b0069aa47d10459aeedac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-01-review.md"
       },
       {
         "digest": "31c3c4c548db4ebc73d8a65d5a6fb033dad9c1424403533e31b1ba236b2ca406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-02-review.md"
       },
       {
         "digest": "5a933b0286e525f0da000bc86db5be7b50ebf1c4f806bfc9bddf1e64339c01e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-03-review.md"
       },
       {
         "digest": "f5af01da9a17b67b862c112f542eefb466cb591fda0a24a2820cd77e64f0b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-04-review.md"
       },
       {
         "digest": "d5ce4b1d2432044b3d3a19b611a12d2a191eae50d4bcf12aab1c2e933b6795db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-05-review.md"
       },
       {
         "digest": "bb534c5e783e516e3a4820d2b292887f8aaf944856c0d6b1cd6e160a905a97c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-06-review.md"
       },
       {
         "digest": "3e6c3bc983b3dd20dbb3f26e3d4d0cee4ad475cb98ad086e7b8a04b6ea1f321e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-07-review.md"
       },
       {
         "digest": "6200e385ae43d50c12518ed0edba01b1059dcd301c7a5bf65258be4b64820774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-08-review.md"
       },
       {
         "digest": "ff6296f457a3af4d41a87d6510d345144ee45518a4ac57df3ba9e1c8e57ad4b9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/index.md"
       },
       {
         "digest": "6bc26eb464cb9ee16e4735888fedd424c301bd2aa846c964331d47c50cb238f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
       },
       {
         "digest": "3fab55e3330f461b01cb7bafcb0ded245ef28452ac80e3caa5d4848ab5474cde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
       },
       {
         "digest": "49c6cf6f93952f5db054641e6e6f5b22273c394448d77e3382875675c2f03a6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
       },
       {
         "digest": "8306c77f637eaa5f1ce2ff1d91577ca6d5b58d58db3a687f7f4640d4c98ad204",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
       },
       {
         "digest": "6e2bd438b6f8722de7600a3322e0186ac5aab1d8e36859fd23b4a227cdea4dd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
       },
       {
         "digest": "32c5ddaf5f93c68fe261cbc48fbc67757f454526a791e5678c55bc85ede7048f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
       },
       {
         "digest": "ce2152460281e9a607161c0119081eebd091d24f5dcd925fb30f946e9c5eaf98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
       },
       {
         "digest": "7042c5efe232b78b0bd457d8b4b1d80149e408ef13b334f9057c726e75670c38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-08-rollout-observability-runbook.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-08-rollout-observability-runbook.md"
       },
       {
         "excerpt": "{ id: \"spec_lines_12_light\", labelTh: \"Spec 12 บรรทัด Light\", labelEn: \"Spec sheet 12 lines light\", kind: \"spec\" },",
@@ -554,102 +554,102 @@
       {
         "digest": "48dab9b022da092f2aba15941490f1eb6cfdcf3852d35dacbaffb9288ed74264",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-self-review.md"
       },
       {
         "digest": "6235713b2864392c0febef44e25b364d86b2e3403226f655124f9e6d7a83f619",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/iteration-1-summary.md"
       },
       {
         "digest": "4934f593fa3ce6fae38b358747e646208afa503c8774138c6cfab6a5403bc9e7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/post-hardening-fix-now-review.md"
       },
       {
         "digest": "8b914655268e2cc6768e7ac0c69cab2f440b9ac3654b0069aa47d10459aeedac",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-01-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-01-review.md"
       },
       {
         "digest": "31c3c4c548db4ebc73d8a65d5a6fb033dad9c1424403533e31b1ba236b2ca406",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-02-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-02-review.md"
       },
       {
         "digest": "5a933b0286e525f0da000bc86db5be7b50ebf1c4f806bfc9bddf1e64339c01e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-03-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-03-review.md"
       },
       {
         "digest": "f5af01da9a17b67b862c112f542eefb466cb591fda0a24a2820cd77e64f0b979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-04-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-04-review.md"
       },
       {
         "digest": "d5ce4b1d2432044b3d3a19b611a12d2a191eae50d4bcf12aab1c2e933b6795db",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-05-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-05-review.md"
       },
       {
         "digest": "bb534c5e783e516e3a4820d2b292887f8aaf944856c0d6b1cd6e160a905a97c5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-06-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-06-review.md"
       },
       {
         "digest": "3e6c3bc983b3dd20dbb3f26e3d4d0cee4ad475cb98ad086e7b8a04b6ea1f321e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-07-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-07-review.md"
       },
       {
         "digest": "6200e385ae43d50c12518ed0edba01b1059dcd301c7a5bf65258be4b64820774",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/reviews/section-08-review.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/reviews/section-08-review.md"
       },
       {
         "digest": "ff6296f457a3af4d41a87d6510d345144ee45518a4ac57df3ba9e1c8e57ad4b9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/index.md"
       },
       {
         "digest": "6bc26eb464cb9ee16e4735888fedd424c301bd2aa846c964331d47c50cb238f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-01-contract-validation-foundation.md"
       },
       {
         "digest": "3fab55e3330f461b01cb7bafcb0ded245ef28452ac80e3caa5d4848ab5474cde",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-02-editor-timeline-t1.md"
       },
       {
         "digest": "49c6cf6f93952f5db054641e6e6f5b22273c394448d77e3382875675c2f03a6e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-03-text-authoring-keyframes.md"
       },
       {
         "digest": "8306c77f637eaa5f1ce2ff1d91577ca6d5b58d58db3a687f7f4640d4c98ad204",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-04-preview-parity-engine.md"
       },
       {
         "digest": "6e2bd438b6f8722de7600a3322e0186ac5aab1d8e36859fd23b4a227cdea4dd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-05-render-pipeline-ass.md"
       },
       {
         "digest": "32c5ddaf5f93c68fe261cbc48fbc67757f454526a791e5678c55bc85ede7048f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-06-compatibility-font-fallback.md"
       },
       {
         "digest": "ce2152460281e9a607161c0119081eebd091d24f5dcd925fb30f946e9c5eaf98",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-07-verification-hardening.md"
       },
       {
         "digest": "7042c5efe232b78b0bd457d8b4b1d80149e408ef13b334f9057c726e75670c38",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/012-AddTextClip/sections/section-08-rollout-observability-runbook.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/012-AddTextClip/sections/section-08-rollout-observability-runbook.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

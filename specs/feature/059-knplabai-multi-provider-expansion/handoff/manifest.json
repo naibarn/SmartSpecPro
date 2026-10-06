@@ -24,57 +24,57 @@
       {
         "digest": "01eeb3dba51f3a097635a0c929211579718762599f812e2ca23c87cdfdbc42c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
       },
       {
         "digest": "b91c2cf43a7791a359e48352ce5fe32689ddc160bf5d26ef485d60fa97654f5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
       },
       {
         "digest": "0109409744b05422a8cbb41c7a0bdaee9c530e29f31aa3abea95af3588e51690",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
       },
       {
         "digest": "a3c742e123513a54aac587d1d213ee0a794d3bf67fa6a85b1781d82053106ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
       },
       {
         "digest": "9fbcd98517503c24efd6fad96d48166b786b29b44f4d3242374aba9ded886ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
       },
       {
         "digest": "ec363e8c88f86334f58ab2e865d93b7e7f2602d7d13841b247fed226c6278c2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
       },
       {
         "digest": "5440218d32115cd6787331910dc161229a65a1090a7a52f4240cf9d2547f3359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
       },
       {
         "digest": "91cf1b73a9e1e5f0b0242f26cbd742b55092902d481b12ba64e919cf338c435e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
       },
       {
         "digest": "0b06b6a8b9179706a5b77839701d90ab24b8325b3c628a8275dd332e92918bc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
       },
       {
         "digest": "4588949d7fcd239cc2e684f495b7637015b79d079f9369979cffb303c515590b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
       },
       {
         "digest": "317ac4fc62bc82751af56329f3c4f7d2506248c7b00b31ebdfc9cc2df60adb84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
       }
     ],
     "predecessors": [],
@@ -105,57 +105,57 @@
       {
         "digest": "01eeb3dba51f3a097635a0c929211579718762599f812e2ca23c87cdfdbc42c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
       },
       {
         "digest": "b91c2cf43a7791a359e48352ce5fe32689ddc160bf5d26ef485d60fa97654f5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
       },
       {
         "digest": "0109409744b05422a8cbb41c7a0bdaee9c530e29f31aa3abea95af3588e51690",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
       },
       {
         "digest": "a3c742e123513a54aac587d1d213ee0a794d3bf67fa6a85b1781d82053106ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
       },
       {
         "digest": "9fbcd98517503c24efd6fad96d48166b786b29b44f4d3242374aba9ded886ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
       },
       {
         "digest": "ec363e8c88f86334f58ab2e865d93b7e7f2602d7d13841b247fed226c6278c2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
       },
       {
         "digest": "5440218d32115cd6787331910dc161229a65a1090a7a52f4240cf9d2547f3359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
       },
       {
         "digest": "91cf1b73a9e1e5f0b0242f26cbd742b55092902d481b12ba64e919cf338c435e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
       },
       {
         "digest": "0b06b6a8b9179706a5b77839701d90ab24b8325b3c628a8275dd332e92918bc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
       },
       {
         "digest": "4588949d7fcd239cc2e684f495b7637015b79d079f9369979cffb303c515590b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
       },
       {
         "digest": "317ac4fc62bc82751af56329f3c4f7d2506248c7b00b31ebdfc9cc2df60adb84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -187,63 +187,63 @@
       {
         "digest": "01eeb3dba51f3a097635a0c929211579718762599f812e2ca23c87cdfdbc42c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
       },
       {
         "digest": "b91c2cf43a7791a359e48352ce5fe32689ddc160bf5d26ef485d60fa97654f5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
       },
       {
         "digest": "0109409744b05422a8cbb41c7a0bdaee9c530e29f31aa3abea95af3588e51690",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
       },
       {
         "digest": "a3c742e123513a54aac587d1d213ee0a794d3bf67fa6a85b1781d82053106ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
       },
       {
         "digest": "9fbcd98517503c24efd6fad96d48166b786b29b44f4d3242374aba9ded886ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
       },
       {
         "digest": "ec363e8c88f86334f58ab2e865d93b7e7f2602d7d13841b247fed226c6278c2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
       },
       {
         "digest": "5440218d32115cd6787331910dc161229a65a1090a7a52f4240cf9d2547f3359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
       },
       {
         "digest": "91cf1b73a9e1e5f0b0242f26cbd742b55092902d481b12ba64e919cf338c435e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
       },
       {
         "digest": "0b06b6a8b9179706a5b77839701d90ab24b8325b3c628a8275dd332e92918bc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
       },
       {
         "digest": "4588949d7fcd239cc2e684f495b7637015b79d079f9369979cffb303c515590b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
       },
       {
         "digest": "317ac4fc62bc82751af56329f3c4f7d2506248c7b00b31ebdfc9cc2df60adb84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/059-knplabai-multi-provider-expansion/spec.md",
     "digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
@@ -296,57 +296,57 @@
       {
         "digest": "01eeb3dba51f3a097635a0c929211579718762599f812e2ca23c87cdfdbc42c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
       },
       {
         "digest": "b91c2cf43a7791a359e48352ce5fe32689ddc160bf5d26ef485d60fa97654f5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
       },
       {
         "digest": "0109409744b05422a8cbb41c7a0bdaee9c530e29f31aa3abea95af3588e51690",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
       },
       {
         "digest": "a3c742e123513a54aac587d1d213ee0a794d3bf67fa6a85b1781d82053106ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
       },
       {
         "digest": "9fbcd98517503c24efd6fad96d48166b786b29b44f4d3242374aba9ded886ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
       },
       {
         "digest": "ec363e8c88f86334f58ab2e865d93b7e7f2602d7d13841b247fed226c6278c2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
       },
       {
         "digest": "5440218d32115cd6787331910dc161229a65a1090a7a52f4240cf9d2547f3359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
       },
       {
         "digest": "91cf1b73a9e1e5f0b0242f26cbd742b55092902d481b12ba64e919cf338c435e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
       },
       {
         "digest": "0b06b6a8b9179706a5b77839701d90ab24b8325b3c628a8275dd332e92918bc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
       },
       {
         "digest": "4588949d7fcd239cc2e684f495b7637015b79d079f9369979cffb303c515590b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
       },
       {
         "digest": "317ac4fc62bc82751af56329f3c4f7d2506248c7b00b31ebdfc9cc2df60adb84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -396,57 +396,57 @@
       {
         "digest": "01eeb3dba51f3a097635a0c929211579718762599f812e2ca23c87cdfdbc42c3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-plan.md"
       },
       {
         "digest": "b91c2cf43a7791a359e48352ce5fe32689ddc160bf5d26ef485d60fa97654f5b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/claude-spec.md"
       },
       {
         "digest": "0109409744b05422a8cbb41c7a0bdaee9c530e29f31aa3abea95af3588e51690",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/index.md"
       },
       {
         "digest": "a3c742e123513a54aac587d1d213ee0a794d3bf67fa6a85b1781d82053106ea0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-01-core-provider-contract.md"
       },
       {
         "digest": "9fbcd98517503c24efd6fad96d48166b786b29b44f4d3242374aba9ded886ee0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-02-llm-provider-registration.md"
       },
       {
         "digest": "ec363e8c88f86334f58ab2e865d93b7e7f2602d7d13841b247fed226c6278c2b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-03-media-catalog-admin-ui.md"
       },
       {
         "digest": "5440218d32115cd6787331910dc161229a65a1090a7a52f4240cf9d2547f3359",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-04-media-dispatch-recovery.md"
       },
       {
         "digest": "91cf1b73a9e1e5f0b0242f26cbd742b55092902d481b12ba64e919cf338c435e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-05-image-video-adapters.md"
       },
       {
         "digest": "0b06b6a8b9179706a5b77839701d90ab24b8325b3c628a8275dd332e92918bc7",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-06-tts-embeddings.md"
       },
       {
         "digest": "4588949d7fcd239cc2e684f495b7637015b79d079f9369979cffb303c515590b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-07-security-credits-rollout.md"
       },
       {
         "digest": "317ac4fc62bc82751af56329f3c4f7d2506248c7b00b31ebdfc9cc2df60adb84",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

@@ -6,4 +6,4 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 30 unresolved of 30
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 3
+- Manifest generation: 4

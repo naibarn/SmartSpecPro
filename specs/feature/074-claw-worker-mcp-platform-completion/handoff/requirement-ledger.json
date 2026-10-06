@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L107"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L107"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L107",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L108"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L108"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L108",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L109"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L109"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L109",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L110"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L110"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L110",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L111"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L111"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L111",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L111",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L112"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L112"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L112",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L112",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L113"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L113"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L113",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L113",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L114"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L114"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L114",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L114",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L174"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L174"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L174",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L174",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L212"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L212"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L212",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L216"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L216"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L216",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L216",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L225"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L225"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L225",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L225",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L229"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L229"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L229",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L229",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L238"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L238"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L238",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L238",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L272"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L272"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L272",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L272",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L286"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L286"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L286",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L286",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -357,13 +357,13 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L288",
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L433",
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L457",
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L469",
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L480"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L288",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L433",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L457",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L469",
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L480"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L288",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L288",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -383,9 +383,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L293"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L293"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L293",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -405,9 +405,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L294"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L294"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L294",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L294",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -427,9 +427,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L357"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L357"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L357",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L357",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -449,9 +449,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L359"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L359"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L359",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L359",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -471,9 +471,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L360"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L360"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L360",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L360",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -493,9 +493,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L361"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L361"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L361",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L361",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -515,9 +515,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L362"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L362"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L362",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L362",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -537,9 +537,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L363"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L363"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L363",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L363",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -559,9 +559,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L364"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L364"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L364",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L364",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -581,9 +581,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L365"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L365"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L365",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L365",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -603,9 +603,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L366"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L366"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L366",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L366",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -625,9 +625,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L367"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L367"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L367",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L367",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -647,9 +647,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L368"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L368"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L368",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L368",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -669,9 +669,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L369"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L369"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L369",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L369",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -691,9 +691,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L370"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L370"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L370",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L370",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -713,9 +713,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L371"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L371"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L371",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L371",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -735,9 +735,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L372"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L372"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L372",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L372",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -757,9 +757,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L373"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L373"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L373",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L373",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -779,9 +779,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L374"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L374"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L374",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L374",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -801,9 +801,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L375"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L375"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L375",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L375",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -823,9 +823,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L379"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L379"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L379",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L379",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -845,9 +845,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L381"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L381"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L381",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L381",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -867,9 +867,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L382"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L382"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L382",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L382",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -889,9 +889,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L383"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L383"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L383",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -911,9 +911,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L384"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L384"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L384",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L384",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -933,9 +933,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L385"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L385"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L385",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L385",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -955,9 +955,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L389"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L389"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L389",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L389",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -977,9 +977,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L390"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L390"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L390",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L390",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -999,9 +999,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L391"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L391"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L391",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1021,9 +1021,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L392"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L392"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L392",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L392",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1043,9 +1043,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L396"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L396"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L396",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L396",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1065,9 +1065,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L398"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L398"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L398",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L398",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1087,9 +1087,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L399"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L399"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L399",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L399",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1109,9 +1109,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L400"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L400"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L400",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L400",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1131,9 +1131,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L401"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L401"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L401",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L401",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1153,9 +1153,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L402"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L402"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L402",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L402",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1175,9 +1175,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L404"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L404"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L404",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L404",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1197,9 +1197,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L406"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L406"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L406",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L406",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1219,9 +1219,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L407"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L407"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L407",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L407",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1241,9 +1241,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L408"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L408"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L408",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L408",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1263,9 +1263,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L409"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L409"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L409",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L409",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1285,9 +1285,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L413"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L413"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L413",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L413",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1307,9 +1307,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L415"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L415"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L415",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L415",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1329,9 +1329,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L416"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L416"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L416",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L416",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1351,9 +1351,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L417"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L417"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L417",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L417",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1373,9 +1373,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L418"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L418"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L418",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L418",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1395,9 +1395,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L419"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L419"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L419",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L419",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1417,9 +1417,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L423"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L423"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L423",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L423",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1439,9 +1439,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L425"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L425"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L425",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L425",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1461,9 +1461,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L426"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L426"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L426",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L426",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1483,9 +1483,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L427"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L427"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L427",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L427",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1505,9 +1505,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L428"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L428"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L428",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L428",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1527,9 +1527,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L429"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L429"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L429",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L429",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1549,9 +1549,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L430"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L430"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L430",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L430",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1571,9 +1571,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L431"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L431"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L431",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L431",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1593,9 +1593,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L435"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L435"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L435",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L435",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1615,9 +1615,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L436"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L436"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L436",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L436",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1637,9 +1637,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L437"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L437"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L437",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L437",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1659,9 +1659,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L438"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L438"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L438",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L438",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1681,9 +1681,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L446"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L446"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L446",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L446",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1703,9 +1703,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L447"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L447"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L447",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L447",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1725,9 +1725,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L448"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L448"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L448",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L448",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1747,9 +1747,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L449"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L449"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L449",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L449",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1769,9 +1769,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L451"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L451"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L451",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L451",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1791,9 +1791,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L455"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L455"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L455",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L455",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1813,9 +1813,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L459"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L459"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L459",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L459",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1835,9 +1835,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L460"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L460"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L460",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L460",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1857,9 +1857,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L461"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L461"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L461",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L461",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1879,9 +1879,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L462"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L462"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L462",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L462",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1901,9 +1901,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L463"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L463"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L463",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L463",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1923,9 +1923,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L467"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L467"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L467",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L467",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1945,9 +1945,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L471"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L471"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L471",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L471",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1967,9 +1967,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L472"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L472"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L472",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L472",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1989,9 +1989,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L473"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L473"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L473",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L473",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2011,9 +2011,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L474"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L474"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L474",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L474",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2033,9 +2033,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L478"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L478"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L478",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L478",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2055,9 +2055,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L482"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L482"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L482",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L482",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2077,9 +2077,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L483"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L483"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L483",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L483",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2099,9 +2099,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L484"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L484"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L484",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L484",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2121,9 +2121,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L485"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L485"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L485",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L485",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2143,9 +2143,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L500"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L500"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L500",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L500",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2165,9 +2165,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L512"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L512"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L512",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L512",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2187,9 +2187,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L629"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L629"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L629",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L629",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2209,9 +2209,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L630"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L630"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L630",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L630",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2231,9 +2231,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L631"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L631"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L631",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L631",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2253,9 +2253,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L635"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L635"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L635",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L635",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2275,9 +2275,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L636"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L636"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L636",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L636",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2297,9 +2297,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L637"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L637"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L637",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L637",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2319,9 +2319,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L641"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L641"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L641",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L641",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2341,9 +2341,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L642"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L642"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L642",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L642",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2363,9 +2363,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L643"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L643"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L643",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2385,9 +2385,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L644"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L644"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L644",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L644",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2407,9 +2407,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L648"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L648"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L648",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L648",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2429,9 +2429,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L649"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L649"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L649",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L649",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2451,9 +2451,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L650"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L650"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L650",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L650",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2473,9 +2473,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L651"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L651"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L651",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L651",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2495,9 +2495,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L652"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L652"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L652",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L652",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2517,9 +2517,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L656"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L656"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L656",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L656",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2539,9 +2539,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L657"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L657"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L657",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L657",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2561,9 +2561,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L658"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L658"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L658",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2583,9 +2583,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L659"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L659"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L659",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L659",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2605,9 +2605,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L660"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L660"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L660",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L660",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2627,9 +2627,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L661"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L661"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L661",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L661",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2649,9 +2649,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L665"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L665"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L665",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L665",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2671,9 +2671,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L666"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L666"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L666",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L666",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2693,9 +2693,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L670"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L670"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L670",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2715,9 +2715,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L671"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L671"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L671",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L671",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2737,9 +2737,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L672"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L672"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L672",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L672",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2759,9 +2759,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L673"
+        "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L673"
       ],
-      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L673",
+      "authority_source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L673",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",

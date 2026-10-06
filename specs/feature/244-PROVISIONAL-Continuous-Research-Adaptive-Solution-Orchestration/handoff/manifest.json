@@ -14,7 +14,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseding",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1425",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1425",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1217",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1217",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -50,7 +50,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -62,7 +62,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -74,7 +74,7 @@
         "referencing_spec_id": "244",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L86",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L86",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -86,7 +86,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1361",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1361",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -98,7 +98,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1283",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -110,7 +110,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -122,7 +122,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -134,7 +134,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1051",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1051",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -146,7 +146,7 @@
         "referencing_spec_id": "244",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1185",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -160,7 +160,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L682",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L682",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -172,7 +172,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -186,7 +186,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L953",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L953",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       },
@@ -198,7 +198,7 @@
         "referencing_spec_id": "244",
         "relation_text": "superseded",
         "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
         "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "successor_spec_id": "244"
       }
@@ -268,7 +268,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
     "digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",

@@ -29,14 +29,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "dac110dbef87ab26f070300c05a39aeed35a2a13",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Reconcile the repository-wide review queue by resolving identity and relationship ambiguity, classifying runtime/test references, and updating requirement-level evidence; do not implement legacy feature gaps during reconciliation.",
+    "next_ready_workunit": "SPEC-HANDOFF-RECONCILIATION-QUEUE",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "Resume from the 436-record global inventory and the open reconciliation_review queue; inspect current canonical main and refresh all exact-SHA evidence before changing decisions.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -47,20 +47,6 @@
         "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
       },
       {
         "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
@@ -100,7 +86,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -124,10 +110,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "dac110dbef87ab26f070300c05a39aeed35a2a13",
+    "integrated": true,
+    "integrated_at": "2026-10-06T01:46:21Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -156,20 +142,6 @@
         "kind": "SOURCE",
         "line": 1281,
         "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
       }
     ],
     "stale_fields": [],
@@ -182,20 +154,6 @@
   },
   "relevance_assessment": {
     "active_references": [
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 1281,
-        "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
       {
         "excerpt": "{ id: \"spec_lines_6_clean\", labelTh: \"Spec 6 บรรทัด Clean\", labelEn: \"Spec sheet 6 lines clean\", kind: \"spec\" },",
         "identity_ambiguous": true,

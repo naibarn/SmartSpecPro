@@ -18,7 +18,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -34,7 +34,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -48,7 +48,7 @@
         "requirement_ids": [
           "R1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L660",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L660",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -60,7 +60,7 @@
         "referencing_spec_id": "232",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L764",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L764",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       },
@@ -75,7 +75,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L762",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L762",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": null
       },
@@ -93,7 +93,7 @@
           "R6",
           "R7"
         ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
         "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
         "successor_spec_id": "231"
       },
@@ -107,7 +107,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L885",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md#L885",
         "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "successor_spec_id": "242"
       },
@@ -121,7 +121,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1313",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1313",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -135,7 +135,7 @@
         "requirement_ids": [
           "R2"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1953",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1953",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -151,7 +151,7 @@
           "R3",
           "R4"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2721",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2721",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -169,7 +169,7 @@
           "R5-01",
           "R5-15"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -184,7 +184,7 @@
           "R1",
           "R2"
         ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L88",
         "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
         "successor_spec_id": "245"
       },
@@ -196,7 +196,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       },
@@ -208,7 +208,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L217",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L217",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       },
@@ -224,7 +224,7 @@
           "R2",
           "R2.1"
         ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
         "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
         "successor_spec_id": "232"
       }
@@ -240,72 +240,72 @@
       {
         "digest": "3517276f9df5be5fccc7968efd839c9cbb647a3f101eaa91ef7cfb00aa672cd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
       },
       {
         "digest": "26f0181b147dcd2a0b1d13aa8aade3bfb40e4b3e75fca282c04a1647d79a8de0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
       },
       {
         "digest": "1bf5a4408807de12de257f0492f7faa27fd3ec6f6c4e8dec786e3dfa378126ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "73e0f665fdf91316f61f1152e13f66a5fa7bfb9739271b0e577aab18c722d48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
       },
       {
         "digest": "7be6aa1443f4868549872c9dd41b90e6e6cfb6435dae756a32e293c5cb7e9e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "c682da4c3a125d9806ac3fff9616f341ba65fdcb11cf25b1b016ad34dc9706a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
       },
       {
         "digest": "a3ce1eefc32f97ba150907b0249880006b9e3875171456ea7ba4940f569a6a3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
       },
       {
         "digest": "39b4f80dc30f9bce9f162895dda8e6f82f0c9ac5f132cb9beb55e536ad5b68cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
       },
       {
         "digest": "453ce47b639ad4cbc61f0edb8194ba07cf286d66e30c96efd75643702d70642d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
       },
       {
         "digest": "e9af09111c12ef31b358012d19120851f2313d846fd5c41f9c5d672f9fdab36f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
       },
       {
         "digest": "e9f0b8987b9a2d9f75d1bfea1a8fc3dc9e0a6066d44aca23d23b5f079d254319",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
       },
       {
         "digest": "68567d6391b8c665f9e90036af96bb1f9fbb02b78b7c3d5bb53e60e2a8e2e5d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
       },
       {
         "digest": "c6afa3f439ae83d3fd2b4eccd3da5a689aa5d1fc26bb9d1d7fb59697bb2f3187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
       },
       {
         "digest": "b5f242589e79c8b7c156dcfb70a1e78b905d83b80c4fd3e7b1fce826475e3673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
       }
     ],
     "predecessors": [],
@@ -336,72 +336,72 @@
       {
         "digest": "3517276f9df5be5fccc7968efd839c9cbb647a3f101eaa91ef7cfb00aa672cd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
       },
       {
         "digest": "26f0181b147dcd2a0b1d13aa8aade3bfb40e4b3e75fca282c04a1647d79a8de0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
       },
       {
         "digest": "1bf5a4408807de12de257f0492f7faa27fd3ec6f6c4e8dec786e3dfa378126ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "73e0f665fdf91316f61f1152e13f66a5fa7bfb9739271b0e577aab18c722d48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
       },
       {
         "digest": "7be6aa1443f4868549872c9dd41b90e6e6cfb6435dae756a32e293c5cb7e9e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "c682da4c3a125d9806ac3fff9616f341ba65fdcb11cf25b1b016ad34dc9706a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
       },
       {
         "digest": "a3ce1eefc32f97ba150907b0249880006b9e3875171456ea7ba4940f569a6a3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
       },
       {
         "digest": "39b4f80dc30f9bce9f162895dda8e6f82f0c9ac5f132cb9beb55e536ad5b68cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
       },
       {
         "digest": "453ce47b639ad4cbc61f0edb8194ba07cf286d66e30c96efd75643702d70642d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
       },
       {
         "digest": "e9af09111c12ef31b358012d19120851f2313d846fd5c41f9c5d672f9fdab36f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
       },
       {
         "digest": "e9f0b8987b9a2d9f75d1bfea1a8fc3dc9e0a6066d44aca23d23b5f079d254319",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
       },
       {
         "digest": "68567d6391b8c665f9e90036af96bb1f9fbb02b78b7c3d5bb53e60e2a8e2e5d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
       },
       {
         "digest": "c6afa3f439ae83d3fd2b4eccd3da5a689aa5d1fc26bb9d1d7fb59697bb2f3187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
       },
       {
         "digest": "b5f242589e79c8b7c156dcfb70a1e78b905d83b80c4fd3e7b1fce826475e3673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -433,78 +433,78 @@
       {
         "digest": "3517276f9df5be5fccc7968efd839c9cbb647a3f101eaa91ef7cfb00aa672cd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
       },
       {
         "digest": "26f0181b147dcd2a0b1d13aa8aade3bfb40e4b3e75fca282c04a1647d79a8de0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
       },
       {
         "digest": "1bf5a4408807de12de257f0492f7faa27fd3ec6f6c4e8dec786e3dfa378126ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "73e0f665fdf91316f61f1152e13f66a5fa7bfb9739271b0e577aab18c722d48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
       },
       {
         "digest": "7be6aa1443f4868549872c9dd41b90e6e6cfb6435dae756a32e293c5cb7e9e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "c682da4c3a125d9806ac3fff9616f341ba65fdcb11cf25b1b016ad34dc9706a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
       },
       {
         "digest": "a3ce1eefc32f97ba150907b0249880006b9e3875171456ea7ba4940f569a6a3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
       },
       {
         "digest": "39b4f80dc30f9bce9f162895dda8e6f82f0c9ac5f132cb9beb55e536ad5b68cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
       },
       {
         "digest": "453ce47b639ad4cbc61f0edb8194ba07cf286d66e30c96efd75643702d70642d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
       },
       {
         "digest": "e9af09111c12ef31b358012d19120851f2313d846fd5c41f9c5d672f9fdab36f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
       },
       {
         "digest": "e9f0b8987b9a2d9f75d1bfea1a8fc3dc9e0a6066d44aca23d23b5f079d254319",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
       },
       {
         "digest": "68567d6391b8c665f9e90036af96bb1f9fbb02b78b7c3d5bb53e60e2a8e2e5d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
       },
       {
         "digest": "c6afa3f439ae83d3fd2b4eccd3da5a689aa5d1fc26bb9d1d7fb59697bb2f3187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
       },
       {
         "digest": "b5f242589e79c8b7c156dcfb70a1e78b905d83b80c4fd3e7b1fce826475e3673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md",
     "digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
@@ -557,72 +557,72 @@
       {
         "digest": "3517276f9df5be5fccc7968efd839c9cbb647a3f101eaa91ef7cfb00aa672cd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
       },
       {
         "digest": "26f0181b147dcd2a0b1d13aa8aade3bfb40e4b3e75fca282c04a1647d79a8de0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
       },
       {
         "digest": "1bf5a4408807de12de257f0492f7faa27fd3ec6f6c4e8dec786e3dfa378126ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "73e0f665fdf91316f61f1152e13f66a5fa7bfb9739271b0e577aab18c722d48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
       },
       {
         "digest": "7be6aa1443f4868549872c9dd41b90e6e6cfb6435dae756a32e293c5cb7e9e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "c682da4c3a125d9806ac3fff9616f341ba65fdcb11cf25b1b016ad34dc9706a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
       },
       {
         "digest": "a3ce1eefc32f97ba150907b0249880006b9e3875171456ea7ba4940f569a6a3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
       },
       {
         "digest": "39b4f80dc30f9bce9f162895dda8e6f82f0c9ac5f132cb9beb55e536ad5b68cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
       },
       {
         "digest": "453ce47b639ad4cbc61f0edb8194ba07cf286d66e30c96efd75643702d70642d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
       },
       {
         "digest": "e9af09111c12ef31b358012d19120851f2313d846fd5c41f9c5d672f9fdab36f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
       },
       {
         "digest": "e9f0b8987b9a2d9f75d1bfea1a8fc3dc9e0a6066d44aca23d23b5f079d254319",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
       },
       {
         "digest": "68567d6391b8c665f9e90036af96bb1f9fbb02b78b7c3d5bb53e60e2a8e2e5d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
       },
       {
         "digest": "c6afa3f439ae83d3fd2b4eccd3da5a689aa5d1fc26bb9d1d7fb59697bb2f3187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
       },
       {
         "digest": "b5f242589e79c8b7c156dcfb70a1e78b905d83b80c4fd3e7b1fce826475e3673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -834,72 +834,72 @@
       {
         "digest": "3517276f9df5be5fccc7968efd839c9cbb647a3f101eaa91ef7cfb00aa672cd3",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-plan.md"
       },
       {
         "digest": "26f0181b147dcd2a0b1d13aa8aade3bfb40e4b3e75fca282c04a1647d79a8de0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/claude-spec.md"
       },
       {
         "digest": "1bf5a4408807de12de257f0492f7faa27fd3ec6f6c4e8dec786e3dfa378126ed",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/implementation/deep_implement_config.json"
       },
       {
         "digest": "73e0f665fdf91316f61f1152e13f66a5fa7bfb9739271b0e577aab18c722d48e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/implementation-audit-10-rounds-2026-09-27.md"
       },
       {
         "digest": "7be6aa1443f4868549872c9dd41b90e6e6cfb6435dae756a32e293c5cb7e9e5a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/section-cross-consistency-round-1.md"
       },
       {
         "digest": "c682da4c3a125d9806ac3fff9616f341ba65fdcb11cf25b1b016ad34dc9706a4",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-adversarial-round-1.md"
       },
       {
         "digest": "a3ce1eefc32f97ba150907b0249880006b9e3875171456ea7ba4940f569a6a3b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/reviews/self-review-round-1.md"
       },
       {
         "digest": "39b4f80dc30f9bce9f162895dda8e6f82f0c9ac5f132cb9beb55e536ad5b68cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/index.md"
       },
       {
         "digest": "453ce47b639ad4cbc61f0edb8194ba07cf286d66e30c96efd75643702d70642d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-01-target-inventory.md"
       },
       {
         "digest": "e9af09111c12ef31b358012d19120851f2313d846fd5c41f9c5d672f9fdab36f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-02-backup-restore.md"
       },
       {
         "digest": "e9f0b8987b9a2d9f75d1bfea1a8fc3dc9e0a6066d44aca23d23b5f079d254319",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-03-writer-fence-snapshots.md"
       },
       {
         "digest": "68567d6391b8c665f9e90036af96bb1f9fbb02b78b7c3d5bb53e60e2a8e2e5d6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-04-state-reconciliation.md"
       },
       {
         "digest": "c6afa3f439ae83d3fd2b4eccd3da5a689aa5d1fc26bb9d1d7fb59697bb2f3187",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-05-keyring-security-validation.md"
       },
       {
         "digest": "b5f242589e79c8b7c156dcfb70a1e78b905d83b80c4fd3e7b1fce826475e3673",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/sections/section-06-reopen-spec245-crosswalk.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

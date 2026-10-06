@@ -17,97 +17,97 @@
       {
         "digest": "e0540c4052b99bb7e2a616ecb989799321689a91b4fb08eb9d3e5e43b5cdd1e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-plan.md"
       },
       {
         "digest": "a6a16a1affcb0aac4d12fd48146f2e9d03e0affb4ca5571dffc954aef4d95b08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-spec.md"
       },
       {
         "digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
       },
       {
         "digest": "8717880603f0a74d5dd0b96eed311d3f8c64b767be467c22f052c14f8e752550",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
       },
       {
         "digest": "d8b11a266439b0db191b64fa7d0d0e86b040f0296c5aa49e1d02f620b53aa3f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
       },
       {
         "digest": "e1c82eed066a43c190fd78e66a1daf531e959fe4e4508e56c464fdee7d1ec523",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/index.md"
       },
       {
         "digest": "6866ae5206f55230c0deac67032149285a4d9d4fb884a6ed134276aadd8d02a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
       },
       {
         "digest": "68f42c015b80f733545e18868f1b841b14f04e8b123dc7928210fc01ca6d0f8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
       },
       {
         "digest": "8ba36564a9a686042050a9a9a215a146968c5fd45d5f45254fc23a7f641c99f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
       },
       {
         "digest": "d8091ebaebd5629c87d0d2fe35614c824a91f1c6627e00e4c466efe3cbbcde07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
       },
       {
         "digest": "6e46498b55d020c42e0f972e00d23e8d29aa3e3be5f2ac033f8c5ae3bf470a64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
       },
       {
         "digest": "77a0d1ddbc1ee978f8f32cf1b70b3d3ad670a3fb3091fdc4a34f25054137c755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
       },
       {
         "digest": "c189b70b1e063e6179dc818781973abfcac319454410737945146fb52f844e87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
       },
       {
         "digest": "80d7b30152d0e6ee1a99166e4e7f9f08bd81858c167d8da79aa74ebd816de1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
       },
       {
         "digest": "660c5b54c7553be49f727a667cb1aeaa0ad62a9c2bdd382b0cc56d6ce431e9b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
       },
       {
         "digest": "bf41cc50557c73bfce8358cb7a369b5270f9b05ec77266dc24e1e047f5ac149c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
       },
       {
         "digest": "44aa1dee532f2c4bad29f025431d01edefb14da0ab099ab304b2332f3c9c47e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
       },
       {
         "digest": "744c9be51ef925af0f951426e0ecbc859c42775bb1b6b960db924b2bf610dc4a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
       },
       {
         "digest": "364a6294e46dbd9c272d581ed21e63d23f194531e42a2bf2f74884e44c7ace6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
       }
     ],
     "predecessors": [],
@@ -138,97 +138,97 @@
       {
         "digest": "e0540c4052b99bb7e2a616ecb989799321689a91b4fb08eb9d3e5e43b5cdd1e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-plan.md"
       },
       {
         "digest": "a6a16a1affcb0aac4d12fd48146f2e9d03e0affb4ca5571dffc954aef4d95b08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-spec.md"
       },
       {
         "digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
       },
       {
         "digest": "8717880603f0a74d5dd0b96eed311d3f8c64b767be467c22f052c14f8e752550",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
       },
       {
         "digest": "d8b11a266439b0db191b64fa7d0d0e86b040f0296c5aa49e1d02f620b53aa3f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
       },
       {
         "digest": "e1c82eed066a43c190fd78e66a1daf531e959fe4e4508e56c464fdee7d1ec523",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/index.md"
       },
       {
         "digest": "6866ae5206f55230c0deac67032149285a4d9d4fb884a6ed134276aadd8d02a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
       },
       {
         "digest": "68f42c015b80f733545e18868f1b841b14f04e8b123dc7928210fc01ca6d0f8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
       },
       {
         "digest": "8ba36564a9a686042050a9a9a215a146968c5fd45d5f45254fc23a7f641c99f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
       },
       {
         "digest": "d8091ebaebd5629c87d0d2fe35614c824a91f1c6627e00e4c466efe3cbbcde07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
       },
       {
         "digest": "6e46498b55d020c42e0f972e00d23e8d29aa3e3be5f2ac033f8c5ae3bf470a64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
       },
       {
         "digest": "77a0d1ddbc1ee978f8f32cf1b70b3d3ad670a3fb3091fdc4a34f25054137c755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
       },
       {
         "digest": "c189b70b1e063e6179dc818781973abfcac319454410737945146fb52f844e87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
       },
       {
         "digest": "80d7b30152d0e6ee1a99166e4e7f9f08bd81858c167d8da79aa74ebd816de1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
       },
       {
         "digest": "660c5b54c7553be49f727a667cb1aeaa0ad62a9c2bdd382b0cc56d6ce431e9b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
       },
       {
         "digest": "bf41cc50557c73bfce8358cb7a369b5270f9b05ec77266dc24e1e047f5ac149c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
       },
       {
         "digest": "44aa1dee532f2c4bad29f025431d01edefb14da0ab099ab304b2332f3c9c47e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
       },
       {
         "digest": "744c9be51ef925af0f951426e0ecbc859c42775bb1b6b960db924b2bf610dc4a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
       },
       {
         "digest": "364a6294e46dbd9c272d581ed21e63d23f194531e42a2bf2f74884e44c7ace6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -260,103 +260,103 @@
       {
         "digest": "e0540c4052b99bb7e2a616ecb989799321689a91b4fb08eb9d3e5e43b5cdd1e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-plan.md"
       },
       {
         "digest": "a6a16a1affcb0aac4d12fd48146f2e9d03e0affb4ca5571dffc954aef4d95b08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-spec.md"
       },
       {
         "digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
       },
       {
         "digest": "8717880603f0a74d5dd0b96eed311d3f8c64b767be467c22f052c14f8e752550",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
       },
       {
         "digest": "d8b11a266439b0db191b64fa7d0d0e86b040f0296c5aa49e1d02f620b53aa3f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
       },
       {
         "digest": "e1c82eed066a43c190fd78e66a1daf531e959fe4e4508e56c464fdee7d1ec523",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/index.md"
       },
       {
         "digest": "6866ae5206f55230c0deac67032149285a4d9d4fb884a6ed134276aadd8d02a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
       },
       {
         "digest": "68f42c015b80f733545e18868f1b841b14f04e8b123dc7928210fc01ca6d0f8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
       },
       {
         "digest": "8ba36564a9a686042050a9a9a215a146968c5fd45d5f45254fc23a7f641c99f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
       },
       {
         "digest": "d8091ebaebd5629c87d0d2fe35614c824a91f1c6627e00e4c466efe3cbbcde07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
       },
       {
         "digest": "6e46498b55d020c42e0f972e00d23e8d29aa3e3be5f2ac033f8c5ae3bf470a64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
       },
       {
         "digest": "77a0d1ddbc1ee978f8f32cf1b70b3d3ad670a3fb3091fdc4a34f25054137c755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
       },
       {
         "digest": "c189b70b1e063e6179dc818781973abfcac319454410737945146fb52f844e87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
       },
       {
         "digest": "80d7b30152d0e6ee1a99166e4e7f9f08bd81858c167d8da79aa74ebd816de1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
       },
       {
         "digest": "660c5b54c7553be49f727a667cb1aeaa0ad62a9c2bdd382b0cc56d6ce431e9b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
       },
       {
         "digest": "bf41cc50557c73bfce8358cb7a369b5270f9b05ec77266dc24e1e047f5ac149c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
       },
       {
         "digest": "44aa1dee532f2c4bad29f025431d01edefb14da0ab099ab304b2332f3c9c47e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
       },
       {
         "digest": "744c9be51ef925af0f951426e0ecbc859c42775bb1b6b960db924b2bf610dc4a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
       },
       {
         "digest": "364a6294e46dbd9c272d581ed21e63d23f194531e42a2bf2f74884e44c7ace6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/052-agency-swarm-full-capability/spec.md",
     "digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
@@ -409,147 +409,147 @@
       {
         "digest": "e0540c4052b99bb7e2a616ecb989799321689a91b4fb08eb9d3e5e43b5cdd1e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-plan.md"
       },
       {
         "digest": "a6a16a1affcb0aac4d12fd48146f2e9d03e0affb4ca5571dffc954aef4d95b08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-spec.md"
       },
       {
         "digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
       },
       {
         "digest": "8717880603f0a74d5dd0b96eed311d3f8c64b767be467c22f052c14f8e752550",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
       },
       {
         "digest": "d8b11a266439b0db191b64fa7d0d0e86b040f0296c5aa49e1d02f620b53aa3f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
       },
       {
         "digest": "e1c82eed066a43c190fd78e66a1daf531e959fe4e4508e56c464fdee7d1ec523",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/index.md"
       },
       {
         "digest": "6866ae5206f55230c0deac67032149285a4d9d4fb884a6ed134276aadd8d02a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
       },
       {
         "digest": "68f42c015b80f733545e18868f1b841b14f04e8b123dc7928210fc01ca6d0f8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
       },
       {
         "digest": "8ba36564a9a686042050a9a9a215a146968c5fd45d5f45254fc23a7f641c99f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
       },
       {
         "digest": "d8091ebaebd5629c87d0d2fe35614c824a91f1c6627e00e4c466efe3cbbcde07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
       },
       {
         "digest": "6e46498b55d020c42e0f972e00d23e8d29aa3e3be5f2ac033f8c5ae3bf470a64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
       },
       {
         "digest": "77a0d1ddbc1ee978f8f32cf1b70b3d3ad670a3fb3091fdc4a34f25054137c755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
       },
       {
         "digest": "c189b70b1e063e6179dc818781973abfcac319454410737945146fb52f844e87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
       },
       {
         "digest": "80d7b30152d0e6ee1a99166e4e7f9f08bd81858c167d8da79aa74ebd816de1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
       },
       {
         "digest": "660c5b54c7553be49f727a667cb1aeaa0ad62a9c2bdd382b0cc56d6ce431e9b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
       },
       {
         "digest": "bf41cc50557c73bfce8358cb7a369b5270f9b05ec77266dc24e1e047f5ac149c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
       },
       {
         "digest": "44aa1dee532f2c4bad29f025431d01edefb14da0ab099ab304b2332f3c9c47e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
       },
       {
         "digest": "744c9be51ef925af0f951426e0ecbc859c42775bb1b6b960db924b2bf610dc4a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
       },
       {
         "digest": "364a6294e46dbd9c272d581ed21e63d23f194531e42a2bf2f74884e44c7ace6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
       },
       {
         "digest": "bd66d5760bce2a844b8caf11c8318fd266c9708aa3ee10df0eb4f3f9c8e5a480",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-14-mcp-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-14-mcp-integration.md"
       },
       {
         "digest": "21113d1a7498fb2229eafda37750b24ae3c0d0fc15e86740ed447c98bedbecb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-15-observability-tracing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-15-observability-tracing.md"
       },
       {
         "digest": "901a231d7c7d15d1745fce4eaadd134be9ebd31e957e1f39eb8b36a166a09399",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-16-tool-progress-standalone-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-16-tool-progress-standalone-api.md"
       },
       {
         "digest": "a5f92c6a054cc158a6a17ff99ac8b4c205f961d699dbbf57ffa9e768be2060cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-17-conditional-branch-node.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-17-conditional-branch-node.md"
       },
       {
         "digest": "42b173e1705f0ade14f6320922d276a0a5d0d80fcfaf8b44ad3073a564178fc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-18-parallel-fanout-node.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-18-parallel-fanout-node.md"
       },
       {
         "digest": "1ccfb10ae8d6396d14dba26b127c9c2538d7c1f81af98b1a8c2239b18ac30c5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-19-loop-retry-node.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-19-loop-retry-node.md"
       },
       {
         "digest": "f90262239adb178011159efe982f322d162bc91879830cabe0d4f1d707ba0d06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-20-skill-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-20-skill-integration.md"
       },
       {
         "digest": "81be739a60a2a108dc76839e8ae1504a1235cbadedafe8b5caa8097e837fb5a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-21-error-handler-data-transform.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-21-error-handler-data-transform.md"
       },
       {
         "digest": "c535d99b9f9eb1eb1b04011ec96fb3684b214002c322dbd62983e9b751ca78e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-22-ai-creator-v2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-22-ai-creator-v2.md"
       },
       {
         "digest": "ab2840b6388ccb479afd93a56c30cc86091c51ca430a854ea51e7d3f1c22bf00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-23-feature-flags-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-23-feature-flags-integration.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -707,147 +707,147 @@
       {
         "digest": "e0540c4052b99bb7e2a616ecb989799321689a91b4fb08eb9d3e5e43b5cdd1e8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-plan.md"
       },
       {
         "digest": "a6a16a1affcb0aac4d12fd48146f2e9d03e0affb4ca5571dffc954aef4d95b08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/claude-spec.md"
       },
       {
         "digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json"
       },
       {
         "digest": "8717880603f0a74d5dd0b96eed311d3f8c64b767be467c22f052c14f8e752550",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/implementation/usage.md"
       },
       {
         "digest": "d8b11a266439b0db191b64fa7d0d0e86b040f0296c5aa49e1d02f620b53aa3f6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/reviews/self-review-round-1.md"
       },
       {
         "digest": "e1c82eed066a43c190fd78e66a1daf531e959fe4e4508e56c464fdee7d1ec523",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/index.md"
       },
       {
         "digest": "6866ae5206f55230c0deac67032149285a4d9d4fb884a6ed134276aadd8d02a6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-01-database-migration.md"
       },
       {
         "digest": "68f42c015b80f733545e18868f1b841b14f04e8b123dc7928210fc01ca6d0f8e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-02-custom-tools-backend.md"
       },
       {
         "digest": "8ba36564a9a686042050a9a9a215a146968c5fd45d5f45254fc23a7f641c99f9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-03-custom-tools-frontend.md"
       },
       {
         "digest": "d8091ebaebd5629c87d0d2fe35614c824a91f1c6627e00e4c466efe3cbbcde07",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-04-openapi-import.md"
       },
       {
         "digest": "6e46498b55d020c42e0f972e00d23e8d29aa3e3be5f2ac033f8c5ae3bf470a64",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-05-guardrails-backend.md"
       },
       {
         "digest": "77a0d1ddbc1ee978f8f32cf1b70b3d3ad670a3fb3091fdc4a34f25054137c755",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-06-guardrails-frontend.md"
       },
       {
         "digest": "c189b70b1e063e6179dc818781973abfcac319454410737945146fb52f844e87",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-07-agency-context.md"
       },
       {
         "digest": "80d7b30152d0e6ee1a99166e4e7f9f08bd81858c167d8da79aa74ebd816de1dd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-08-agent-runtime-settings.md"
       },
       {
         "digest": "660c5b54c7553be49f727a667cb1aeaa0ad62a9c2bdd382b0cc56d6ce431e9b8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-09-sse-streaming-backend.md"
       },
       {
         "digest": "bf41cc50557c73bfce8358cb7a369b5270f9b05ec77266dc24e1e047f5ac149c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-10-sse-streaming-frontend.md"
       },
       {
         "digest": "44aa1dee532f2c4bad29f025431d01edefb14da0ab099ab304b2332f3c9c47e9",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-11-structured-output-flows.md"
       },
       {
         "digest": "744c9be51ef925af0f951426e0ecbc859c42775bb1b6b960db924b2bf610dc4a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-12-topology-human-approval.md"
       },
       {
         "digest": "364a6294e46dbd9c272d581ed21e63d23f194531e42a2bf2f74884e44c7ace6f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-13-few-shot-shared.md"
       },
       {
         "digest": "bd66d5760bce2a844b8caf11c8318fd266c9708aa3ee10df0eb4f3f9c8e5a480",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-14-mcp-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-14-mcp-integration.md"
       },
       {
         "digest": "21113d1a7498fb2229eafda37750b24ae3c0d0fc15e86740ed447c98bedbecb5",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-15-observability-tracing.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-15-observability-tracing.md"
       },
       {
         "digest": "901a231d7c7d15d1745fce4eaadd134be9ebd31e957e1f39eb8b36a166a09399",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-16-tool-progress-standalone-api.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-16-tool-progress-standalone-api.md"
       },
       {
         "digest": "a5f92c6a054cc158a6a17ff99ac8b4c205f961d699dbbf57ffa9e768be2060cf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-17-conditional-branch-node.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-17-conditional-branch-node.md"
       },
       {
         "digest": "42b173e1705f0ade14f6320922d276a0a5d0d80fcfaf8b44ad3073a564178fc6",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-18-parallel-fanout-node.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-18-parallel-fanout-node.md"
       },
       {
         "digest": "1ccfb10ae8d6396d14dba26b127c9c2538d7c1f81af98b1a8c2239b18ac30c5d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-19-loop-retry-node.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-19-loop-retry-node.md"
       },
       {
         "digest": "f90262239adb178011159efe982f322d162bc91879830cabe0d4f1d707ba0d06",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-20-skill-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-20-skill-integration.md"
       },
       {
         "digest": "81be739a60a2a108dc76839e8ae1504a1235cbadedafe8b5caa8097e837fb5a2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-21-error-handler-data-transform.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-21-error-handler-data-transform.md"
       },
       {
         "digest": "c535d99b9f9eb1eb1b04011ec96fb3684b214002c322dbd62983e9b751ca78e0",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-22-ai-creator-v2.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-22-ai-creator-v2.md"
       },
       {
         "digest": "ab2840b6388ccb479afd93a56c30cc86091c51ca430a854ea51e7d3f1c22bf00",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/052-agency-swarm-full-capability/sections/section-23-feature-flags-integration.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/052-agency-swarm-full-capability/sections/section-23-feature-flags-integration.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

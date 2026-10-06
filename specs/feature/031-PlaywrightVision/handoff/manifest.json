@@ -24,92 +24,92 @@
       {
         "digest": "c7211da6e8254c1b33c5ee6138b70e3157c33fbc5b2d1b63a0524183b86298d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-plan.md"
       },
       {
         "digest": "e32df39f0187a18dd7e53687bb5a7d5004da0f80e7e5ccd02182b327efe7b152",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-spec.md"
       },
       {
         "digest": "7e9d46dfba182c3b2838fff5e9136bce71e19b2d4eb4cf9482f39c5df2f209ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
       },
       {
         "digest": "d7acc80583025a9ffcfe081afc35c23d0552de78ec09332b9127ae1af5af03bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/usage.md"
       },
       {
         "digest": "eb09f15f2c33b3a478a5e66528535945469af3e0c7900edb7a8c0d1904ccc734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
       },
       {
         "digest": "7aad72528c9878a0b94215833493a7f93acd9e0cf115b9a5c102193441323f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/index.md"
       },
       {
         "digest": "e948b0f7897883fe7a1c26bb0c6b83ab9a402e53cbd71eb590b1e788a2d0659b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
       },
       {
         "digest": "52a06722070bbf7aacd78c07bf0749b84399ce16a0d4f29bff3dccb3bc90e77b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
       },
       {
         "digest": "dab4798f66472f8af6fa1515d3ae4947e5a2929f5dcba952d3b88bf9f06d234a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
       },
       {
         "digest": "1b64d084df44f078f6f8b7734bfbb5c5e83dd83d71957d4349d8fdc393dcfc2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
       },
       {
         "digest": "205dcde7040290d9ad30f545e2364450da36aed275e48542579deffa5f12593a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
       },
       {
         "digest": "8133515af4c1aa4cc42c1acc4923152be8210ffb39f1e3fe4dd2113e06c1ae14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
       },
       {
         "digest": "25f5d87693899db5dacb1e3a5bc6210552cceb25c0c97c58d0e317d5de073503",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
       },
       {
         "digest": "7c4db73d6fd0d73c8f134717e76145dee0f35b9437af65a0026bb301c4adf7fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
       },
       {
         "digest": "16eb698d83c843884cd81fd047107f698d6b28247b1ec29008a2768e3261680f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
       },
       {
         "digest": "bdd8292f22dd30b943929881c11fdebc875fb336162c92c040d88e03c91f9a08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
       },
       {
         "digest": "8efab9d699a56e12599d320eb2f2fc6c48a97aed0cd824a819f63d843d62040d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
       },
       {
         "digest": "836cecf6020a5a14bf907481f71b8ccd9473582ee2ff8d8a21fc13fe6039763f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
       }
     ],
     "predecessors": [],
@@ -140,92 +140,92 @@
       {
         "digest": "c7211da6e8254c1b33c5ee6138b70e3157c33fbc5b2d1b63a0524183b86298d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-plan.md"
       },
       {
         "digest": "e32df39f0187a18dd7e53687bb5a7d5004da0f80e7e5ccd02182b327efe7b152",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-spec.md"
       },
       {
         "digest": "7e9d46dfba182c3b2838fff5e9136bce71e19b2d4eb4cf9482f39c5df2f209ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
       },
       {
         "digest": "d7acc80583025a9ffcfe081afc35c23d0552de78ec09332b9127ae1af5af03bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/usage.md"
       },
       {
         "digest": "eb09f15f2c33b3a478a5e66528535945469af3e0c7900edb7a8c0d1904ccc734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
       },
       {
         "digest": "7aad72528c9878a0b94215833493a7f93acd9e0cf115b9a5c102193441323f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/index.md"
       },
       {
         "digest": "e948b0f7897883fe7a1c26bb0c6b83ab9a402e53cbd71eb590b1e788a2d0659b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
       },
       {
         "digest": "52a06722070bbf7aacd78c07bf0749b84399ce16a0d4f29bff3dccb3bc90e77b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
       },
       {
         "digest": "dab4798f66472f8af6fa1515d3ae4947e5a2929f5dcba952d3b88bf9f06d234a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
       },
       {
         "digest": "1b64d084df44f078f6f8b7734bfbb5c5e83dd83d71957d4349d8fdc393dcfc2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
       },
       {
         "digest": "205dcde7040290d9ad30f545e2364450da36aed275e48542579deffa5f12593a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
       },
       {
         "digest": "8133515af4c1aa4cc42c1acc4923152be8210ffb39f1e3fe4dd2113e06c1ae14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
       },
       {
         "digest": "25f5d87693899db5dacb1e3a5bc6210552cceb25c0c97c58d0e317d5de073503",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
       },
       {
         "digest": "7c4db73d6fd0d73c8f134717e76145dee0f35b9437af65a0026bb301c4adf7fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
       },
       {
         "digest": "16eb698d83c843884cd81fd047107f698d6b28247b1ec29008a2768e3261680f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
       },
       {
         "digest": "bdd8292f22dd30b943929881c11fdebc875fb336162c92c040d88e03c91f9a08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
       },
       {
         "digest": "8efab9d699a56e12599d320eb2f2fc6c48a97aed0cd824a819f63d843d62040d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
       },
       {
         "digest": "836cecf6020a5a14bf907481f71b8ccd9473582ee2ff8d8a21fc13fe6039763f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -257,98 +257,98 @@
       {
         "digest": "c7211da6e8254c1b33c5ee6138b70e3157c33fbc5b2d1b63a0524183b86298d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-plan.md"
       },
       {
         "digest": "e32df39f0187a18dd7e53687bb5a7d5004da0f80e7e5ccd02182b327efe7b152",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-spec.md"
       },
       {
         "digest": "7e9d46dfba182c3b2838fff5e9136bce71e19b2d4eb4cf9482f39c5df2f209ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
       },
       {
         "digest": "d7acc80583025a9ffcfe081afc35c23d0552de78ec09332b9127ae1af5af03bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/usage.md"
       },
       {
         "digest": "eb09f15f2c33b3a478a5e66528535945469af3e0c7900edb7a8c0d1904ccc734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
       },
       {
         "digest": "7aad72528c9878a0b94215833493a7f93acd9e0cf115b9a5c102193441323f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/index.md"
       },
       {
         "digest": "e948b0f7897883fe7a1c26bb0c6b83ab9a402e53cbd71eb590b1e788a2d0659b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
       },
       {
         "digest": "52a06722070bbf7aacd78c07bf0749b84399ce16a0d4f29bff3dccb3bc90e77b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
       },
       {
         "digest": "dab4798f66472f8af6fa1515d3ae4947e5a2929f5dcba952d3b88bf9f06d234a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
       },
       {
         "digest": "1b64d084df44f078f6f8b7734bfbb5c5e83dd83d71957d4349d8fdc393dcfc2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
       },
       {
         "digest": "205dcde7040290d9ad30f545e2364450da36aed275e48542579deffa5f12593a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
       },
       {
         "digest": "8133515af4c1aa4cc42c1acc4923152be8210ffb39f1e3fe4dd2113e06c1ae14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
       },
       {
         "digest": "25f5d87693899db5dacb1e3a5bc6210552cceb25c0c97c58d0e317d5de073503",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
       },
       {
         "digest": "7c4db73d6fd0d73c8f134717e76145dee0f35b9437af65a0026bb301c4adf7fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
       },
       {
         "digest": "16eb698d83c843884cd81fd047107f698d6b28247b1ec29008a2768e3261680f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
       },
       {
         "digest": "bdd8292f22dd30b943929881c11fdebc875fb336162c92c040d88e03c91f9a08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
       },
       {
         "digest": "8efab9d699a56e12599d320eb2f2fc6c48a97aed0cd824a819f63d843d62040d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
       },
       {
         "digest": "836cecf6020a5a14bf907481f71b8ccd9473582ee2ff8d8a21fc13fe6039763f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/031-PlaywrightVision/spec.md",
     "digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
@@ -401,92 +401,92 @@
       {
         "digest": "c7211da6e8254c1b33c5ee6138b70e3157c33fbc5b2d1b63a0524183b86298d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-plan.md"
       },
       {
         "digest": "e32df39f0187a18dd7e53687bb5a7d5004da0f80e7e5ccd02182b327efe7b152",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-spec.md"
       },
       {
         "digest": "7e9d46dfba182c3b2838fff5e9136bce71e19b2d4eb4cf9482f39c5df2f209ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
       },
       {
         "digest": "d7acc80583025a9ffcfe081afc35c23d0552de78ec09332b9127ae1af5af03bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/usage.md"
       },
       {
         "digest": "eb09f15f2c33b3a478a5e66528535945469af3e0c7900edb7a8c0d1904ccc734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
       },
       {
         "digest": "7aad72528c9878a0b94215833493a7f93acd9e0cf115b9a5c102193441323f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/index.md"
       },
       {
         "digest": "e948b0f7897883fe7a1c26bb0c6b83ab9a402e53cbd71eb590b1e788a2d0659b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
       },
       {
         "digest": "52a06722070bbf7aacd78c07bf0749b84399ce16a0d4f29bff3dccb3bc90e77b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
       },
       {
         "digest": "dab4798f66472f8af6fa1515d3ae4947e5a2929f5dcba952d3b88bf9f06d234a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
       },
       {
         "digest": "1b64d084df44f078f6f8b7734bfbb5c5e83dd83d71957d4349d8fdc393dcfc2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
       },
       {
         "digest": "205dcde7040290d9ad30f545e2364450da36aed275e48542579deffa5f12593a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
       },
       {
         "digest": "8133515af4c1aa4cc42c1acc4923152be8210ffb39f1e3fe4dd2113e06c1ae14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
       },
       {
         "digest": "25f5d87693899db5dacb1e3a5bc6210552cceb25c0c97c58d0e317d5de073503",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
       },
       {
         "digest": "7c4db73d6fd0d73c8f134717e76145dee0f35b9437af65a0026bb301c4adf7fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
       },
       {
         "digest": "16eb698d83c843884cd81fd047107f698d6b28247b1ec29008a2768e3261680f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
       },
       {
         "digest": "bdd8292f22dd30b943929881c11fdebc875fb336162c92c040d88e03c91f9a08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
       },
       {
         "digest": "8efab9d699a56e12599d320eb2f2fc6c48a97aed0cd824a819f63d843d62040d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
       },
       {
         "digest": "836cecf6020a5a14bf907481f71b8ccd9473582ee2ff8d8a21fc13fe6039763f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -860,92 +860,92 @@
       {
         "digest": "c7211da6e8254c1b33c5ee6138b70e3157c33fbc5b2d1b63a0524183b86298d2",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-plan.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-plan.md"
       },
       {
         "digest": "e32df39f0187a18dd7e53687bb5a7d5004da0f80e7e5ccd02182b327efe7b152",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/claude-spec.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/claude-spec.md"
       },
       {
         "digest": "7e9d46dfba182c3b2838fff5e9136bce71e19b2d4eb4cf9482f39c5df2f209ba",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/deep_implement_config.json"
       },
       {
         "digest": "d7acc80583025a9ffcfe081afc35c23d0552de78ec09332b9127ae1af5af03bc",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/implementation/usage.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/implementation/usage.md"
       },
       {
         "digest": "eb09f15f2c33b3a478a5e66528535945469af3e0c7900edb7a8c0d1904ccc734",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/reviews/iteration-1-opus.md"
       },
       {
         "digest": "7aad72528c9878a0b94215833493a7f93acd9e0cf115b9a5c102193441323f71",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/index.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/index.md"
       },
       {
         "digest": "e948b0f7897883fe7a1c26bb0c6b83ab9a402e53cbd71eb590b1e788a2d0659b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-01-exceptions-and-url-validator.md"
       },
       {
         "digest": "52a06722070bbf7aacd78c07bf0749b84399ce16a0d4f29bff3dccb3bc90e77b",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-02-browser-pool.md"
       },
       {
         "digest": "dab4798f66472f8af6fa1515d3ae4947e5a2929f5dcba952d3b88bf9f06d234a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-03-selector-cache.md"
       },
       {
         "digest": "1b64d084df44f078f6f8b7734bfbb5c5e83dd83d71957d4349d8fdc393dcfc2c",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-04-script-generator.md"
       },
       {
         "digest": "205dcde7040290d9ad30f545e2364450da36aed275e48542579deffa5f12593a",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-05-self-healing-executor.md"
       },
       {
         "digest": "8133515af4c1aa4cc42c1acc4923152be8210ffb39f1e3fe4dd2113e06c1ae14",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-06-orchestrator.md"
       },
       {
         "digest": "25f5d87693899db5dacb1e3a5bc6210552cceb25c0c97c58d0e317d5de073503",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-07-celery-tasks.md"
       },
       {
         "digest": "7c4db73d6fd0d73c8f134717e76145dee0f35b9437af65a0026bb301c4adf7fd",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-08-fastapi-endpoints.md"
       },
       {
         "digest": "16eb698d83c843884cd81fd047107f698d6b28247b1ec29008a2768e3261680f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-09-trpc-router-and-db-schema.md"
       },
       {
         "digest": "bdd8292f22dd30b943929881c11fdebc875fb336162c92c040d88e03c91f9a08",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-10-frontend-components.md"
       },
       {
         "digest": "8efab9d699a56e12599d320eb2f2fc6c48a97aed0cd824a819f63d843d62040d",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-11-admin-settings-and-navigation.md"
       },
       {
         "digest": "836cecf6020a5a14bf907481f71b8ccd9473582ee2ff8d8a21fc13fe6039763f",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
+        "path": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/031-PlaywrightVision/sections/section-12-templates-db-and-polish.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",

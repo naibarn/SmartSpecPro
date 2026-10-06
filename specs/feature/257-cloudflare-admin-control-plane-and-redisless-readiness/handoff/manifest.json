@@ -14,7 +14,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       },
@@ -26,7 +26,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L217",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L217",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       },
@@ -38,7 +38,7 @@
         "referencing_spec_id": "257",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
+        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#L174",
         "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "successor_spec_id": "257"
       }
@@ -108,7 +108,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md",
     "digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
