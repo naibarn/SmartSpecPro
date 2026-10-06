@@ -1203,6 +1203,24 @@
       "why": "A stop/quota boundary triggers canonicalization of the largest safe partial delta and a durable handoff; main records development state, not release readiness."
     },
     {
+      "id": "CANONICAL-WORKSPACE-FRESHNESS-001",
+      "user_message": "บน SSH ไม่เห็น Specs ที่รวมเข้า main แล้ว ช่วยจัด workspace ให้ตรงกับ canonical ล่าสุด โดยรักษางานค้างไว้",
+      "expected_owner": "orchestra",
+      "expected_route": "canonical-workspace-sync",
+      "expected_agents": [],
+      "expected_gates": [
+        "Lifecycle Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "assume-fetch-updated-editor-folder",
+        "reset-dirty-checkout",
+        "overwrite-dirty-worktree",
+        "claim-sync-without-openable-path-and-sha"
+      ],
+      "why": "The conductor verifies the actual SSH/editor path, preserves dirty or divergent work, and exposes a clean worktree at the exact current canonical SHA."
+    },
+    {
       "id": "SPEC-HANDOFF-RESUME-001",
       "user_message": "ดำเนิน Spec เดิมต่อจาก handoff โดยไม่อ่าน chat เก่า และห้ามถือว่า sections ครบแปลว่าเสร็จ",
       "expected_owner": "orchestra",

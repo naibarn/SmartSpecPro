@@ -17,6 +17,7 @@ implement / partial progress
   → FAST INTEGRATION GATE
   → commit
   → integrate into configured canonical ref
+  → refresh the canonical working workspace
   → heavy test / full typecheck / integration / UAT
   → if a problem appears, repair on current canonical state and promote that repair
 ```
@@ -37,8 +38,9 @@ Run inexpensive scoped checks that establish these facts. Do not wait for full t
 3. Fetch the latest configured canonical ref, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
 4. Commit the largest safe task-owned checkpoint and integrate it into configured canonical ref using the normal non-force GitHub path. Do not wait for the whole task to complete. If only a subset can safely integrate, split that subset, promote it, and preserve the unsafe/incomplete remainder with an explicit handoff/recovery reference.
 5. Confirm the integrated commit is reachable from the updated configured canonical ref. Report its SHA, whether progress is `PARTIAL` or `IMPLEMENTATION_COMPLETE`, remaining scope, next action, and post-integration checks still outstanding.
-6. Run post-integration verification through CI, a dedicated runner, or an admitted safe resource window. Track each obligation against the integrated SHA with an owner, status, and next action.
-7. If verification finds a regression, create a repair task from current configured canonical ref, fix it there, pass the same fast gate, and promote a new commit to configured canonical ref. Preserve history; do not hide the fix in a side branch.
+6. Refresh the workspace used for subsequent work. If the active checkout is clean and already on the configured canonical branch, fast-forward it and verify exact SHA equality. If it is dirty, on a task branch, or cannot fast-forward, preserve it untouched and create or reuse a clean worktree at the exact canonical SHA. Verify its path, repository identity, SHA, and clean status; include the absolute path in the handoff and tell the user which SSH/editor folder to open. Continue task-owned work only with its base SHA recorded; start unrelated work from the canonical worktree.
+7. Run post-integration verification through CI, a dedicated runner, or an admitted safe resource window. Track each obligation against the integrated SHA with an owner, status, and next action.
+8. If verification finds a regression, create a repair task from current configured canonical ref, fix it there, pass the same fast gate, promote a new commit to configured canonical ref, then refresh the canonical workspace again. Preserve history; do not hide the fix in a side branch.
 
 ## Mandatory checkpoint triggers
 
@@ -70,6 +72,7 @@ not task completion until the outcome's Definition of Done is met.
 - A failed fast gate blocks promotion of the failing delta, not all useful progress. First split and promote any independent safe subset when possible. Preserve the remaining exact change durably and report `FAST_GATE_BLOCKED`, the failure, owner, and next action.
 - A heavy-check failure after promotion does not remove or strand the integrated work. Repair on configured canonical ref.
 - Preserve uncommitted work owned by other sessions. Never stage it, overwrite it, or remove its worktree as part of this lifecycle.
+- Do not treat `git fetch`, a pushed branch, or an isolated build as proof that the editor/SSH workspace is current. Report the exact workspace path and SHA after synchronization; if a clean canonical workspace cannot be prepared, state the concrete blocker and preserve the old checkout.
 
 ## Outcomes
 

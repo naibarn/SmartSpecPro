@@ -720,6 +720,8 @@ if scenario_path.exists():
 
     def lightweight_route(message: str) -> tuple[str, str]:
         text = message.lower()
+        if "บน ssh ไม่เห็น specs ที่รวมเข้า main แล้ว" in text and "รักษางานค้างไว้" in text:
+            return "orchestra", "canonical-workspace-sync"
         if "ดำเนิน spec เดิมต่อจาก handoff" in text:
             return "orchestra", "canonical-handoff-resume"
         if "อัปเดตสถานะ spec" in text and "main เปลี่ยนไปแล้ว" in text:

@@ -39,15 +39,17 @@ When a session is stopping because of quota/context/provider/time boundaries, tr
 3. Reconcile each candidate with current configured canonical ref, inspect its diff, and identify the largest coherent safe checkpoint. Run the FAST INTEGRATION GATE against that checkpoint. If the whole delta is unsafe, split and promote independent safe subsets before preserving the remainder.
 4. Commit and promote every fast-gate-passing safe checkpoint promptly through the normal non-force GitHub path, whether the parent task is complete or partial. Serialize only promotion when needed. Do not wait for unrelated sessions, task completion, or heavy verification.
 5. Verify that each promoted SHA is reachable from the new configured canonical ref. Record task/work ID, SHA, source ref/worktree, `PARTIAL|IMPLEMENTATION_COMPLETE`, completed scope, remaining scope, and next action in the integration report/handoff.
-6. After promotion, queue heavy checks against the integrated SHA with a durable owner, status, and next action. A canceled, unavailable, or resource-blocked check is `NOT_RUN`/`PENDING`, never a pass.
-7. If post-integration checks fail, create a repair task against latest configured canonical ref; pass the fast gate and promote the repair to configured canonical ref. Keep the original and repair commits visible in history.
-8. Classify worktrees for cleanup only after proving their valuable changes are integrated or durably preserved. Never remove a dirty or unclassified worktree. Clean completed temporary refs only after their commits are verified in configured canonical ref.
+6. Refresh the user-facing canonical working workspace after each promotion. Fast-forward only a clean checkout already on the configured canonical branch. For a dirty, task-branch, or non-fast-forward checkout, preserve it and create/reuse a clean worktree at the exact latest canonical SHA. Verify repository identity, absolute path, SHA, and clean status; include these in the report and identify which SSH/editor folder contains the latest files. New/unrelated work starts from that canonical workspace; an in-flight task may continue only with its base SHA recorded and a safe reconciliation plan.
+7. After promotion, queue heavy checks against the integrated SHA with a durable owner, status, and next action. A canceled, unavailable, or resource-blocked check is `NOT_RUN`/`PENDING`, never a pass.
+8. If post-integration checks fail, create a repair task against latest configured canonical ref; pass the fast gate, promote the repair, and refresh the canonical working workspace again. Keep the original and repair commits visible in history.
+9. Classify worktrees for cleanup only after proving their valuable changes are integrated or durably preserved. Never remove a dirty or unclassified worktree. Clean completed temporary refs only after their commits are verified in configured canonical ref.
 
 ## Branch and worktree discipline
 
 - Do not create or retain per-session branches as the durable progress destination. If required by concurrent isolation or repository protection, use a temporary branch/PR, but canonicalize safe checkpoints to the configured canonical ref throughout the work lifecycle rather than waiting for final completion.
 - Never force-push or bypass repository protection. If protection prevents immediate direct push, complete the required PR path promptly and keep the task visible as promotion-pending until the merge SHA is verified.
 - Never use destructive reset/clean/prune/remove operations against another session's worktree. A worktree count is not proof that its contents are disposable.
+- A stale dirty checkout is not a reason to leave the user without current source: prepare a separate clean canonical worktree and report its exact openable path. Never claim the stale checkout itself is updated.
 - configured canonical ref promotion is not deployment. Report deployment/runtime evidence separately.
 
 ## Required report
@@ -59,6 +61,7 @@ Report:
 - each promoted SHA and proof it is reachable from configured canonical ref;
 - fast-gate result;
 - post-integration checks passed, failed, canceled, or pending, tied to the integrated SHA;
+- canonical working workspace absolute path, verified SHA/clean status, and which existing dirty/stale checkouts were preserved;
 - preserved/blocked task work with owner and next action;
 - worktrees/temporary refs safe to clean and any that must remain.
 

@@ -53,6 +53,15 @@ Re-establish the complete in-context mental model:
 
 Verify that actual filesystem state matches the snapshot's recorded state:
 
+0. Before restoring task state, verify the current editor/SSH workspace against
+   the repository's configured canonical ref. Record `pwd -P`, repository
+   identity, branch/upstream, `HEAD`, dirty status, and fetched canonical SHA.
+   If this is a dirty/divergent task checkout, preserve it and prepare or locate
+   a separate clean canonical worktree; report its exact path for new/unrelated
+   work. Resume the in-flight task only in its recorded workspace/base and
+   reconcile that task at the next safe checkpoint. Never infer that the SSH
+   editor folder changed because another clone fetched or merged.
+
 1. For each file in `checkpoint.key_files`:
    - Check that the file **exists**. If missing: add it to the blockers list; do not auto-recreate.
    - Check the file's **modification time** against `checkpoint.timestamp`. If a file is
