@@ -322,6 +322,7 @@ def _intent_policy_conflicts(
 def _observed_start_state_bullets(
     observed: dict[str, Any] | None,
     position_bound_by_hard_map: bool = False,
+    has_custom_identity_overrides: bool = False,
 ) -> list[str]:
     if not isinstance(observed, dict):
         return ["Preserve the approved START_FRAME_IMAGE as authoritative State #0."]
@@ -342,10 +343,12 @@ def _observed_start_state_bullets(
             hand_text = f"; hands: {hands.strip()}"
         cid = character.get("characterId", "primary character")
         if position_bound_by_hard_map:
-            bullets.append(
-                f"Observed character ({cid}): preserve the visible pose, gaze and hand state "
-                "exactly; identity and screen position come only from the HARD SPEAKER MAP."
+            identity_source = (
+                "use the HARD SPEAKER MAP except for identities covered by the user override lock."
+                if has_custom_identity_overrides
+                else "identity and screen position come only from the HARD SPEAKER MAP."
             )
+            bullets.append(f"Observed character ({cid}): preserve the visible pose, gaze and hand state exactly; {identity_source}")
         else:
             bullets.append(
                 f"Character ({cid}): {character.get('screenPosition', 'in frame')}, "
@@ -748,14 +751,19 @@ def _build_motion_timeline(
                 else "Only the bound speaker is allowed to speak: "
             )
             if compact_speech:
-                # Repeat the viewer-relative position beside the speaker ID
-                # in each event so the compact prompt is self-binding.
-                if not pos:
+                # Repeat the strongest valid identity anchor beside the
+                # speaker ID. A custom identity override supersedes position.
+                if not speaker_identity and not pos:
                     raise RuntimeError(
                         f"DIALOGUE_TIMELINE_BINDING_FAILED: line {idx + 1} has no canonical speaker position"
                     )
                 emotion_hint = f" [{emotion}]" if emotion else ""
-                events.append((f'Line {idx + 1} ONLY ({speaker_id} @ {pos}): "{txt}"{emotion_hint}', "speech"))
+                compact_anchor = (
+                    f"{speaker_id} identified by {speaker_identity}"
+                    if speaker_identity
+                    else f"{speaker_id} @ {pos}"
+                )
+                events.append((f'Line {idx + 1} ONLY ({compact_anchor}): "{txt}"{emotion_hint}', "speech"))
                 continue
 
             # A three-shot with several visible listeners is otherwise easy for
@@ -911,8 +919,13 @@ def _build_grok_hard_speaker_map(
         key=lambda character: position_order.get(character.get("position", ""), 99),
     )
 
+    map_header = (
+        "HARD SPEAKER MAP (MANDATORY; user identity overrides supersede screen positions; do not swap)"
+        if custom_identity_overrides
+        else "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; overrides ambiguous visual labels; do not swap)"
+    )
     lines = [
-        "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; overrides ambiguous visual labels; do not swap)",
+        map_header,
         "All positions below are from the viewer/camera side and remain fixed for the entire shot.",
     ]
     for character in characters:
@@ -989,8 +1002,13 @@ def _validate_dialogue_timeline(
             custom_identity_overrides or {}, speaker_id, line.get("characterKey"), speaker
         )
         if compact:
-            expected_compact = f'Line {index + 1} ONLY ({speaker_id} @ {position}): "{text}"'
-            if not speaker_id or not position or not text or timeline.count(expected_compact) != 1:
+            compact_anchor = (
+                f"{speaker_id} identified by {identity}"
+                if identity
+                else f"{speaker_id} @ {position}"
+            )
+            expected_compact = f'Line {index + 1} ONLY ({compact_anchor}): "{text}"'
+            if not speaker_id or (not identity and not position) or not text or timeline.count(expected_compact) != 1:
                 raise RuntimeError(
                     f"DIALOGUE_TIMELINE_BINDING_FAILED: line {index + 1} is not bound to its canonical speaker and position"
                 )
@@ -1010,6 +1028,7 @@ def _validate_dialogue_timeline(
 def _compact_observed_start_state_bullets(
     observed: dict[str, Any] | None,
     position_bound_by_hard_map: bool = False,
+    has_custom_identity_overrides: bool = False,
 ) -> list[str]:
     if not isinstance(observed, dict):
         return ["Approved START_FRAME_IMAGE is authoritative State #0."]
@@ -1018,10 +1037,12 @@ def _compact_observed_start_state_bullets(
         if not isinstance(character, dict):
             continue
         if position_bound_by_hard_map:
-            bullets.append(
-                f"Observed character {character.get('characterId', 'unknown')}: preserve visible "
-                "pose, gaze and hand state; use the authoritative cast-position map for identity and position."
+            identity_source = (
+                "use cast-position map except for identities covered by the user override lock."
+                if has_custom_identity_overrides
+                else "use the authoritative cast-position map for identity and position."
             )
+            bullets.append(f"Observed character {character.get('characterId', 'unknown')}: preserve visible pose, gaze and hand state; {identity_source}")
         else:
             bullets.append(
                 f"Character {character.get('characterId', 'unknown')}: "
@@ -1512,6 +1533,7 @@ def _terminal_prompt(
             for b in _observed_start_state_bullets(
                 observed_start_state,
                 position_bound_by_hard_map=bool(grok_hard_speaker_map),
+                has_custom_identity_overrides=bool(custom_identity_overrides),
             )
         ),
         dialogue_section,
@@ -1587,6 +1609,7 @@ def _terminal_prompt(
             for item in _compact_observed_start_state_bullets(
                 observed_start_state,
                 position_bound_by_hard_map=bool(grok_hard_speaker_map),
+                has_custom_identity_overrides=bool(custom_identity_overrides),
             )
         )
     )
@@ -1599,7 +1622,11 @@ def _terminal_prompt(
                 continue
             name = character.get("name") or character_id
             identity = _custom_identity_for(custom_identity_overrides, character_id, name)
-            cast_map.append(f"{character_id}={identity or name}@{position}")
+            cast_map.append(
+                f"{character_id} identified by {identity}"
+                if identity
+                else f"{character_id}={name}@{position}"
+            )
         dialogue_map = []
         for idx, line in enumerate(dialogue):
             speaker_id = str(line.get("speakerId") or line.get("characterKey") or "")
@@ -1608,20 +1635,52 @@ def _terminal_prompt(
             identity = _custom_identity_for(
                 custom_identity_overrides, speaker_id, line.get("characterKey"), speaker
             )
-            identity_hint = f" [{identity}]" if identity else ""
-            dialogue_map.append(f"L{idx + 1}={speaker_id}@{position}{identity_hint}")
+            dialogue_map.append(
+                f"L{idx + 1}={speaker_id} identified by {identity}"
+                if identity
+                else f"L{idx + 1}={speaker_id}@{position}"
+            )
         first_id = str(dialogue[0].get("speakerId") or dialogue[0].get("characterKey") or "")
+        first_line = dialogue[0]
+        first_speaker = str(first_line.get("speaker") or first_line.get("speakerHint") or first_id)
+        first_identity = _custom_identity_for(
+            custom_identity_overrides,
+            first_id,
+            first_line.get("characterKey"),
+            first_speaker,
+        )
+        first_anchor = (
+            f"{first_id} identified by {first_identity}"
+            if first_identity
+            else f"{first_id}@{first_line.get('position') or ''}"
+        )
+        speaker_order_header = (
+            "CANONICAL SPEAKER ORDER (position unless a custom identity override applies): "
+            if custom_identity_overrides
+            else "CANONICAL SPEAKER ORDER: "
+        )
+        speaker_anchor_rule = (
+            "Each timed line repeats its speaker ID and strongest identity anchor. "
+            "Use viewer-relative position only when no custom identity override is supplied. "
+            if custom_identity_overrides
+            else "Each timed line repeats its speaker ID and exact viewer-relative position. "
+        )
+        compact_map_header = (
+            "HARD SPEAKER MAP (MANDATORY; user identity overrides supersede screen positions; authoritative; do not swap)\n"
+            if custom_identity_overrides
+            else "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; authoritative; do not swap)\n"
+        )
         compact_dialogue = (
-            "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; authoritative; do not swap)\n"
-            "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
+            compact_map_header
+            + "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
             "FIXED CAST MAP (viewer-side): " + "; ".join(cast_map) + "\n"
-            "CANONICAL SPEAKER ORDER (line, character ID, exact position): "
+            + speaker_order_header
             + "; ".join(dialogue_map) + "\n"
-            "Each timed line repeats its speaker ID and exact viewer-relative position. "
-            "Only that mapped character speaks or moves their mouth; every other character stays silent. "
+            + speaker_anchor_rule
+            + "Only that mapped character speaks or moves their mouth; every other character stays silent. "
             "At speech start, face the visible scene partner, never the lens. "
             "Off-screen lines stay audio-only; screen callers animate only inside the existing call display. "
-            f"FIRST SPEAKER LOCK: {first_id}@{dialogue[0].get('position') or ''}."
+            f"FIRST SPEAKER LOCK: {first_anchor}."
         )
         speech_timeline = _build_motion_timeline(
             # Unbound action prose can assign speech to the wrong screen-side
