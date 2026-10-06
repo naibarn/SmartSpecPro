@@ -43,8 +43,8 @@ class ReconciliationClassificationTests(unittest.TestCase):
         self.assertEqual("VALIDATION_ONLY", handoff["continuation_assessment"]["decision"])
         self.assertEqual({"166", "168", "173", "175", "176", "185"}, {str(ref["spec_id"]) for ref in handoff["relevance_assessment"]["active_references"]})
         global_handoff = json.loads((ROOT / "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/handoff/manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual("FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE", global_handoff["continuation"]["next_ready_workunit"])
-        self.assertIn("Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE false", global_handoff["continuation"]["next_action"])
+        self.assertEqual("P0_WORKSPACE_AUTHORITY_AND_CONVERGENCE_HARDENING", global_handoff["continuation"]["next_ready_workunit"])
+        self.assertIn("CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE", global_handoff["continuation"]["next_action"])
 
     def test_missing_or_duplicate_inventory_rows_fail_validation(self):
         document = build_classifications(ROOT, baseline_sha="9ab681181a6ac850a366bb92ebf5dc024029655b")
